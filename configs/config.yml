@@ -1,0 +1,24 @@
+---
+telegram:
+  token: ''
+  admin_token: ''
+  admin_id: 0
+  my_commands:
+    - start: Start the bot
+  admin_commands:
+    - stats: Get general statistics
+features:
+  admin_bot: false
+  daily_sending: false
+  pair_sending: false
+database:
+  file: database/db.sqlite3
+browser:
+  headless: true
+  timeout: 30 # seconds
+cache:
+  default_ttl: 10 # minutes
+  schedule_ttl: 20 # minutes
+  group_ttl: 7 # days
+logger:
+  level: trace
