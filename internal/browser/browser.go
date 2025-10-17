@@ -1,13 +1,26 @@
 package browser
 
 import (
+	"fmt"
+
 	"github.com/azzimoda/raspishika-go/internal/config"
+
 	"github.com/playwright-community/playwright-go"
 )
 
 type BrowserService struct {
 	pw      *playwright.Playwright
 	browser playwright.Browser
+}
+
+func (b *BrowserService) Close() error {
+	browserErr := b.browser.Close()
+	pwErr := b.pw.Stop()
+
+	if browserErr != nil || pwErr != nil {
+		return fmt.Errorf("Browser services closed with errors: %v, %v", browserErr, pwErr)
+	}
+	return nil
 }
 
 func (b *BrowserService) WithContext(f func(playwright.BrowserContext) error) error {

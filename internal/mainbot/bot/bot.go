@@ -1,10 +1,14 @@
 package bot
 
 import (
+	"errors"
+
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 	"github.com/patrickmn/go-cache"
+	"github.com/rs/zerolog/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -26,11 +30,39 @@ func (b *Bot) MyCommands() []map[string]string {
 }
 
 func (b *Bot) Start() {
-	panic("unimplemented")
+	tgbot.StartPolling(b)
+}
+
+func (b *Bot) Stop() {
+	log.Debug().Msg("Stopping bot...")
+	b.api.StopReceivingUpdates()
 }
 
 func New(
 	cfg *config.Config, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
 ) (*Bot, error) {
-	panic("unimplemented")
+	log.Debug().Msgf("Token: %s", cfg.Telegram.Token)
+
+	var api *tgbotapi.BotAPI
+	err := errors.New("fake error")
+	retries := 0
+	for retries <= 5 && err != nil {
+		api, err = tgbotapi.NewBotAPI(cfg.Telegram.Token)
+		if err == nil {
+			break
+		}
+		retries += 1
+		log.Error().Err(err).Int("retries", retries).Msg("Failed to connect to Telegram API; retrying...")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &Bot{
+		Config:  cfg,
+		api:     api,
+		Repo:    repo,
+		Browser: browser,
+		Cache:   cache,
+	}, nil
 }

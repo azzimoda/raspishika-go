@@ -1,0 +1,7 @@
+.*
+
+configs/
+!configs/config.yml.example
+database/
+
+main

@@ -29,7 +29,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create application")
 	}
 
-	if err := app.Start(); err != nil {
+	if err := app.Run(); err != nil {
 		log.Fatal().Err(err).Msg("Application exited with error")
 	}
 }

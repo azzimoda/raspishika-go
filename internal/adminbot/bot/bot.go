@@ -13,8 +13,12 @@ type AdminBot struct {
 	Repo   *database.Repository
 }
 
-func (a *AdminBot) Start() {
+func (b *AdminBot) Start() {
 	panic("unimplemented: adminbot.AdminBot.Start()")
+}
+
+func (b *AdminBot) Stop() {
+	b.api.StopReceivingUpdates()
 }
 
 func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {

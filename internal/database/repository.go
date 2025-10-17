@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
