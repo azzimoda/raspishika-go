@@ -5,15 +5,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot/bot"
 	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	mainbot "github.com/azzimoda/raspishika-go/internal/mainbot/bot"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,11 +26,9 @@ type App struct {
 }
 
 func (a *App) Run() error {
-	go a.MainBot.Start()
+	log.Debug().Msg("Starting application...")
 
-	if a.AdminBot != nil {
-		go a.AdminBot.Start()
-	}
+	go a.MainBot.Start()
 
 	if a.AdminBot != nil {
 		go a.AdminBot.Start()
@@ -40,11 +37,9 @@ func (a *App) Run() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	go func() {
-		<-sigChan
-		a.Shutdown()
-		os.Exit(0)
-	}()
+	<-sigChan
+	a.Shutdown()
+	os.Exit(0)
 
 	return nil
 }
@@ -84,10 +79,9 @@ func New(cfg *config.Config) (*App, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
-	ttl := time.Duration(cfg.Cache.DefaultTTL) * time.Minute
-	cache := cache.New(ttl, ttl*2)
+	cache := cache.New(&cfg.Cache)
 
-	mainBot, err := mainbot.New(cfg, repo, browser, cache)
+	mainBot, err := mainbot.New(cfg, repo, browser, &cache)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize main bot")
 	} else {
@@ -99,7 +93,7 @@ func New(cfg *config.Config) (*App, error) {
 		MainBot: mainBot,
 		Repo:    repo,
 		Browser: browser,
-		Cache:   cache,
+		Cache:   &cache,
 	}
 
 	if cfg.Features.AdminBot {

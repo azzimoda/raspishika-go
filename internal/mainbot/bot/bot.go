@@ -4,13 +4,13 @@ import (
 	"errors"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
-	"github.com/patrickmn/go-cache"
-	"github.com/rs/zerolog/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
 )
 
 type Bot struct {
@@ -30,6 +30,7 @@ func (b *Bot) MyCommands() []map[string]string {
 }
 
 func (b *Bot) Start() {
+	log.Debug().Msg("Starting main bot...")
 	tgbot.StartPolling(b)
 }
 

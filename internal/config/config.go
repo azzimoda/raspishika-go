@@ -28,11 +28,7 @@ type Config struct {
 		Headless bool  `yaml:"headless"`
 		Timeout  int64 `yaml:"timeout"`
 	} `yaml:"browser"`
-	Cache struct {
-		DefaultTTL  int64 `yaml:"default_ttl"`
-		ScheduleTTL int64 `yaml:"schedule_ttl"`
-		GroupTTL    int64 `yaml:"group_ttl"`
-	} `yaml:"cache"`
+	Cache  CacheConfig `yaml:"cache"`
 	Logger struct {
 		Level string `yaml:"level"`
 	} `yaml:"logger"`
@@ -50,6 +46,12 @@ func (c *Config) EnsureDirs() error {
 		}
 	}
 	return nil
+}
+
+type CacheConfig struct {
+	DefaultTTL  int64 `yaml:"default_ttl"`
+	ScheduleTTL int64 `yaml:"schedule_ttl"`
+	GroupTTL    int64 `yaml:"group_ttl"`
 }
 
 func Load(filename string) (*Config, error) {

@@ -1,7 +1,8 @@
 .*
+!.gitignore
 
 configs/
 !configs/config.yml.example
-database/
 
+*.sqlite3
 main
