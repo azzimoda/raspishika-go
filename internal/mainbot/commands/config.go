@@ -10,7 +10,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/rs/zerolog/log"
 )
 
 func OnSettings(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
@@ -47,9 +46,41 @@ func OnGroup(
 func departmentSelectionMarkup(departments []scraper.Department) tgbotapi.InlineKeyboardMarkup {
 	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
 
-	log.Error().Msg("Unimplemented: departmentSelectionMarkup")
+	for i := 0; i < len(departments); i += 2 {
+		row := make([]tgbotapi.InlineKeyboardButton, 0)
+		for j := i; j < len(departments) && j < i+2; j++ {
+			row = append(row,
+				tgbotapi.NewInlineKeyboardButtonData(
+					departments[j].Name, fmt.Sprintf("select_department\n%s", departments[j].Name),
+				),
+			)
+		}
+		rows = append(rows, row)
+	}
+	rows = append(rows, []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete"),
+	})
 
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
+func OnTextGroup(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
+	group, err := repo.GetGroupByName(msg.Text)
+	if err != nil {
+		return err
+	}
+
+	chat.State = database.ChatStateDefault
+	chat.GroupName = &group.GroupName
+	chat.DepartmentName = &group.DepartmentName
+	if err := repo.UpdateChat(chat); err != nil {
+		return err
+	}
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("Теперь вы в группе %s", group.GroupName))
+	newMsg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
+	_, err = api.Send(newMsg)
+	return err
 }
 
 func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {

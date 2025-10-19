@@ -37,11 +37,21 @@ func createTables(db *sqlx.DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			chat_id INTEGER NOT NULL UNIQUE,
 			username TEXT,
+			state TEXT DEFAULT 'default',
 			department TEXT,
 			"group" TEXT,
 			daily_sending_time TEXT NOT NULL DEFAULT '',
 			pair_sending BOOLEAN NOT NULL DEFAULT 0,
 			access INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS groups(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			group_id TEXT NOT NULL UNIQUE,
+			department_id TEXT NOT NULL,
+			group_name TEXT NOT NULL,
+			department_name TEXT NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,

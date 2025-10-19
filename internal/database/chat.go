@@ -7,10 +7,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type ChatState string
+
+const (
+	ChatStateDefault             ChatState = "default"
+	ChatStateSelectingDepartment ChatState = "selecting_department"
+	ChatStateSelectingGroup      ChatState = "selecting_group"
+)
+
 type Chat struct {
 	ID               int64     `db:"id" json:"id"`
 	ChatID           int64     `db:"chat_id" json:"chat_id"`
 	UserName         *string   `db:"username" json:"username"`
+	State            ChatState `db:"state" json:"state"`
 	DepartmentName   *string   `db:"department" json:"department"`
 	GroupName        *string   `db:"group" json:"group"`
 	DailySendingTime string    `db:"daily_sending_time" json:"daily_sending_time"`
@@ -53,6 +62,22 @@ func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, e
 	return &chat, nil
 }
 
+func (r *Repository) UpdateChat(chat *Chat) error {
+	_, err := r.db.NamedExec(
+		`UPDATE chats
+		SET username = :username, state = :state, department = :department, "group" = :group,
+		daily_sending_time = :daily_sending_time, pair_sending = :pair_sending, access = :access
+		WHERE id = :id`,
+		chat,
+	)
+	return err
+}
+
+func (r *Repository) UpdateChatState(chatID int64, state ChatState) error {
+	_, err := r.db.Exec(`UPDATE chats SET state = ? WHERE chat_id = ?`, state, chatID)
+	return err
+}
+
 func (r *Repository) GetChat(id int64) (*Chat, error) {
 	var chat Chat
 	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE id = ?`, id); err != nil {
@@ -71,5 +96,10 @@ func (r *Repository) GetChatByChatID(chatID int64) (*Chat, error) {
 
 func (r *Repository) DeleteChat(id int64) error {
 	_, err := r.db.Exec(`DELETE FROM chats WHERE id = ?`, id)
+	if err == nil {
+		log.Debug().Int64("chatID", id).Msg("Chat is deleted")
+	} else {
+		log.Error().Err(err).Int64("chatID", id).Msg("Failed to delete chat")
+	}
 	return err
 }

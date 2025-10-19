@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
 )
 
 type BotAPIProvider interface {
@@ -12,10 +13,6 @@ type BotAPIProvider interface {
 
 type UpdateHandler interface {
 	OnUpdate(tgbotapi.Update)
-}
-
-type CommandsProvider interface {
-	MyCommands() []map[string]string
 }
 
 func StartPolling(bot interface {
@@ -37,4 +34,15 @@ func SendTempMessage(api *tgbotapi.BotAPI, chatID int64, text string, dur time.D
 	go func() { api.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID)) }()
 
 	return err
+}
+
+func SetMyCommands(api *tgbotapi.BotAPI, commandsData []map[string]string) {
+	log.Debug().Any("commands", commandsData).Msg("Setting my commands")
+	commands := make([]tgbotapi.BotCommand, len(commandsData))
+	for i, cmd := range commandsData {
+		for name, desc := range cmd {
+			commands[i] = tgbotapi.BotCommand{Command: name, Description: desc}
+		}
+	}
+	api.Send(tgbotapi.NewSetMyCommands(commands...))
 }

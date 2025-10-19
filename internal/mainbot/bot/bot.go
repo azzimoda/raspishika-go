@@ -25,12 +25,9 @@ func (b *Bot) API() *tgbotapi.BotAPI {
 	return b.api
 }
 
-func (b *Bot) MyCommands() []map[string]string {
-	return b.Config.Telegram.MyCommands
-}
-
 func (b *Bot) Start() {
 	log.Debug().Msg("Starting main bot...")
+	tgbot.SetMyCommands(b.api, b.Config.Telegram.MyCommands)
 	tgbot.StartPolling(b)
 }
 
