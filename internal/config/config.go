@@ -16,27 +16,36 @@ type Config struct {
 		MyCommands    []map[string]string `yaml:"my_commands"`
 		AdminCommands []map[string]string `yaml:"admin_commands"`
 	} `yaml:"telegram"`
+
 	Features struct {
 		AdminBot     bool `yaml:"admin_bot"`
 		DailySending bool `yaml:"daily_sending"`
 		PairSending  bool `yaml:"pair_sending"`
 	} `yaml:"features"`
+
 	Database struct {
 		File string `yaml:"file"`
 	} `yaml:"database"`
+
 	Browser struct {
-		Headless bool  `yaml:"headless"`
-		Timeout  int64 `yaml:"timeout"`
+		Headless      bool   `yaml:"headless"`
+		Timeout       int64  `yaml:"timeout"`
+		ScreenshotDir string `yaml:"screenshot_dir"`
 	} `yaml:"browser"`
-	Cache  CacheConfig `yaml:"cache"`
+
+	Cache CacheConfig `yaml:"cache"`
+
 	Logger struct {
 		Level string `yaml:"level"`
 	} `yaml:"logger"`
+
+	ScheduleTemplate string `yaml:"schedule_template"`
 }
 
 func (c *Config) EnsureDirs() error {
 	dirs := []string{
 		path.Dir(c.Database.File),
+		c.Browser.ScreenshotDir,
 	}
 	log.Trace().Strs("dirs", dirs).Msg("Ensuring dirs...")
 

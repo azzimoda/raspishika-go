@@ -93,26 +93,24 @@ func FetchGroups(
 
 	departments, err := FetchDepartments(cache)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch departments: %v", err)
+		return nil, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
 	groups := make([]database.Group, 0)
 	for _, department := range departments {
 		departmentGroups, err := scrapeDepartmentGroups(browser, department)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scrape department (%s) groups: %v", department.Name, err)
+			return nil, fmt.Errorf("failed to scrape department (%s) groups: %w", department.Name, err)
 		}
 		groups = append(groups, departmentGroups...)
 	}
+	log.Trace().Int("groupsCount", len(groups)).Msg("Fetched groups")
 
 	if err := repo.UpdateGroups(groups); err != nil {
 		log.Error().Err(err).Msg("Failed to update groups")
-		return nil, fmt.Errorf("failed to update groups: %v", err)
+		return nil, fmt.Errorf("failed to update groups: %w", err)
 	}
 
-	log.Trace().Int("groupsCount", len(groups)).Msg("Fetched groups")
-
-	cache.C.Set(GroupsCacheKey, groups, time.Duration(cache.Config.GroupTTL)*24*time.Hour)
 	return groups, nil
 }
 

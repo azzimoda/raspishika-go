@@ -26,13 +26,13 @@ func (b *Bot) API() *tgbotapi.BotAPI {
 }
 
 func (b *Bot) Start() {
-	log.Debug().Msg("Starting main bot...")
+	log.Info().Msg("Starting main bot...")
 	tgbot.SetMyCommands(b.api, b.Config.Telegram.MyCommands)
 	tgbot.StartPolling(b)
 }
 
 func (b *Bot) Stop() {
-	log.Debug().Msg("Stopping bot...")
+	log.Info().Msg("Stopping bot...")
 	b.api.StopReceivingUpdates()
 }
 

@@ -37,7 +37,7 @@ func SendTempMessage(api *tgbotapi.BotAPI, chatID int64, text string, dur time.D
 }
 
 func SetMyCommands(api *tgbotapi.BotAPI, commandsData []map[string]string) {
-	log.Debug().Any("commands", commandsData).Msg("Setting my commands")
+	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
 	commands := make([]tgbotapi.BotCommand, len(commandsData))
 	for i, cmd := range commandsData {
 		for name, desc := range cmd {

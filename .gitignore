@@ -4,5 +4,8 @@
 configs/
 !configs/config.yml.example
 
+storage/cache/
+storage/screenshots/
+
 *.sqlite3
 main

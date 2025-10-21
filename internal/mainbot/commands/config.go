@@ -16,6 +16,7 @@ func OnSettings(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 	return fmt.Errorf("Unimplemented: commands.OnSettings")
 }
 
+// OnGroup sends department selection menu.
 func OnGroup(
 	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache, msg *tgbotapi.Message,
 ) error {
@@ -28,7 +29,7 @@ func OnGroup(
 	departments, err := scraper.FetchDepartments(cache)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to fetch departments: %v", err)
+		return fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
 	currentGroup := "Группа не выбрана"

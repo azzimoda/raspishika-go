@@ -22,12 +22,12 @@ func OnSelectDepartment(
 	groups, err := scraper.FetchDepartmentGroups(repo, browser, cache, args[0])
 	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to fetch groups: %v", err)
+		return fmt.Errorf("failed to fetch groups: %w", err)
 	}
 
 	if err := repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateSelectingGroup); err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to update chat state: %v", err)
+		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(query.Message.Chat.ID, "Выберите группу на клавиатуре")

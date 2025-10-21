@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -18,7 +19,7 @@ func (b *BrowserService) Close() error {
 	pwErr := b.pw.Stop()
 
 	if browserErr != nil || pwErr != nil {
-		return fmt.Errorf("Browser services closed with errors: %v, %v", browserErr, pwErr)
+		return fmt.Errorf("Browser services closed with errors: %w", errors.Join(browserErr, pwErr))
 	}
 	return nil
 }
@@ -42,6 +43,23 @@ func (b *BrowserService) WithPage(f func(playwright.Page) error) error {
 		defer page.Close()
 
 		return f(page)
+	})
+}
+
+func (b *BrowserService) TakeScreenshotHTML(html string, filename string) error {
+	return b.WithPage(func(p playwright.Page) error {
+		if err := p.SetContent(html); err != nil {
+			return fmt.Errorf("Failed to set content: %w", err)
+		}
+
+		if _, err := p.Screenshot(playwright.PageScreenshotOptions{
+			Path:     playwright.String(filename),
+			FullPage: playwright.Bool(true),
+			Type:     playwright.ScreenshotTypePng,
+		}); err != nil {
+			return fmt.Errorf("Failed to take screenshot: %w", err)
+		}
+		return nil
 	})
 }
 

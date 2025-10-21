@@ -67,7 +67,7 @@ func (a *App) Shutdown() {
 func New(cfg *config.Config) (*App, error) {
 	repo, err := database.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create repository: %v", err)
+		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {
 		log.Debug().Msg("Created repository")
 	}
@@ -85,7 +85,7 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize main bot")
 	} else {
-		log.Debug().Msg("Initialized main bot")
+		log.Info().Msg("Initialized main bot")
 	}
 
 	app := App{

@@ -15,7 +15,7 @@ const ConfigFile = `configs/config.yml`
 func main() {
 	cfg, err := config.Load(ConfigFile)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load config: %v", err))
+		panic(fmt.Sprintf("Failed to load config: %w", err))
 	}
 	logger.SetupLogger(cfg.Logger.Level)
 	log.Info().Msg("Loaded configuration")
