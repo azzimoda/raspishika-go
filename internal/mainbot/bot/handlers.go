@@ -42,7 +42,16 @@ func (b *Bot) onMessage(msg *tgbotapi.Message) error {
 func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	switch msg.Command() {
 	case "start":
-		return commands.OnStart(b.api, msg)
+		err := commands.OnStart(b.api, msg)
+		if err != nil {
+			return err
+		}
+
+		if chat, err := b.Repo.GetChatByChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
+			return commands.OnGroup(b.api, b.Repo, b.Browser, b.Cache, msg)
+		} else {
+			return err
+		}
 	case "help":
 		return commands.OnHelp(b.api, msg)
 	case "stop":
@@ -62,7 +71,8 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 		return commands.OnReminder(b.api, b.Repo, msg, false)
 
 	case "week":
-		return commands.OnWeek(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, msg)
+		return commands.OnWeek(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
+			b.Config.ScheduleTemplate, msg)
 	case "tomorrow":
 		return commands.OnTomorrow(b.api, b.Repo, b.Cache, msg) // TODO
 	case "left":
@@ -107,16 +117,26 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	callbackCommand := ParseCallbackData(query.Data)
 	log.Trace().Strs("args", callbackCommand.Args).Msgf("Command: %s", callbackCommand.Command)
 
+	var err error
 	switch callbackCommand.Command {
 	case "delete":
 		b.api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-		return nil
 
 	case "select_department":
-		return callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+		err = callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+
+	case "update_group":
+		err = callbacks.OnUpdateGroup(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
+			b.Config.ScheduleTemplate, query, callbackCommand.Args)
 
 	default:
-		_, err := b.api.Send(tgbotapi.NewCallback(query.ID, "?"))
-		return err
+		b.api.Send(tgbotapi.NewCallback(query.ID, "?"))
+		// err = nil
 	}
+
+	if err != nil {
+		b.api.Send(tgbotapi.NewCallback(query.ID, utils.ErrMsgTryLater))
+	}
+
+	return err
 }
