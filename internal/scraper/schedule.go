@@ -9,6 +9,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -78,12 +79,25 @@ func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 		tableHead += fmt.Sprintf("<th>%s<br>%s<br>%s</th>\n", day.Date, day.WeekDay, day.WeekKind)
 	}
 
-	return strings.NewReplacer(
+	html := strings.NewReplacer(
 		"HEADER", header,
 		"TABLE_HEAD", tableHead,
 		"TABLE_BODY", generateTableBody(s.Rows),
 		"TIMESTAMP", time.Now().Format(time.RFC3339),
 	).Replace(template)
+
+	if log.Logger.GetLevel() <= zerolog.DebugLevel {
+		if err := os.MkdirAll("storage/cache/", 0755); err != nil {
+			log.Error().Err(err).Msg("Failed to create cache directory")
+		}
+		filename := "storage/cache/schedule_" + s.Config.Group.GroupName + ".html"
+		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
+			log.Error().Err(err).Msg("Failed to save schedule HTML")
+		}
+		log.Debug().Msgf("Saved schedule HTML to %s", filename)
+	}
+
+	return html
 }
 
 func generateTableBody(rows []RawScheduleRow) string {
@@ -164,11 +178,11 @@ type Schedule struct {
 	Days   []ScheduleDay
 }
 
-func NewGroupScheduleConfig(group *database.Group) ScheduleConfig {
+func GroupScheduleConfig(group *database.Group) ScheduleConfig {
 	return ScheduleConfig{Group: group}
 }
 
-func NewTeacherScheduleConfig(teacher *database.Teacher) ScheduleConfig {
+func TeacherScheduleConfig(teacher *database.Teacher) ScheduleConfig {
 	return ScheduleConfig{Teacher: teacher}
 }
 
@@ -183,6 +197,7 @@ func loadTemplate(cache *cache.Cache, templateFile string) string {
 		log.Panic().Err(err).Str("filename", templateFile).Msg("Failed to load template file")
 	}
 
-	cache.C.Set("template", data, -1)
-	return string(data)
+	str := string(data)
+	cache.C.Set("template", str, -1)
+	return str
 }

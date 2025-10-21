@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"path"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
@@ -12,7 +11,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -38,7 +36,7 @@ func OnWeek(
 		return err
 	}
 
-	schedule, err := scraper.FetchGroupSchedule(cache, scraper.NewGroupScheduleConfig(group))
+	schedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsFailedFetchSchedule)
 		return err
@@ -47,17 +45,6 @@ func OnWeek(
 
 	html := schedule.HTML(cache, templateFile)
 
-	if log.Logger.GetLevel() <= zerolog.DebugLevel {
-		if err := os.MkdirAll("storage/cache/", 0755); err != nil {
-			log.Error().Err(err).Msg("Failed to create cache directory")
-		}
-		filename := "storage/cache/schedule_"+group.GroupName+".html"
-		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
-			log.Error().Err(err).Msg("Failed to save schedule HTML")
-		}
-		log.Debug().Msgf("Saved schedule HTML to %s", filename)
-	}
-
 	imagePath := path.Join(screenshotDir, fmt.Sprintf("schedule_%s.png", group.GroupName))
 	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
@@ -65,8 +52,7 @@ func OnWeek(
 	}
 
 	newMsg := tgbotapi.NewPhoto(msg.Chat.ID, tgbotapi.FilePath(imagePath))
-	newMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Обновить", "update_group\n"+*chat.GroupName)))
+	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate(*chat.GroupName)
 	_, err = api.Send(newMsg)
 	return err
 }

@@ -21,3 +21,8 @@ func SendErrorMessage(api *tgbotapi.BotAPI, chatID int64, text string) error {
 	}
 	return err
 }
+
+func InlineButtonMarkupUpdate(groupName string) tgbotapi.InlineKeyboardMarkup {
+	return tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Обновить", "update_group\n"+groupName)))
+}

@@ -36,7 +36,11 @@ func FetchGroupSchedule(cache *cache.Cache, config ScheduleConfig) (*RawSchedule
 		return nil, fmt.Errorf("encoding conversion failed: %w", err)
 	}
 
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(fixedEncoding))
+	return parseSchedule(fixedEncoding, config)
+}
+
+func parseSchedule(sourceHTML string, config ScheduleConfig) (*RawSchedule, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(sourceHTML))
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +101,7 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 }
 
 func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelection *goquery.Selection) RawScheduleDay {
-	day := RawScheduleDay{Date: header["date"], WeekDay: header["weekday"], WeekKind: header["weekkind"], Pair: Pair{}}
+	day := RawScheduleDay{Date: header["date"], WeekDay: header["weekday"], WeekKind: header["week_kind"], Pair: Pair{}}
 
 	day.Pair.Replaced = daySelection.HasClass("zamena")
 	day.Pair.Kind = detectPairKind(daySelection)
