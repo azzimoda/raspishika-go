@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
@@ -123,6 +124,9 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	switch callbackCommand.Command {
 	case "delete":
 		b.api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+		if err := b.Repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
+			return fmt.Errorf("failed to update chat state: %w", err)
+		}
 
 	case "select_department":
 		err = callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
