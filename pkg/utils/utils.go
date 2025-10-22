@@ -19,3 +19,13 @@ func Windows1251ToUTF8(s string) (string, error) {
 
 	return string(result), nil
 }
+
+func EscapeMarkdown(s string) string {
+	return strings.NewReplacer(
+		"\\", "\\\\",
+		"*", "\\*",
+		"_", "\\_",
+		"[", "\\[",
+		"]", "\\]",
+	).Replace(s)
+}

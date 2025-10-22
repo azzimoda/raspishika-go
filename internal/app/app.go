@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot/bot"
+	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -46,6 +47,7 @@ func (a *App) Run() error {
 
 func (a *App) Shutdown() {
 	log.Info().Msg("Shutting down application...")
+	a.Report().Send(`Shutting down application\.\.\.`)
 
 	a.MainBot.Stop()
 	log.Debug().Msg("Main bot stopped")
@@ -62,6 +64,15 @@ func (a *App) Shutdown() {
 	}
 
 	a.Browser.Close()
+}
+
+func (a *App) Report() reporter.ReportConfig {
+	if a.AdminBot == nil {
+		log.Warn().Msg("Admin bot is not initialized")
+		return reporter.ReportConfig{}
+	}
+
+	return reporter.NewReportConfig(a.AdminBot.API(), a.Config.Telegram.AdminID)
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -96,11 +107,14 @@ func New(cfg *config.Config) (*App, error) {
 		Cache:   &cache,
 	}
 
+	mainBot.Reporter = &app
+
 	if cfg.Features.AdminBot {
 		app.AdminBot, err = adminbot.New(cfg, repo)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		}
+		app.AdminBot.Reporter = &app
 	}
 
 	return &app, nil

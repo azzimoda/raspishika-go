@@ -1,6 +1,9 @@
 package bot
 
 import (
+	"errors"
+
+	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
@@ -10,9 +13,10 @@ import (
 )
 
 type AdminBot struct {
-	Config *config.Config
-	api    *tgbotapi.BotAPI
-	Repo   *database.Repository
+	Config   *config.Config
+	api      *tgbotapi.BotAPI
+	Repo     *database.Repository
+	Reporter reporter.Reporter
 }
 
 func (b *AdminBot) API() *tgbotapi.BotAPI {
@@ -20,7 +24,7 @@ func (b *AdminBot) API() *tgbotapi.BotAPI {
 }
 
 func (b *AdminBot) Start() {
-	log.Debug().Msg("Starting main bot...")
+	log.Debug().Msg("Starting admin bot...")
 	tgbot.StartPolling(b)
 }
 
@@ -29,5 +33,26 @@ func (b *AdminBot) Stop() {
 }
 
 func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
-	panic("unimplemented: adminbot.AdminBot")
+	log.Debug().Msgf("Admin token: %s", cfg.Telegram.AdminToken)
+
+	var api *tgbotapi.BotAPI
+	err := errors.New("fake error")
+	retries := 0
+	for retries <= 5 && err != nil {
+		api, err = tgbotapi.NewBotAPI(cfg.Telegram.AdminToken)
+		if err == nil {
+			break
+		}
+		retries += 1
+		log.Error().Err(err).Int("retries", retries).Msg("Failed to connect to Telegram API; retrying...")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &AdminBot{
+		Config: cfg,
+		api:    api,
+		Repo:   repo,
+	}, nil
 }

@@ -3,6 +3,7 @@ package bot
 import (
 	"errors"
 
+	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -14,11 +15,12 @@ import (
 )
 
 type Bot struct {
-	Config  *config.Config
-	api     *tgbotapi.BotAPI
-	Repo    *database.Repository
-	Browser *browser.BrowserService
-	Cache   *cache.Cache
+	Config   *config.Config
+	api      *tgbotapi.BotAPI
+	Repo     *database.Repository
+	Browser  *browser.BrowserService
+	Cache    *cache.Cache
+	Reporter reporter.Reporter
 }
 
 func (b *Bot) API() *tgbotapi.BotAPI {
