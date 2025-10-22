@@ -102,6 +102,8 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		return nil
 	case database.ChatStateSelectingGroup:
 		return commands.OnTextGroup(b.api, b.Repo, msg, chat)
+	case database.ChatStateSelectingTime:
+		return commands.OnTextTime(b.api, b.Repo, msg, chat)
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
 		if err := b.Repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {

@@ -46,7 +46,7 @@ func (r ReportConfig) Send(text string) {
 	msgText += fmt.Sprintf("\n\n%s", text)
 
 	msg := tgbotapi.NewMessage(r.recipientChatID, msgText)
-	msg.ParseMode = "MarkdownV2"
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err := r.api.Send(msg)
 	if err != nil {
 		log.Error().Err(err).Str("text", msgText).Msg("Failed to send report message")

@@ -13,6 +13,7 @@ const (
 	ChatStateDefault             ChatState = "default"
 	ChatStateSelectingDepartment ChatState = "selecting_department"
 	ChatStateSelectingGroup      ChatState = "selecting_group"
+	ChatStateSelectingTime       ChatState = "selecting_time"
 )
 
 type Chat struct {

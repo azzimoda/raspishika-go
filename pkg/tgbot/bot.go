@@ -29,7 +29,9 @@ func StartPolling(bot interface {
 }
 
 func SendTempMessage(api *tgbotapi.BotAPI, chatID int64, text string, dur time.Duration) error {
-	sentMsg, err := api.Send(tgbotapi.NewMessage(chatID, text))
+	newMsg := tgbotapi.NewMessage(chatID, text)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	sentMsg, err := api.Send(newMsg)
 	time.Sleep(dur)
 	go func() { api.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID)) }()
 

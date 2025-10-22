@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
@@ -68,7 +69,8 @@ func departmentSelectionMarkup(departments []scraper.Department) tgbotapi.Inline
 func OnTextGroup(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
 	group, err := repo.GetGroupByName(msg.Text)
 	if err != nil {
-		return err
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get group by name (%s): %w", msg.Text, err)
 	}
 
 	chat.State = database.ChatStateDefault
@@ -85,11 +87,65 @@ func OnTextGroup(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.
 }
 
 func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnDailyTime")
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
+	}
+
+	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTime); err != nil {
+		return fmt.Errorf("failed to update chat state: %w", err)
+	}
+
+	time := ""
+	if chat.DailySendingTime == "" {
+		time = "Время не установлено"
+	} else {
+		time = "Установленное время: " + chat.DailySendingTime
+	}
+	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	newMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete")))
+
+	_, err = api.Send(newMsg)
+	return err
+}
+
+func OnTextTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
+	_, err := time.Parse("15:04", msg.Text)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
+		return nil
+	}
+
+	chat.State = database.ChatStateDefault
+	chat.DailySendingTime = msg.Text
+	if err := repo.UpdateChat(chat); err != nil {
+		return fmt.Errorf("failed to update chat: %w", err)
+	}
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Время рассылки установлено на "+msg.Text)
+	_, err = api.Send(newMsg)
+	return err
 }
 
 func OnDailyOff(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnDailyOff")
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
+	}
+
+	chat.DailySendingTime = ""
+	if err := repo.UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat data: %w", err)
+	}
+
+	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ежедневная рассылка выключена"))
+	return err
 }
 
 func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, isOn bool) error {
