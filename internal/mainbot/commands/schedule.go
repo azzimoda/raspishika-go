@@ -30,29 +30,33 @@ func OnWeek(
 		return OnGroup(api, repo, browser, cache, msg)
 	}
 
-	group, err := repo.GetGroupByName(*chat.GroupName)
+	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, *chat.GroupName)
+}
+
+func SendWeekSchedule(api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService,
+	cache *cache.Cache, screenshotDir string, templateFile string, chatID int64, groupName string,
+) error {
+	group, err := repo.GetGroupByName(groupName)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(api, chatID, utils.ErrMsgTryLater)
 		return err
 	}
 
 	schedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsFailedFetchSchedule)
+		utils.SendErrorMessage(api, chatID, utils.ErrMsFailedFetchSchedule)
 		return err
 	}
-	// log.Trace().Msgf("schedule: %v", schedule)
 
 	html := schedule.HTML(cache, templateFile)
-
-	imagePath := path.Join(screenshotDir, fmt.Sprintf("schedule_%s.png", group.GroupName))
+	imagePath := path.Join(screenshotDir, fmt.Sprintf("schedule_%s.png", groupName))
 	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(api, chatID, utils.ErrMsgTryLater)
 		return err
 	}
 
-	newMsg := tgbotapi.NewPhoto(msg.Chat.ID, tgbotapi.FilePath(imagePath))
-	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate(*chat.GroupName)
+	newMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
+	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate(groupName)
 	_, err = api.Send(newMsg)
 	return err
 }

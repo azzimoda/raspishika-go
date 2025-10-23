@@ -95,6 +95,16 @@ func (r *Repository) GetChatByChatID(chatID int64) (*Chat, error) {
 	return &chat, nil
 }
 
+func (r *Repository) GetChatsByDailySendingTime(timeStr string) ([]Chat, error) {
+	var chats []Chat
+	if err := r.db.Select(
+		&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND daily_sending_time = ?`, timeStr,
+	); err != nil {
+		return nil, err
+	}
+	return chats, nil
+}
+
 func (r *Repository) DeleteChat(id int64) error {
 	_, err := r.db.Exec(`DELETE FROM chats WHERE id = ?`, id)
 	if err == nil {
