@@ -24,7 +24,7 @@ func (b *AdminBot) API() *tgbotapi.BotAPI {
 }
 
 func (b *AdminBot) Start() {
-	log.Debug().Msg("Starting admin bot...")
+	log.Info().Msg("Starting admin bot...")
 	tgbot.StartPolling(b)
 }
 

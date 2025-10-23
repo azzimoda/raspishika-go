@@ -103,7 +103,7 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelection *goquery.Selection) RawScheduleDay {
 	day := RawScheduleDay{Date: header["date"], WeekDay: header["weekday"], WeekKind: header["week_kind"], Pair: Pair{}}
 
-	day.Pair.Replaced = daySelection.HasClass("zamena")
+	day.Pair.Replaced = daySelection.Find("table").HasClass("zamena")
 	day.Pair.Kind = detectPairKind(daySelection)
 
 	switch day.Pair.Kind {
