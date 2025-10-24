@@ -75,7 +75,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 		return commands.OnWeek(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
 			b.Config.ScheduleTemplate, msg)
 	case "tomorrow":
-		return commands.OnTomorrow(b.api, b.Repo, b.Cache, msg) // TODO
+		return commands.OnTomorrow(b.api, b.Repo, b.Browser, b.Cache, msg)
 	case "left":
 		return commands.OnLeft(b.api, b.Repo, b.Cache, msg) // TODO
 

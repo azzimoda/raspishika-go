@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
@@ -61,8 +62,49 @@ func SendWeekSchedule(api *tgbotapi.BotAPI, repo *database.Repository, browser *
 	return err
 }
 
-func OnTomorrow(api *tgbotapi.BotAPI, repo *database.Repository, cache *cache.Cache, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnTomorrow")
+func OnTomorrow(
+	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
+	msg *tgbotapi.Message,
+) error {
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
+	}
+
+	if chat.GroupName == nil {
+		// Offer to set group.
+		log.Warn().Msg("Group not set, offering to set group")
+		return OnGroup(api, repo, browser, cache, msg)
+	}
+	group, err := repo.GetGroupByName(*chat.GroupName)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return err
+	}
+
+	rawSchedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsFailedFetchSchedule)
+		return err
+	}
+
+	schedule := rawSchedule.Transform()
+	var tomorrow scraper.ScheduleDay
+	if time.Now().Weekday() == time.Sunday {
+		tomorrow = schedule.Days[0]
+	} else {
+		tomorrow = schedule.Days[1]
+	}
+	// log.Trace().Msgf("Tomorrow schedule: %#v", tomorrow)
+
+	text := tomorrow.String()
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("tomorrow", *chat.GroupName)
+
+	_, err = api.Send(newMsg)
+	return err
 }
 
 func OnLeft(api *tgbotapi.BotAPI, repo *database.Repository, cache *cache.Cache, msg *tgbotapi.Message) error {

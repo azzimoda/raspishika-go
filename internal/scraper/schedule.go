@@ -8,6 +8,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -45,6 +46,23 @@ type Pair struct {
 	Replaced   bool     `json:"replaced"`
 }
 
+func (p Pair) String() string {
+	discipline := utils.EscapeMarkdown(p.Discipline)
+	timeRange := utils.EscapeMarkdown(p.TimeRange)
+	classroom := utils.EscapeMarkdown(p.Classroom)
+
+	switch p.Kind {
+	case PairKindSubject:
+		return fmt.Sprintf("%d \\| %s \\| %s\n    *%s*\n    %s",
+			p.Number, timeRange, classroom, discipline, *p.Teacher)
+	case PairKindExam, PairKindConsultation:
+		return fmt.Sprintf("%d \\| %s \\| %s\n    _%s_\n    *%s*\n    %s",
+			p.Number, timeRange, classroom, p.Label, discipline, *p.Teacher)
+	default:
+		return fmt.Sprintf("%d \\| %s — %s", p.Number, timeRange, p.Label)
+	}
+}
+
 type RawScheduleDay struct {
 	Date     string
 	WeekDay  string
@@ -61,6 +79,28 @@ type RawScheduleRow struct {
 type RawSchedule struct {
 	Config ScheduleConfig
 	Rows   []RawScheduleRow
+}
+
+func (s *RawSchedule) Transform() Schedule {
+	schedule := Schedule{
+		Config: s.Config,
+		Days:   [7]ScheduleDay{},
+	}
+
+	for di := range len(s.Rows[0].Days) {
+		schedule.Days[di].Date = s.Rows[0].Days[di].Date
+		schedule.Days[di].WeekDay = s.Rows[0].Days[di].WeekDay
+		schedule.Days[di].WeekKind = s.Rows[0].Days[di].WeekKind
+
+		for ri := 0; ri < len(s.Rows); ri++ {
+			schedule.Days[di].Pairs[ri] = s.Rows[ri].Days[di].Pair
+			schedule.Days[di].Pairs[ri].Number = s.Rows[ri].Number
+			schedule.Days[di].Pairs[ri].TimeRange = s.Rows[ri].TimeRange
+		}
+	}
+
+	// log.Trace().Msgf("Transformed schedule: %#v", schedule)
+	return schedule
 }
 
 // HTML returns HTML representation of the schedule.
@@ -173,6 +213,45 @@ type ScheduleDay struct {
 	WeekDay  string  `json:"week_day"`
 	WeekKind string  `json:"week_kind"`
 	Pairs    [7]Pair `json:"pairs"`
+}
+
+func (s ScheduleDay) DetectOneKind() *PairKind {
+	kind := s.Pairs[0].Kind
+	for _, pair := range s.Pairs {
+		if pair.Kind != kind {
+			return nil
+		}
+	}
+	return &kind
+}
+
+func (s ScheduleDay) IsEmpty() bool {
+	k := s.DetectOneKind()
+	return k != nil && *k == PairKindEmpty
+}
+
+func (s ScheduleDay) String() string {
+	text := fmt.Sprintf("📅 %s, %s: ", s.WeekDay, utils.EscapeMarkdown(s.Date))
+
+	if kind := s.DetectOneKind(); kind != nil {
+		log.Trace().Msgf("Detected one kind: %s", *kind)
+		if *kind == PairKindEmpty {
+			text += "Нет пар"
+		} else {
+			text += s.Pairs[0].Label
+		}
+		return text
+	}
+
+	// log.Trace().Msgf("Pairs: %d", len(s.Pairs))
+	for _, pair := range s.Pairs {
+		// log.Trace().Msgf("Pair: %+v", pair)
+		if pair.Kind == PairKindEmpty {
+			continue
+		}
+		text += "\n\n" + pair.String()
+	}
+	return text
 }
 
 type Schedule struct {
