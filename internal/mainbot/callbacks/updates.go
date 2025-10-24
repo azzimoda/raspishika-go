@@ -28,7 +28,7 @@ func OnUpdateGroup(
 	schedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsFailedFetchSchedule)
+		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 

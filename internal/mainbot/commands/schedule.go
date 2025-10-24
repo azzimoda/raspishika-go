@@ -45,7 +45,7 @@ func SendWeekSchedule(api *tgbotapi.BotAPI, repo *database.Repository, browser *
 
 	schedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, chatID, utils.ErrMsFailedFetchSchedule)
+		utils.SendErrorMessage(api, chatID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 
@@ -85,7 +85,7 @@ func OnTomorrow(
 
 	rawSchedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsFailedFetchSchedule)
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 
@@ -107,6 +107,50 @@ func OnTomorrow(
 	return err
 }
 
-func OnLeft(api *tgbotapi.BotAPI, repo *database.Repository, cache *cache.Cache, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnLeft")
+func OnLeft(
+	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
+	msg *tgbotapi.Message,
+) error {
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	}
+
+	if chat.GroupName == nil {
+		log.Warn().Msg("Group not set, offering to set group")
+		return OnGroup(api, repo, browser, cache, msg)
+	}
+
+	if time.Now().Weekday() == time.Sunday {
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Сегодня воскресенье, отдыхайте!")
+		newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
+		_, err := api.Send(newMsg)
+		return err
+	}
+
+	group, err := repo.GetGroupByName(*chat.GroupName)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		return err
+	}
+
+	rawSchedule, err := scraper.FetchGroupSchedule(cache, scraper.GroupScheduleConfig(group))
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		return err
+	}
+
+	schedule := rawSchedule.Transform()
+	left := schedule.Days[0].Left()
+	text := ""
+	if left.IsEmpty() {
+		text = "Сегодня больше нет пар"
+	} else {
+		text = left.String()
+	}
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
+	_, err = api.Send(newMsg)
+	return err
 }

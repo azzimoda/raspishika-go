@@ -36,7 +36,8 @@ type ScheduleConfig struct {
 type Pair struct {
 	Kind       PairKind `json:"kind"`
 	Number     int      `json:"number"`
-	TimeRange  string   `json:"time_range"`
+	StartTime  string   `json:"start_time"`
+	EndTime    string   `json:"end_time"`
 	Label      string   `json:"label"`
 	Title      string   `json:"title"`
 	Discipline string   `json:"discipline"`
@@ -48,7 +49,7 @@ type Pair struct {
 
 func (p Pair) String() string {
 	discipline := utils.EscapeMarkdown(p.Discipline)
-	timeRange := utils.EscapeMarkdown(p.TimeRange)
+	timeRange := utils.EscapeMarkdown(p.StartTime + "-" + p.EndTime)
 	classroom := utils.EscapeMarkdown(p.Classroom)
 
 	switch p.Kind {
@@ -95,7 +96,9 @@ func (s *RawSchedule) Transform() Schedule {
 		for ri := 0; ri < len(s.Rows); ri++ {
 			schedule.Days[di].Pairs[ri] = s.Rows[ri].Days[di].Pair
 			schedule.Days[di].Pairs[ri].Number = s.Rows[ri].Number
-			schedule.Days[di].Pairs[ri].TimeRange = s.Rows[ri].TimeRange
+			parts := strings.Split(s.Rows[ri].TimeRange, "-")
+			schedule.Days[di].Pairs[ri].StartTime = parts[0]
+			schedule.Days[di].Pairs[ri].EndTime = parts[1]
 		}
 	}
 
@@ -228,6 +231,58 @@ func (s ScheduleDay) DetectOneKind() *PairKind {
 func (s ScheduleDay) IsEmpty() bool {
 	k := s.DetectOneKind()
 	return k != nil && *k == PairKindEmpty
+}
+
+func (s ScheduleDay) Left() ScheduleDay {
+	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: [7]Pair{}}
+
+	now := time.Now()
+	p, err := s.CurrentPair(now)
+	if err != nil {
+		if now.Before(time.Date(now.Year(), now.Month(), now.Day(), 8, 0, 0, 0, now.Location())) {
+			return s
+		}
+		p = &Pair{Number: 8}
+	}
+
+	for i := range 7 {
+		if i < p.Number-1 {
+			leftSchedule.Pairs[i].Kind = PairKindEmpty
+		} else {
+			leftSchedule.Pairs[i] = s.Pairs[i]
+		}
+	}
+
+	return leftSchedule
+}
+
+func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
+	for _, pair := range s.Pairs {
+		startTime, err := time.Parse("15:04", pair.StartTime)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse pair start time: %w", err)
+		}
+
+		endTime, err := time.Parse("15:04", pair.EndTime)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse pair end time: %w", err)
+		}
+
+		switch pair.Number {
+		case 2, 3, 5, 6, 7:
+			// These pairs go after 10-minute breaks.
+			startTime = startTime.Add(-10 * time.Minute)
+		case 4:
+			// This pair goes after the big break, which is 45 minutes long.
+			startTime = startTime.Add(-45 * time.Minute)
+		}
+
+		if t.After(startTime) && t.Before(endTime) {
+			return &pair, nil
+		}
+	}
+
+	return nil, fmt.Errorf("all pairs passed")
 }
 
 func (s ScheduleDay) String() string {

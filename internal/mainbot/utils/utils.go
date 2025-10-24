@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	ErrMsgTryLater           = "Произошла ошибка, попробуйте позже"
-	ErrMsFailedFetchSchedule = "Не удалось загрузить расписание, попробуйте позже"
+	ErrMsgTryLater            = "Произошла ошибка, попробуйте позже"
+	ErrMsgFailedFetchSchedule = "Не удалось загрузить расписание, попробуйте позже"
 )
 
 func SendErrorMessage(api *tgbotapi.BotAPI, chatID int64, text string) error {

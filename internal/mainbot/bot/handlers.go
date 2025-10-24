@@ -77,7 +77,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	case "tomorrow":
 		return commands.OnTomorrow(b.api, b.Repo, b.Browser, b.Cache, msg)
 	case "left":
-		return commands.OnLeft(b.api, b.Repo, b.Cache, msg) // TODO
+		return commands.OnLeft(b.api, b.Repo, b.Browser, b.Cache, msg) // TODO
 
 	case "quick":
 		return commands.OnQuick(b.api, b.Repo, msg) // TODO
