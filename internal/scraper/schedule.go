@@ -34,12 +34,14 @@ type ScheduleConfig struct {
 
 type Pair struct {
 	Kind       PairKind `json:"kind"`
+	Number     int      `json:"number"`
+	TimeRange  string   `json:"time_range"`
 	Label      string   `json:"label"`
-	Title      *string  `json:"title"`
-	Discipline *string  `json:"discipline"`
+	Title      string   `json:"title"`
+	Discipline string   `json:"discipline"`
 	Teacher    *string  `json:"teacher"`
 	Group      *string  `json:"group"`
-	Classroom  *string  `json:"classroom"`
+	Classroom  string   `json:"classroom"`
 	Replaced   bool     `json:"replaced"`
 }
 
@@ -53,7 +55,7 @@ type RawScheduleDay struct {
 type RawScheduleRow struct {
 	Number    int
 	TimeRange string
-	Days      []RawScheduleDay
+	Days      [7]RawScheduleDay
 }
 
 type RawSchedule struct {
@@ -115,7 +117,7 @@ func generateTableBody(rows []RawScheduleRow) string {
 	return tableBody
 }
 
-func generateRowPairs(days []RawScheduleDay) string {
+func generateRowPairs(days [7]RawScheduleDay) string {
 	rowPairs := ""
 
 	for _, day := range days {
@@ -136,7 +138,7 @@ func generateRowPairs(days []RawScheduleDay) string {
 					<span class='teacher'>%s</span><br>
 					<span class='classroom'>%s</span><br>
 				</td>`,
-				cssClass, *day.Pair.Title, *day.Pair.Discipline, *day.Pair.Teacher, *day.Pair.Classroom)
+				cssClass, day.Pair.Title, day.Pair.Discipline, *day.Pair.Teacher, day.Pair.Classroom)
 		case PairKindSubject:
 			secondLine := ""
 			if day.Pair.Group != nil {
@@ -152,7 +154,7 @@ func generateRowPairs(days []RawScheduleDay) string {
 					%s<br>
 					<span class='classroom'>%s</span><br>
 				</td>`,
-				cssClass, *day.Pair.Discipline, secondLine, *day.Pair.Classroom)
+				cssClass, day.Pair.Discipline, secondLine, day.Pair.Classroom)
 		default:
 			label := ""
 			if day.Pair.Replaced {
@@ -167,15 +169,15 @@ func generateRowPairs(days []RawScheduleDay) string {
 }
 
 type ScheduleDay struct {
-	Date     string
-	Week     int
-	WeekKind string
-	Pairs    []Pair
+	Date     string  `json:"date"`
+	WeekDay  string  `json:"week_day"`
+	WeekKind string  `json:"week_kind"`
+	Pairs    [7]Pair `json:"pairs"`
 }
 
 type Schedule struct {
-	config ScheduleConfig
-	Days   []ScheduleDay
+	Config ScheduleConfig `json:"config"`
+	Days   [7]ScheduleDay `json:"days"`
 }
 
 func GroupScheduleConfig(group *database.Group) ScheduleConfig {

@@ -30,13 +30,13 @@ type App struct {
 func (a *App) Run() error {
 	log.Debug().Msg("Starting application...")
 
-	c := cron.New()
-
 	go a.MainBot.Start()
 
 	if a.AdminBot != nil {
 		go a.AdminBot.Start()
 	}
+
+	c := cron.New()
 
 	if a.Config.Features.DailySending {
 		if err := a.MainBot.ScheduleDailySending(c); err != nil {

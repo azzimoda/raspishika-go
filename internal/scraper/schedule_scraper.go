@@ -90,11 +90,10 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 	row := RawScheduleRow{
 		Number:    number,
 		TimeRange: time_range.First().Text(),
-		Days:      []RawScheduleDay{},
+		Days:      [7]RawScheduleDay{},
 	}
 	rowSelection.Find("td:nth-child(n+3)").Each(func(i int, daySelection *goquery.Selection) {
-		day := parseScheduleDay(config, headers[i], daySelection)
-		row.Days = append(row.Days, day)
+		row.Days[i] = parseScheduleDay(config, headers[i], daySelection)
 	})
 
 	return row
@@ -127,11 +126,11 @@ func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection
 	teacher := daySelection.Find(".prep").Text()
 	pair.Teacher = &teacher
 	classroom := daySelection.Find(".cabs").Text()
-	pair.Classroom = &classroom
+	pair.Classroom = classroom
 
 	if config.Group != nil {
 		discipline := daySelection.Find(".disc").Text()
-		pair.Discipline = &discipline
+		pair.Discipline = discipline
 	} else {
 		// TODO
 		panic("unimplemented")
@@ -152,11 +151,8 @@ func parseOtherPair(daySelection *goquery.Selection, pair *Pair) {
 
 func detectPairKind(daySelection *goquery.Selection) PairKind {
 	switch {
-	case daySelection.HasClass("head_urok_block") ||
-		strings.ToLower(daySelection.Text()) == "нет занятий" ||
-		strings.ToLower(daySelection.Text()) == "снято":
-
-		return PairKindEmpty
+	case daySelection.Find(".disc").Text() != "":
+		return PairKindSubject
 	case daySelection.HasClass("head_urok_kanik"):
 		return PairKindVacation
 	case daySelection.HasClass("event"):
@@ -172,7 +168,7 @@ func detectPairKind(daySelection *goquery.Selection) PairKind {
 	case daySelection.Find("table.consultation").Length() > 0:
 		return PairKindConsultation
 	default:
-		return PairKindSubject
+		return PairKindEmpty
 	}
 }
 

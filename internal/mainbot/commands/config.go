@@ -114,19 +114,20 @@ func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.
 }
 
 func OnTextTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
-	_, err := time.Parse("15:04", msg.Text)
+	t, err := time.Parse("15:04", msg.Text)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
 		return nil
 	}
+	timeStr := t.Format("15:04")
 
 	chat.State = database.ChatStateDefault
-	chat.DailySendingTime = msg.Text
+	chat.DailySendingTime = timeStr
 	if err := repo.UpdateChat(chat); err != nil {
 		return fmt.Errorf("failed to update chat: %w", err)
 	}
 
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Время рассылки установлено на "+msg.Text)
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Время рассылки установлено на "+timeStr)
 	_, err = api.Send(newMsg)
 	return err
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/azzimoda/raspishika-go/internal/app"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
@@ -15,7 +13,7 @@ const ConfigFile = `configs/config.yml`
 func main() {
 	cfg, err := config.Load(ConfigFile)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load config: %w", err))
+		log.Panic().Err(err).Msg("Failed to load configuration")
 	}
 	logger.SetupLogger(cfg.Logger.Level)
 	log.Info().Msg("Loaded configuration")

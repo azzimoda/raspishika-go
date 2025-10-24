@@ -41,7 +41,7 @@ func OnUpdateGroup(
 		return err
 	}
 
-	markup := utils.InlineButtonMarkupUpdate(groupName)
+	markup := utils.InlineButtonMarkupUpdate("group", groupName)
 	media := tgbotapi.NewInputMediaPhoto(tgbotapi.FilePath(imagePath))
 	editConfig := tgbotapi.EditMessageMediaConfig{
 		BaseEdit: tgbotapi.BaseEdit{

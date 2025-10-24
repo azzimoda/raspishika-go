@@ -21,7 +21,7 @@ func OnWeek(
 	chat, err := repo.GetChatByChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
 	if chat.GroupName == nil {
@@ -56,7 +56,7 @@ func SendWeekSchedule(api *tgbotapi.BotAPI, repo *database.Repository, browser *
 	}
 
 	newMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
-	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate(groupName)
+	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("group", groupName)
 	_, err = api.Send(newMsg)
 	return err
 }
