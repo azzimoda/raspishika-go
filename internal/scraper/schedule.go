@@ -258,17 +258,20 @@ func (s ScheduleDay) Left() ScheduleDay {
 
 func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 	for _, pair := range s.Pairs {
-		startTime, err := time.Parse("15:04", pair.StartTime)
+		startTime, err := time.Parse("15:04", strings.TrimSpace(pair.StartTime))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse pair start time: %w", err)
 		}
 
-		endTime, err := time.Parse("15:04", pair.EndTime)
+		endTime, err := time.Parse("15:04", strings.TrimSpace(pair.EndTime))
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse pair end time: %w", err)
 		}
 
 		switch pair.Number {
+		case 1:
+			// This pair goes first; it needs a little shifting to be catched.
+			startTime = startTime.Add(-1 * time.Minute)
 		case 2, 3, 5, 6, 7:
 			// These pairs go after 10-minute breaks.
 			startTime = startTime.Add(-10 * time.Minute)

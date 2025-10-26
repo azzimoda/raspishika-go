@@ -38,6 +38,13 @@ func (b *Bot) Stop() {
 	b.api.StopReceivingUpdates()
 }
 
+func (b *Bot) Report() reporter.ReportConfig {
+	if b.Reporter == nil {
+		return reporter.ReportConfig{}
+	}
+	return b.Reporter.Report()
+}
+
 func New(
 	cfg *config.Config, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
 ) (*Bot, error) {

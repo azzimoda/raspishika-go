@@ -105,6 +105,11 @@ func (r *Repository) GetChatsByDailySendingTime(timeStr string) ([]Chat, error) 
 	return chats, nil
 }
 
+func (r *Repository) GetChatsWithPairSendingEnabled() (chats []Chat, err error) {
+	err = r.db.Select(&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND pair_sending = 1`)
+	return
+}
+
 func (r *Repository) DeleteChat(id int64) error {
 	_, err := r.db.Exec(`DELETE FROM chats WHERE id = ?`, id)
 	if err == nil {
