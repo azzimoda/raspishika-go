@@ -150,7 +150,24 @@ func OnDailyOff(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 }
 
 func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, isOn bool) error {
-	return fmt.Errorf("Unimplemented: commands.OnReminder")
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d) %w", msg.Chat.ID, err)
+	}
+
+	chat.PairSending = isOn
+	if err := repo.UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat data: %w", err)
+	}
+
+	text := "Напоминания выключены"
+	if isOn {
+		text = "Напоминания включены"
+	}
+	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, text)) 
+	return err
 }
 
 func OnAccess(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {

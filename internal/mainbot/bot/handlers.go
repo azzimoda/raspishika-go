@@ -63,11 +63,11 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	case "group":
 		return commands.OnGroup(b.api, b.Repo, b.Browser, b.Cache, msg)
 	case "daily_time":
-		return commands.OnDailyTime(b.api, b.Repo, msg) // TODO
+		return commands.OnDailyTime(b.api, b.Repo, msg)
 	case "daily_off":
-		return commands.OnDailyOff(b.api, b.Repo, msg) // TODO
+		return commands.OnDailyOff(b.api, b.Repo, msg)
 	case "reminder_on":
-		return commands.OnReminder(b.api, b.Repo, msg, true) // TODO
+		return commands.OnReminder(b.api, b.Repo, msg, true)
 	case "reminder_off":
 		return commands.OnReminder(b.api, b.Repo, msg, false)
 
@@ -77,7 +77,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	case "tomorrow":
 		return commands.OnTomorrow(b.api, b.Repo, b.Browser, b.Cache, msg)
 	case "left":
-		return commands.OnLeft(b.api, b.Repo, b.Browser, b.Cache, msg) // TODO
+		return commands.OnLeft(b.api, b.Repo, b.Browser, b.Cache, msg)
 
 	case "quick":
 		return commands.OnQuick(b.api, b.Repo, msg) // TODO
