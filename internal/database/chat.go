@@ -10,10 +10,12 @@ import (
 type ChatState string
 
 const (
-	ChatStateDefault             ChatState = "default"
-	ChatStateSelectingDepartment ChatState = "selecting_department"
-	ChatStateSelectingGroup      ChatState = "selecting_group"
-	ChatStateSelectingTime       ChatState = "selecting_time"
+	ChatStateDefault                  ChatState = "default"
+	ChatStateSelectingDepartment      ChatState = "selecting_department"
+	ChatStateSelectingGroup           ChatState = "selecting_group"
+	ChatStateQuickSelectingDepartment ChatState = "quick_selecting_department"
+	ChatStateQuickSelectingGroup      ChatState = "quick_selecting_group"
+	ChatStateSelectingTime            ChatState = "selecting_time"
 )
 
 type Chat struct {

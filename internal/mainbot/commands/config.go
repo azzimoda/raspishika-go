@@ -19,7 +19,11 @@ func OnSettings(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 
 // OnGroup sends department selection menu.
 func OnGroup(
-	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache, msg *tgbotapi.Message,
+	api *tgbotapi.BotAPI,
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	cache *cache.Cache,
+	msg *tgbotapi.Message,
 ) error {
 	chat, err := repo.GetChatByChatID(msg.Chat.ID)
 	if err != nil {
@@ -33,19 +37,28 @@ func OnGroup(
 		return fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
+	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingDepartment); err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat state: %w", err)
+	}
+
 	currentGroup := "Группа не выбрана"
 	if chat.GroupName != nil && *chat.GroupName != "" {
 		currentGroup = fmt.Sprintf("Текущая группа: %s", *chat.GroupName)
 	}
-	text := fmt.Sprintf("%s\n\nВыберите отделение", currentGroup)
 
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
-	newMsg.ReplyMarkup = departmentSelectionMarkup(departments)
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("%s\n\nВыберите отделение", currentGroup))
+	newMsg.ReplyMarkup = departmentSelectionMarkup(departments, false)
 	_, err = api.Send(newMsg)
 	return err
 }
 
-func departmentSelectionMarkup(departments []scraper.Department) tgbotapi.InlineKeyboardMarkup {
+func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) tgbotapi.InlineKeyboardMarkup {
+	command := "select_department"
+	if isQuick {
+		command = "quick_select_department"
+	}
+	
 	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
 
 	for i := 0; i < len(departments); i += 2 {
@@ -53,7 +66,7 @@ func departmentSelectionMarkup(departments []scraper.Department) tgbotapi.Inline
 		for j := i; j < len(departments) && j < i+2; j++ {
 			row = append(row,
 				tgbotapi.NewInlineKeyboardButtonData(
-					departments[j].Name, fmt.Sprintf("select_department\n%s", departments[j].Name),
+					departments[j].Name, fmt.Sprintf("%s\n%s", command, departments[j].Name),
 				),
 			)
 		}
@@ -166,7 +179,7 @@ func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 	if isOn {
 		text = "Напоминания включены"
 	}
-	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, text)) 
+	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, text))
 	return err
 }
 

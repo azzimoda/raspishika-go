@@ -80,7 +80,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 		return commands.OnLeft(b.api, b.Repo, b.Browser, b.Cache, msg)
 
 	case "quick":
-		return commands.OnQuick(b.api, b.Repo, msg) // TODO
+		return commands.OnQuick(b.api, b.Repo, b.Cache, msg)
 	case "teacher":
 		return commands.OnTeacher(b.api, b.Repo, msg) // TODO
 	default:
@@ -105,6 +105,9 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		return commands.OnTextGroup(b.api, b.Repo, msg, chat)
 	case database.ChatStateSelectingTime:
 		return commands.OnTextTime(b.api, b.Repo, msg, chat)
+	case database.ChatStateQuickSelectingGroup:
+		return commands.OnTextQuickGroup(b.api, b.Repo, b.Browser, b.Cache,
+			b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, msg)
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
 		if err := b.Repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
@@ -130,6 +133,8 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 
 	case "select_department":
 		err = callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+	case "quick_select_department":
+		err = callbacks.OnQuickSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
 
 	case "update_group":
 		err = callbacks.OnUpdateGroup(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
