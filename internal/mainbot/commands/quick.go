@@ -49,7 +49,7 @@ func OnTextQuickGroup(
 	group, err := repo.GetGroupByName(msg.Text)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to get group by name %s: %w", msg.Text, err)
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
 	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, scheduleCfg)

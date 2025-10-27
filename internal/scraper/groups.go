@@ -59,6 +59,8 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 }
 
 func httpGetRequest(url string, headers map[string]string) (*http.Response, error) {
+	log.Debug().Str("url", url).Any("headers", headers).Msg("HTTP GET request")
+
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -75,7 +77,7 @@ func httpGetRequest(url string, headers map[string]string) (*http.Response, erro
 func generateHeaders() map[string]string {
 	return map[string]string{
 		"User-Agent": uarand.GetRandom(),
-		"Referer":    "httos://coworking.tyuiu.ru/shs/all_t/",
+		"Referer":    "https://coworking.tyuiu.ru/shs/all_t/",
 	}
 }
 

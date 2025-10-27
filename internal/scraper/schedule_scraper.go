@@ -46,8 +46,8 @@ func FetchSchedule(repo *database.Repository, config ScheduleConfig) (*RawSchedu
 		return nil, fmt.Errorf("encoding conversion failed: %w", err)
 	}
 
-	if log.Logger.GetLevel() == zerolog.DebugLevel {
-		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102150405"))
+	if log.Logger.GetLevel() == zerolog.TraceLevel {
+		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
 		if err := os.WriteFile(filename, []byte(fixedEncoding), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {
@@ -91,7 +91,7 @@ func FetchScheduleWithBrowser(
 		}
 
 		if log.Logger.GetLevel() == zerolog.TraceLevel {
-			filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102150405"))
+			filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
 			if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 				log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 			} else {

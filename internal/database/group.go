@@ -62,7 +62,7 @@ func (r *Repository) UpdateGroups(groups []Group) error {
 		_, err = tx.NamedExec(
 			`UPDATE groups
 			SET department_id = :department_id, updated_at = :updated_at
-			WHERE department_name = :department_name`,
+			WHERE department_name = :department_name AND group_id = :group_id`,
 			group,
 		)
 		if err != nil {
