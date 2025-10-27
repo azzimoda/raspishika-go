@@ -17,9 +17,8 @@ import (
 )
 
 const DepartmentsURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1582&Itemid=247"
-const (
-	DepartmentsCacheKey = "departments"
-)
+const BaseDepartmentPageURL = "https://mnokol.tyuiu.ru"
+const DepartmentsCacheKey = "departments"
 
 type Department struct {
 	Name string `json:"name"`
@@ -42,8 +41,6 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		return nil, err
 	}
 
-	const BaseURL = "https://mnokol.tyuiu.ru"
-
 	var departments []Department
 	doc.Find("ul.mod-menu li.col-lg.col-md-6 a").Each(func(i int, s *goquery.Selection) {
 		name := s.Text()
@@ -53,7 +50,7 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 
 		departments = append(departments, Department{
 			Name: name,
-			URL:  BaseURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&"),
+			URL:  BaseDepartmentPageURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&"),
 		})
 	})
 
@@ -143,7 +140,7 @@ func checkGroups(repo *database.Repository) ([]database.Group, error) {
 			return groups, nil
 		}
 	}
-	return nil, fmt.Errorf("All groups are outdated")
+	return nil, fmt.Errorf("all groups are outdated")
 }
 
 func scrapeDepartmentGroups(browser *browser.BrowserService, department Department) ([]database.Group, error) {

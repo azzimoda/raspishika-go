@@ -47,11 +47,18 @@ func (b *Bot) processDailySending() {
 	errCount := 0
 	for groupName, chatIDs := range groupedChats {
 		log.Trace().Msgf("Sending daily notification to group %s", groupName)
+		group, err := b.Repo.GetGroupByName(groupName)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to get group by name %s", groupName)
+			b.Report().Err(err).Send(fmt.Sprintf("Failed to get group by name %s", groupName))
+			continue
+		}
+		scheduleCfg := scraper.GroupScheduleConfig(group)
 
 		for _, chatID := range chatIDs {
 			if err := commands.SendWeekSchedule(
 				b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, chatID,
-				groupName,
+				scheduleCfg,
 			); err != nil {
 				log.Error().Err(err).Int64("chatID", chatID).Msgf("Failed to send daily schedule to chat")
 				b.Report().Chat(chatID).Err(err).Send("Failed to send daily schedule to chat")
@@ -144,7 +151,7 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		return fmt.Errorf("failed to get group by name %s: %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchGroupSchedule(b.Cache, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(b.Repo, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		return fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)
 	}

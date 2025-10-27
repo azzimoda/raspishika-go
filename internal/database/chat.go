@@ -15,6 +15,7 @@ const (
 	ChatStateSelectingGroup           ChatState = "selecting_group"
 	ChatStateQuickSelectingDepartment ChatState = "quick_selecting_department"
 	ChatStateQuickSelectingGroup      ChatState = "quick_selecting_group"
+	ChatStateSelectingTeacher         ChatState = "selecting_teacher"
 	ChatStateSelectingTime            ChatState = "selecting_time"
 )
 

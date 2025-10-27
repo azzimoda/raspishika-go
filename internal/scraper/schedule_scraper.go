@@ -4,19 +4,29 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/cache"
+	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/playwright-community/playwright-go"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
 )
 
-func FetchGroupSchedule(cache *cache.Cache, config ScheduleConfig) (*RawSchedule, error) {
-	url := scheduleURL(config)
+func FetchSchedule(repo *database.Repository, config ScheduleConfig) (*RawSchedule, error) {
+	departmentIDs, err := repo.GetDepartmentIDs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get department IDs: %w", err)
+	}
+
+	url := scheduleURL(config, departmentIDs)
 
 	resp, err := httpGetRequest(url, generateHeaders())
 	if err != nil {
@@ -36,7 +46,66 @@ func FetchGroupSchedule(cache *cache.Cache, config ScheduleConfig) (*RawSchedule
 		return nil, fmt.Errorf("encoding conversion failed: %w", err)
 	}
 
+	if log.Logger.GetLevel() == zerolog.DebugLevel {
+		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102150405"))
+		if err := os.WriteFile(filename, []byte(fixedEncoding), 0644); err != nil {
+			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
+		} else {
+			log.Debug().Msgf("Saved schedule HTML to file %s", filename)
+		}
+	}
+
 	return parseSchedule(fixedEncoding, config)
+}
+
+func FetchScheduleWithBrowser(
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	config ScheduleConfig,
+) (*RawSchedule, error) {
+	departmentIDs, err := repo.GetDepartmentIDs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get department IDs: %w", err)
+	}
+	url := scheduleURL(config, departmentIDs)
+
+	var schedule *RawSchedule
+	err = browser.WithPage(func(p playwright.Page) error {
+		if err := p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
+			return fmt.Errorf("failed to set extra HTTP headers: %w", err)
+		}
+		if _, err := p.Goto(url); err != nil {
+			return fmt.Errorf("failed to goto URL: %w", err)
+		}
+
+		tableLocator := p.Locator("#main_table")
+		if err := tableLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
+			return fmt.Errorf("failed to wait for table: %w", err) // TODO: Implement retrying.
+		}
+
+		time.Sleep(1 * time.Second)
+
+		html, err := p.Content()
+		if err != nil {
+			return fmt.Errorf("failed to get HTML content: %w", err)
+		}
+
+		if log.Logger.GetLevel() == zerolog.TraceLevel {
+			filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102150405"))
+			if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
+				log.Error().Err(err).Msg("Failed to save schedule HTML to file")
+			} else {
+				log.Debug().Msgf("Saved schedule HTML to file %s", filename)
+			}
+		}
+
+		schedule, err = parseSchedule(html, config)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return schedule, nil
 }
 
 func parseSchedule(sourceHTML string, config ScheduleConfig) (*RawSchedule, error) {
@@ -132,8 +201,26 @@ func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection
 		discipline := daySelection.Find(".disc").Text()
 		pair.Discipline = discipline
 	} else {
-		// TODO
-		panic("unimplemented")
+		var parts []string
+		for _, node := range daySelection.Find(".disc").Nodes {
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					text := strings.TrimSpace(c.Data)
+					if text != "" {
+						parts = append(parts, text)
+					}
+				} else if c.Type == html.ElementNode && c.Data == "div" {
+					parts = append(parts, c.FirstChild.Data)
+				}
+			}
+		}
+
+		for len(parts) < 2 {
+			parts = append(parts, "")
+		}
+
+		pair.Discipline = parts[0]
+		pair.Group = &parts[1]
 	}
 }
 
@@ -172,7 +259,9 @@ func detectPairKind(daySelection *goquery.Selection) PairKind {
 	}
 }
 
-func scheduleURL(config ScheduleConfig) string {
+// scheduleURL returns formatted URL for group or teacher schedule page depending on the given schedule config.
+// Parameter departmentIDs is used for teacher schedule page only and may be empty or nil for group.
+func scheduleURL(config ScheduleConfig, departmentIDs []string) string {
 	switch {
 	case config.Group != nil:
 		zaochnoeFlag := ""
@@ -183,7 +272,13 @@ func scheduleURL(config ScheduleConfig) string {
 			"https://coworking.tyuiu.ru/shs/all_t/sh%s.php?action=group&union=0&sid=%s&gr=%s&year=%d&vr=1",
 			zaochnoeFlag, config.Group.DepartmentID, config.Group.GroupID, time.Now().Year())
 	case config.Teacher != nil:
-		return "" // TODO: Implement teacher schedule URL.
+		departmentArgs := ""
+		for i, id := range departmentIDs {
+			departmentArgs += fmt.Sprintf("&shed[%d]=%s&union[%d]=0&year[%d]=%d", i, id, i, i, time.Now().Year())
+		}
+		return fmt.Sprintf(
+			"https://coworking.tyuiu.ru/shs/all_t/sh.php?action=prep&prep=%s&vr=1&count=%d%s",
+			config.Teacher.TeacherID, len(departmentIDs), departmentArgs)
 	default:
 		panic("invalid schedule config")
 	}

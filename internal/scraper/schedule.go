@@ -107,6 +107,8 @@ func (s *RawSchedule) Transform() Schedule {
 }
 
 // HTML returns HTML representation of the schedule.
+//
+// TODO: Provide tamplate as a parameter instead of fetching it in this function.
 func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 	template := loadTemplate(cache, templateFile)
 
@@ -127,7 +129,7 @@ func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 	html := strings.NewReplacer(
 		"HEADER", header,
 		"TABLE_HEAD", tableHead,
-		"TABLE_BODY", generateTableBody(s.Rows),
+		"TABLE_BODY", s.generateTableBody(s.Rows),
 		"TIMESTAMP", time.Now().Format(time.RFC3339),
 	).Replace(template)
 
@@ -135,7 +137,7 @@ func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 		if err := os.MkdirAll("storage/cache/", 0755); err != nil {
 			log.Error().Err(err).Msg("Failed to create cache directory")
 		}
-		filename := "storage/cache/schedule_" + s.Config.Group.GroupName + ".html"
+		filename := scheduleCacheFileName(s.Config)
 		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML")
 		}
@@ -145,7 +147,17 @@ func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 	return html
 }
 
-func generateTableBody(rows []RawScheduleRow) string {
+func scheduleCacheFileName(cfg ScheduleConfig) string {
+	if cfg.Group != nil {
+		return "storage/cache/schedule_" + cfg.Group.GroupName + ".html"
+	} else if cfg.Teacher != nil {
+		return "storage/cache/schedule_" + cfg.Teacher.Name + ".html"
+	} else {
+		panic("unreachable")
+	}
+}
+
+func (s *RawSchedule) generateTableBody(rows []RawScheduleRow) string {
 	tableBody := ""
 
 	for _, row := range rows {
@@ -155,12 +167,12 @@ func generateTableBody(rows []RawScheduleRow) string {
 				<td class="side_column_time">%s</td>
 				%s
 			</tr>`,
-			row.Number, strings.ReplaceAll(row.TimeRange, "-", "<hr>"), generateRowPairs(row.Days))
+			row.Number, strings.ReplaceAll(row.TimeRange, "-", "<hr>"), s.generateRowPairs(row.Days))
 	}
 	return tableBody
 }
 
-func generateRowPairs(days [7]RawScheduleDay) string {
+func (s *RawSchedule) generateRowPairs(days [7]RawScheduleDay) string {
 	rowPairs := ""
 
 	for _, day := range days {

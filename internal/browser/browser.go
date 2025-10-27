@@ -9,6 +9,8 @@ import (
 	"github.com/playwright-community/playwright-go"
 )
 
+// TODO: Implement regular restart.
+
 type BrowserService struct {
 	pw      *playwright.Playwright
 	browser playwright.Browser
@@ -69,7 +71,7 @@ func New(cfg *config.Config) (*BrowserService, error) {
 		return nil, err
 	}
 
-	browser, err := pw.Chromium.Launch()
+	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{Headless: &cfg.Browser.Headless})
 	if err != nil {
 		return nil, err
 	}

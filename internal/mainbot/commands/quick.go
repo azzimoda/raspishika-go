@@ -2,12 +2,14 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/schollz/closestmatch"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -44,9 +46,87 @@ func OnTextQuickGroup(
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
-	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, msg.Text)
+	group, err := repo.GetGroupByName(msg.Text)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return err
+	}
+	scheduleCfg := scraper.GroupScheduleConfig(group)
+	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, scheduleCfg)
 }
 
 func OnTeacher(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: OnTeacher")
+	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTeacher); err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat state: %w", err)
+	}
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Пришлите полное имя преподавателя или его часть")
+	newMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete")))
+	_, err := api.Send(newMsg)
+	return err
+}
+
+func OnTextTeacherName(
+	api *tgbotapi.BotAPI,
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	msg *tgbotapi.Message,
+) error {
+	teachers, err := scraper.FetchTeachers(repo, browser)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to fetch teachers (%s): %w", msg.Text, err)
+	}
+
+	names := make([]string, len(teachers))
+	for i, t := range teachers {
+		names[i] = t.Name
+	}
+	matchedNames := selectTeachers(names, msg.Text)
+	ids := make([]string, len(matchedNames))
+	for i, name := range matchedNames {
+		for _, t := range teachers {
+			if t.Name == name {
+				ids[i] = t.TeacherID
+			}
+		}
+	}
+
+	if len(teachers) == 0 {
+		// Maybe this case is impossible.
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Не удалось найти преподавателя, попробуйте снова")
+		_, err := api.Send(newMsg)
+		return err
+	}
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Выберите проподавателя из списка или попробуйте снова")
+	newMsg.ReplyMarkup = inlineButtonMarkupTeachers(matchedNames, ids)
+	_, err = api.Send(newMsg)
+	return err
+}
+
+func selectTeachers(teachers []string, name string) []string {
+	for _, t := range teachers {
+		if strings.EqualFold(t, name) {
+			return []string{t}
+		}
+	}
+	return closestmatch.New(teachers, []int{2, 3, 4}).ClosestN(name, 6)
+}
+
+func inlineButtonMarkupTeachers(names, ids []string) tgbotapi.InlineKeyboardMarkup {
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	for i := 0; i < len(names); i += 2 {
+		var row []tgbotapi.InlineKeyboardButton
+		for j := i; j < len(names) && j < i+2; j++ {
+			row = append(row, tgbotapi.NewInlineKeyboardButtonData(names[j], "select_teacher\n"+ids[j]))
+		}
+		rows = append(rows, row)
+	}
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete")))
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }

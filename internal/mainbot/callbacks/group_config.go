@@ -42,6 +42,7 @@ func OnSelectDepartment(
 func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 	rows := make([][]tgbotapi.KeyboardButton, 0)
 
+	rows = append(rows, tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена")))
 	for i := 0; i < len(groups); i += 2 {
 		row := make([]tgbotapi.KeyboardButton, 0)
 		for j := i; j < len(groups) && j < i+2; j++ {
@@ -49,8 +50,11 @@ func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 		}
 		rows = append(rows, row)
 	}
-	rows = append(rows, tgbotapi.NewKeyboardButtonRow(tgbotapi.NewKeyboardButton("Отмена")))
 
-	return tgbotapi.ReplyKeyboardMarkup{Keyboard: rows,
-		ResizeKeyboard: true, OneTimeKeyboard: true, Selective: true}
+	return tgbotapi.ReplyKeyboardMarkup{
+		Keyboard: rows,
+		ResizeKeyboard: true,
+		OneTimeKeyboard: true,
+		Selective: true,
+	}
 }

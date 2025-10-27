@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/callbacks"
@@ -27,6 +28,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("Error while handling update")
+		b.Report().Err(err).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
 }
 
@@ -82,7 +84,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	case "quick":
 		return commands.OnQuick(b.api, b.Repo, b.Cache, msg)
 	case "teacher":
-		return commands.OnTeacher(b.api, b.Repo, msg) // TODO
+		return commands.OnTeacher(b.api, b.Repo, msg)
 	default:
 		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 		log.Debug().Str("text", msg.Text).Msg("Unknown command")
@@ -102,12 +104,20 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		// TODO: Come up with some features here.
 		return nil
 	case database.ChatStateSelectingGroup:
+		if strings.ToLower(msg.Text) == "отмена" {
+			return b.onTextCancel(msg)
+		}
 		return commands.OnTextGroup(b.api, b.Repo, msg, chat)
 	case database.ChatStateSelectingTime:
 		return commands.OnTextTime(b.api, b.Repo, msg, chat)
 	case database.ChatStateQuickSelectingGroup:
+		if strings.ToLower(msg.Text) == "отмена" {
+			return b.onTextCancel(msg)
+		}
 		return commands.OnTextQuickGroup(b.api, b.Repo, b.Browser, b.Cache,
 			b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, msg)
+	case database.ChatStateSelectingTeacher:
+		return commands.OnTextTeacherName(b.api, b.Repo, b.Browser, msg)
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
 		if err := b.Repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
@@ -115,6 +125,22 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		}
 		return nil
 	}
+}
+
+func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
+	if err := b.Repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
+		return fmt.Errorf("failed to update chat state: %w", err)
+	}
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Действие отменено")
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
+	sentMsg, err := b.api.Send(newMsg)
+	time.Sleep(3 * time.Second)
+	go func() {
+		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, sentMsg.MessageID))
+	}()
+	return err
 }
 
 func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
@@ -135,6 +161,9 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 		err = callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
 	case "quick_select_department":
 		err = callbacks.OnQuickSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+	case "select_teacher":
+		err = callbacks.OnSelectTeacher(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
+			b.Config.ScheduleTemplate, query, callbackCommand.Args)
 
 	case "update_group":
 		err = callbacks.OnUpdateGroup(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
@@ -148,6 +177,5 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	if err != nil {
 		b.api.Send(tgbotapi.NewCallback(query.ID, utils.ErrMsgTryLater))
 	}
-
 	return err
 }

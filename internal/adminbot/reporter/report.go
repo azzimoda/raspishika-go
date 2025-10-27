@@ -3,8 +3,6 @@ package reporter
 import (
 	"fmt"
 
-	"github.com/azzimoda/raspishika-go/pkg/utils"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -41,7 +39,7 @@ func (r ReportConfig) Send(text string) {
 		msgText += fmt.Sprintf("\n`/chat %d`", r.chatID)
 	}
 	if r.err != nil {
-		msgText += fmt.Sprintf("\nError: _%s_", utils.EscapeMarkdown(r.err.Error()))
+		msgText += fmt.Sprintf("\nError: _%s_", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.err.Error()))
 	}
 	msgText += fmt.Sprintf("\n\n%s", text)
 

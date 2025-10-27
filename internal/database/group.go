@@ -27,11 +27,13 @@ func (r *Repository) GetGroups() ([]Group, error) {
 
 func (r *Repository) GetGroupByName(name string) (*Group, error) {
 	var group Group
-	err := r.db.Get(&group, "SELECT * FROM groups WHERE group_name = ?", name)
-	if err != nil {
-		return nil, err
-	}
-	return &group, nil
+	err := r.db.Get(&group, "SELECT * FROM groups WHERE LOWER(group_name) = ?", name)
+	return &group, err
+}
+
+func (r *Repository) GetDepartmentIDs() (departmentIDs []string, err error) {
+	err = r.db.Select(&departmentIDs, "SELECT DISTINCT department_id FROM groups")
+	return
 }
 
 func (r *Repository) UpdateGroups(groups []Group) error {
@@ -43,8 +45,8 @@ func (r *Repository) UpdateGroups(groups []Group) error {
 	}
 
 	for _, group := range groups {
-		var g Group
-		if err := tx.Get(&g, `SELECT * FROM groups WHERE group_id = ?`, group.GroupID); err != nil {
+		var _g Group
+		if err := tx.Get(&_g, `SELECT * FROM groups WHERE group_id = ?`, group.GroupID); err != nil {
 			// Insert new.
 			_, err = tx.NamedExec(
 				`INSERT INTO groups (group_id, department_id, group_name, department_name)
@@ -56,8 +58,13 @@ func (r *Repository) UpdateGroups(groups []Group) error {
 		}
 
 		// Update existing.
+		group.UpdatedAt = time.Now()
 		_, err = tx.NamedExec(
-			`UPDATE groups SET department_id = :department_id WHERE department_name = :department_name`, group)
+			`UPDATE groups
+			SET department_id = :department_id, updated_at = :updated_at
+			WHERE department_name = :department_name`,
+			group,
+		)
 		if err != nil {
 			tx.Rollback()
 			return err
