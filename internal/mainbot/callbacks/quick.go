@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
@@ -51,22 +52,21 @@ func OnSelectTeacher(
 ) error {
 	api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 
-	teachers, err := scraper.FetchTeachers(repo, browser)
+	chat, err := repo.GetChatByChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to fetch teachers: %w", err)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
 	}
-	var teacher *database.Teacher
-	for _, t := range teachers {
-		if t.TeacherID == args[0] {
-			teacher = &t
-			break
-		}
-	}
-	if teacher == nil {
-		// NOTE: This code supposed to be unreachable, because teacher ID from callback query is taken from database.
+
+	teacher, err := repo.GetTeacherByTeacherID(args[0])
+	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to find teacher by given teacher ID (%s)", args[0])
+		return fmt.Errorf("failed to get teacher by name (%s): %w", args[0], err)
+	}
+
+	if err := repo.AddChatRecentTeacher(chat.ID, teacher.ID); err != nil {
+		log.Error().Err(err).Any("chat", chat).Any("teacher", teacher).Msg("Failed to add recent teacher")
+		// TODO: Report this error to admin bot somehow.
 	}
 
 	if err := repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {

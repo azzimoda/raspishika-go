@@ -62,6 +62,12 @@ func createTables(db *sqlx.DB) error {
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS recent_teachers(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			chat_id INTEGER NOT NULL REFERENCES chat(id),
+			teacher_id INTEGER NOT NULL REFERENCES teachers(id),
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
 	}
 	for _, query := range queries {
 		_, err := db.Exec(query)

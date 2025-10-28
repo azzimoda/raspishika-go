@@ -71,7 +71,10 @@ func New(cfg *config.Config) (*BrowserService, error) {
 		return nil, err
 	}
 
-	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{Headless: &cfg.Browser.Headless})
+	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless: &cfg.Browser.Headless,
+		Timeout:  playwright.Float(float64(cfg.Browser.Timeout) * 1000),
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -32,8 +32,11 @@ func SendTempMessage(api *tgbotapi.BotAPI, chatID int64, text string, dur time.D
 	newMsg := tgbotapi.NewMessage(chatID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	sentMsg, err := api.Send(newMsg)
-	time.Sleep(dur)
-	go func() { api.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID)) }()
+
+	go func() {
+		time.Sleep(dur)
+		api.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID))
+	}()
 
 	return err
 }

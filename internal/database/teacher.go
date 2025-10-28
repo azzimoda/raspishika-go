@@ -12,9 +12,26 @@ type Teacher struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
+func (r *Repository) GetTeacherByTeacherID(teacherID string) (*Teacher, error) {
+	var t Teacher
+	err := r.db.Get(&t, `SELECT * FROM teachers WHERE teacher_id = ?`, teacherID)
+	return &t, err
+}
+
 func (r *Repository) GetTeachers() (teachers []Teacher, err error) {
-	err = r.db.Select(&teachers, "SELECT id, teacher_id, name FROM teachers")
+	err = r.db.Select(&teachers, "SELECT * FROM teachers")
 	return
+}
+
+func (r *Repository) GetTeacherByChatID(ID int64) ([]Teacher, error) {
+	var teachers []Teacher
+	err := r.db.Select(&teachers,
+		`SELECT t.id, t.teacher_id, t.name, t.created_at, t.updated_at
+		FROM recent_teachers rt JOIN teachers t ON rt.teacher_id = t.id
+		WHERE rt.chat_id = ?`,
+		ID,
+	)
+	return teachers, err
 }
 
 func (r *Repository) UpdateTeachers(teachers []Teacher) error {

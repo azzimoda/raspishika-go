@@ -136,8 +136,8 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
 	sentMsg, err := b.api.Send(newMsg)
-	time.Sleep(3 * time.Second)
 	go func() {
+		time.Sleep(3 * time.Second)
 		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, sentMsg.MessageID))
 	}()
 	return err
