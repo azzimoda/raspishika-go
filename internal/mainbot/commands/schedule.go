@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"time"
@@ -73,10 +74,16 @@ func SendWeekSchedule(
 
 	api.Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
 
-	newMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
-	newMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
-	_, err = api.Send(newMsg)
-	return err
+	newPhotoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
+	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
+	_, err1 := api.Send(newPhotoMsg)
+
+	newMsg := tgbotapi.NewMessage(chatID, scheduleCfg.FormatMarkdown())
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
+	_, err2 := api.Send(newMsg)
+
+	return errors.Join(err1, err2)
 }
 
 func scheduleScreenshotFileName(config scraper.ScheduleConfig) string {

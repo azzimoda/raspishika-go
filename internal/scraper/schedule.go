@@ -9,6 +9,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -31,6 +32,17 @@ const (
 type ScheduleConfig struct {
 	Group   *database.Group
 	Teacher *database.Teacher
+}
+
+func (sc *ScheduleConfig) FormatMarkdown() string {
+	switch {
+	case sc.Group != nil:
+		return "Расписание группы: *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Group.GroupName) + "*"
+	case sc.Teacher != nil:
+		return "Расписание преподавателя: *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Teacher.Name) + "*"
+	default:
+		return "?"
+	}
 }
 
 type Pair struct {
