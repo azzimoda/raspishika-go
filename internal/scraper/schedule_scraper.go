@@ -177,10 +177,8 @@ func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelec
 	switch day.Pair.Kind {
 	case PairKindSubject:
 		parseDisciplinePair(config, daySelection, &day.Pair)
-	case PairKindExam:
-		parseExamPair(daySelection, &day.Pair)
-	case PairKindConsultation:
-		parseConsultationPair(daySelection, &day.Pair)
+	case PairKindExam, PairKindConsultation:
+		parseExamConsultationPair(daySelection, &day.Pair)
 	case PairKindEmpty:
 		// Nothing
 	default:
@@ -224,16 +222,16 @@ func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection
 	}
 }
 
-func parseExamPair(daySelection *goquery.Selection, pair *Pair) {
-	panic("unimplemented")
-}
-
-func parseConsultationPair(daySelection *goquery.Selection, pair *Pair) {
-	panic("unimplemented")
+func parseExamConsultationPair(daySelection *goquery.Selection, pair *Pair) {
+	pair.Title = daySelection.Find(".head_ekz").Text()
+	pair.Discipline = daySelection.Find(".disc").Text()
+	teacher := daySelection.Find(".prep").Text()
+	pair.Teacher = &teacher
+	pair.Classroom = daySelection.Find(".cabs").Text()
 }
 
 func parseOtherPair(daySelection *goquery.Selection, pair *Pair) {
-	panic("unimplemented")
+	pair.Label = daySelection.Text()
 }
 
 func detectPairKind(daySelection *goquery.Selection) PairKind {
