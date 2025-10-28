@@ -46,14 +46,13 @@ func (a *App) Run() error {
 		}
 	}
 
-	// TODO:
-	// if a.Config.Features.PairSending {
-	// 	if err := a.MainBot.SchedulePairSending(c); err != nil {
-	// 		log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
-	// 	} else {
-	// 		log.Info().Msg("Pair sending scheduled")
-	// 	}
-	// }
+	if a.Config.Features.PairSending {
+		if err := a.MainBot.SchedulePairSending(c); err != nil {
+			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
+		} else {
+			log.Info().Msg("Pair sending scheduled")
+		}
+	}
 
 	c.Start()
 
