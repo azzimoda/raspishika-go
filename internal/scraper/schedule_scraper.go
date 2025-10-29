@@ -20,7 +20,14 @@ import (
 	"golang.org/x/net/html"
 )
 
-func FetchSchedule(repo *database.Repository, config ScheduleConfig) (*RawSchedule, error) {
+func FetchSchedule(repo *database.Repository, config ScheduleConfig) (schedule *RawSchedule, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Err(fmt.Errorf("panic: %+v", r)).Msg("Parser panicked")
+			err = fmt.Errorf("parser panicked: %v", r)
+		}
+	}()
+
 	departmentIDs, err := repo.GetDepartmentIDs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get department IDs: %w", err)
@@ -62,14 +69,20 @@ func FetchScheduleWithBrowser(
 	repo *database.Repository,
 	browser *browser.BrowserService,
 	config ScheduleConfig,
-) (*RawSchedule, error) {
+) (schedule *RawSchedule, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error().Err(fmt.Errorf("panic: %+v", r)).Msg("Browser or parser panicked")
+			err = fmt.Errorf("parser panicked: %v", r)
+		}
+	}()
+
 	departmentIDs, err := repo.GetDepartmentIDs()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get department IDs: %w", err)
+		return nil, err
 	}
 	url := scheduleURL(config, departmentIDs)
 
-	var schedule *RawSchedule
 	err = browser.WithPage(func(p playwright.Page) error {
 		if err := p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
 			return fmt.Errorf("failed to set extra HTTP headers: %w", err)
@@ -102,10 +115,7 @@ func FetchScheduleWithBrowser(
 		schedule, err = parseSchedule(html, config)
 		return err
 	})
-	if err != nil {
-		return nil, err
-	}
-	return schedule, nil
+	return
 }
 
 func parseSchedule(sourceHTML string, config ScheduleConfig) (*RawSchedule, error) {
