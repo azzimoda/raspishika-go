@@ -171,6 +171,10 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	case "update_teacher":
 		err = callbacks.OnUpdateTeacher(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
 			b.Config.ScheduleTemplate, query, callbackCommand.Args)
+	case "update_tomorrow":
+		err = callbacks.OnUpdateTomorrow(b.api, b.Repo, b.Cache, query, callbackCommand.Args)
+	case "update_left":
+		err = callbacks.OnUpdateLeft(b.api, b.Repo, b.Cache, query, callbackCommand.Args)
 
 	default:
 		b.api.Send(tgbotapi.NewCallback(query.ID, "?"))
