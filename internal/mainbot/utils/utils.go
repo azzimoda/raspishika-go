@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -25,4 +27,14 @@ func SendErrorMessage(api *tgbotapi.BotAPI, chatID int64, text string) error {
 func InlineButtonMarkupUpdate(kind string, groupName string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Обновить", "update_"+kind+"\n"+groupName)))
+}
+
+func ScheduleScreenshotFileName(config scraper.ScheduleConfig) string {
+	if config.Group != nil {
+		return fmt.Sprintf("schedule_%s.png", config.Group.GroupName)
+	} else if config.Teacher != nil {
+		return fmt.Sprintf("schedule_%s.png", config.Teacher.Name)
+	} else {
+		panic("unreachable")
+	}
 }

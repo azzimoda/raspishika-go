@@ -61,15 +61,15 @@ func SendWeekSchedule(
 	if err != nil {
 		// TODO: Try to send old photo on error.
 		utils.SendErrorMessage(api, chatID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
 	html := schedule.HTML(cache, templateFile)
-	imagePath := path.Join(screenshotDir, scheduleScreenshotFileName(scheduleCfg))
+	imagePath := path.Join(screenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
 		utils.SendErrorMessage(api, chatID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
 	api.Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
@@ -84,16 +84,6 @@ func SendWeekSchedule(
 	_, err2 := api.Send(newMsg)
 
 	return errors.Join(err1, err2)
-}
-
-func scheduleScreenshotFileName(config scraper.ScheduleConfig) string {
-	if config.Group != nil {
-		return fmt.Sprintf("schedule_%s.png", config.Group.GroupName)
-	} else if config.Teacher != nil {
-		return fmt.Sprintf("schedule_%s.png", config.Teacher.Name)
-	} else {
-		panic("unreachable")
-	}
 }
 
 func weekScheduleInlineButtonMarkup(config scraper.ScheduleConfig) tgbotapi.InlineKeyboardMarkup {
