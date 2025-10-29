@@ -88,7 +88,7 @@ func (b *Bot) SchedulePairSending(c *cron.Cron) error {
 	for _, t := range times {
 		h := t[0]
 		m := t[1]
-		_, err := c.AddFunc(fmt.Sprintf("%d %d * * * 1-6", m, h), func() { go b.processPairSending(time.Now()) })
+		_, err := c.AddFunc(fmt.Sprintf("%d %d * * 1-6", m, h), func() { go b.processPairSending(time.Now()) })
 		if err != nil {
 			return err
 		}

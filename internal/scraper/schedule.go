@@ -281,6 +281,8 @@ func (s ScheduleDay) Left() ScheduleDay {
 }
 
 func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
+	log.Trace().Msgf("CurrentPair: %s", t.Format("15:04"))
+	year, month, day := t.Date()
 	for _, pair := range s.Pairs {
 		startTime, err := time.Parse("15:04", strings.TrimSpace(pair.StartTime))
 		if err != nil {
@@ -292,6 +294,11 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 			return nil, fmt.Errorf("failed to parse pair end time: %w", err)
 		}
 
+		// Adjust date.
+		startTime = time.Date(year, month, day, startTime.Hour(), startTime.Minute(), 0, 0, t.Location())
+		endTime = time.Date(year, month, day, endTime.Hour(), endTime.Minute(), 0, 0, t.Location())
+
+		// Adjust start time.
 		switch pair.Number {
 		case 1:
 			// This pair goes first; it needs a little shifting to be catched.
