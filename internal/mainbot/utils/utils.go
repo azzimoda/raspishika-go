@@ -38,3 +38,21 @@ func ScheduleScreenshotFileName(config scraper.ScheduleConfig) string {
 		panic("unreachable")
 	}
 }
+
+func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
+	rows := [][]tgbotapi.InlineKeyboardButton{
+		{
+			tgbotapi.NewInlineKeyboardButtonData("0", "set_access\n0"),
+			tgbotapi.NewInlineKeyboardButtonData("1", "set_access\n1"),
+			tgbotapi.NewInlineKeyboardButtonData("2", "set_access\n2"),
+		},
+		{tgbotapi.NewInlineKeyboardButtonData("Закрыть", "delete")},
+	}
+	for i := range 3 {
+		if i == accessLevel {
+			rows[0][i].Text = fmt.Sprintf("[%d]", i)
+		}
+	}
+	markup := tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return markup
+}

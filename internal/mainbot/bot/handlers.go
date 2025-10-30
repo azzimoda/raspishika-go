@@ -87,6 +87,8 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 		return commands.OnReminder(b.api, b.Repo, msg, true)
 	case "reminder_off":
 		return commands.OnReminder(b.api, b.Repo, msg, false)
+	case "access":
+		return commands.OnAccess(b.api, b.Repo, msg)
 
 	case "week":
 		return commands.OnWeek(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
@@ -181,6 +183,9 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	case "select_teacher":
 		err = callbacks.OnSelectTeacher(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
 			b.Config.ScheduleTemplate, query, callbackCommand.Args)
+
+	case "set_access":
+		err = callbacks.OnSetAccess(b.api, b.Repo, query, callbackCommand.Args)
 
 	case "update_group":
 		err = callbacks.OnUpdateGroup(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,

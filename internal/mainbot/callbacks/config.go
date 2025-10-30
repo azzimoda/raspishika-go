@@ -2,12 +2,15 @@ package callbacks
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/rs/zerolog/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -52,9 +55,44 @@ func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 	}
 
 	return tgbotapi.ReplyKeyboardMarkup{
-		Keyboard: rows,
-		ResizeKeyboard: true,
+		Keyboard:        rows,
+		ResizeKeyboard:  true,
 		OneTimeKeyboard: true,
-		Selective: true,
+		// Selective: true,
 	}
+}
+
+func OnSetAccess(api *tgbotapi.BotAPI, repo *database.Repository, query *tgbotapi.CallbackQuery, args []string) error {
+	chat, err := repo.GetChatByChatID(query.Message.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	chat.Access, err = strconv.Atoi(args[0])
+	if err != nil {
+		chat.Access = 0
+		log.Error().Err(err).Msg("failed to parse access level; fallback to 0")
+	}
+	if err := repo.UpdateChat(chat); err != nil {
+		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	editMsg := tgbotapi.NewEditMessageTextAndMarkup(
+		query.Message.Chat.ID,
+		query.Message.MessageID,
+		fmt.Sprintf(`Текущий уровень доступа: %d
+		0 — без ограничений
+		1 — настройки только для админов
+		2 — все команды только для админов`, chat.Access),
+		utils.AccessMenuInlineMarkup(chat.Access),
+	)
+	_, err = api.Send(editMsg)
+
+	if err != nil && strings.Contains(err.Error(), "message is not modified") {
+		api.Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
+		log.Warn().Int64("chatID", query.Message.Chat.ID).Msg("message is not modified")
+		return nil
+	}
+	return err
 }

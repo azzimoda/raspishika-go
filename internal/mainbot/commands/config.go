@@ -188,5 +188,20 @@ func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 }
 
 func OnAccess(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnAccess")
+	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
+	}
+
+	newMsg := tgbotapi.NewMessage(
+		msg.Chat.ID,
+		fmt.Sprintf(`Текущий уровень доступа: %d
+		0 — без ограничений
+		1 — настройки только для админов
+		2 — все команды только для админов`, chat.Access),
+	)
+	newMsg.ReplyMarkup = utils.AccessMenuInlineMarkup(chat.Access)
+	_, err = api.Send(newMsg)
+	return err
 }

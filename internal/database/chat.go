@@ -33,6 +33,10 @@ type Chat struct {
 	UpdatedAt        time.Time `db:"updated_at" json:"updated_at"`
 }
 
+func (c *Chat) IsPrivate() bool {
+	return c.ChatID > 0
+}
+
 func (r *Repository) CreateChat(chatID int64, username string) (int64, error) {
 	res, err := r.db.Exec(
 		`INSERT INTO chats (chat_id, username)
