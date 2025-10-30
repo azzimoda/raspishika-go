@@ -58,7 +58,7 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) t
 	if isQuick {
 		command = "quick_select_department"
 	}
-	
+
 	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
 
 	for i := 0; i < len(departments); i += 2 {
@@ -80,6 +80,8 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) t
 }
 
 func OnTextGroup(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
+	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	group, err := repo.GetGroupByName(msg.Text)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
@@ -127,6 +129,8 @@ func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.
 }
 
 func OnTextTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
+	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	t, err := time.Parse("15:04", msg.Text)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")

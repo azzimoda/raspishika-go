@@ -42,6 +42,8 @@ func OnTextQuickGroup(
 	screenshotDir, templateFile string,
 	msg *tgbotapi.Message,
 ) error {
+	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
@@ -98,6 +100,8 @@ func OnTextTeacherName(
 	browser *browser.BrowserService,
 	msg *tgbotapi.Message,
 ) error {
+	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	teachers, err := scraper.FetchTeachers(repo, browser)
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)

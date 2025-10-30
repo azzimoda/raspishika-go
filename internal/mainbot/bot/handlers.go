@@ -65,18 +65,11 @@ func (b *Bot) onMessage(msg *tgbotapi.Message) error {
 }
 
 func (b *Bot) onCommand(msg *tgbotapi.Message) error {
+	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	switch msg.Command() {
 	case "start":
-		err := commands.OnStart(b.api, msg)
-		if err != nil {
-			return err
-		}
-
-		if chat, err := b.Repo.GetChatByChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
-			return commands.OnGroup(b.api, b.Repo, b.Browser, b.Cache, msg)
-		} else {
-			return err
-		}
+		return commands.OnStart(b.api, b.Repo, b.Browser, b.Cache, msg)
 	case "help":
 		return commands.OnHelp(b.api, msg)
 	case "stop":
@@ -108,7 +101,6 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 	case "teacher":
 		return commands.OnTeacher(b.api, b.Repo, msg)
 	default:
-		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 		log.Debug().Str("text", msg.Text).Msg("Unknown command")
 		return nil
 	}
@@ -123,7 +115,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 
 	switch chat.State {
 	case database.ChatStateDefault:
-		// TODO: Come up with some features here.
+		// TODO: Implement handling of reply buttons "Неделея", "Завтра", "Сегодня".
 		return nil
 	case database.ChatStateSelectingGroup:
 		if strings.ToLower(msg.Text) == "отмена" {
@@ -151,6 +143,8 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 }
 
 func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
+	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+
 	if err := b.Repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
@@ -161,7 +155,7 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 	sentMsg, err := b.api.Send(newMsg)
 	go func() {
 		time.Sleep(3 * time.Second)
-		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, sentMsg.MessageID))
+		b.api.Send(tgbotapi.NewDeleteMessage(sentMsg.Chat.ID, sentMsg.MessageID))
 	}()
 	return err
 }

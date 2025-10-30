@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -42,8 +44,23 @@ const HelpMessage = `Доступные команды:
 
 По всем вопросам обращайтесь к расработчику @MazzzaRellla или пишите в комментарии канала @mazzaLLM.`
 
-func OnStart(api *tgbotapi.BotAPI, msg *tgbotapi.Message) error {
+func OnStart(
+	api *tgbotapi.BotAPI,
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	cache *cache.Cache,
+	msg *tgbotapi.Message,
+) error {
 	_, err := api.Send(tgbotapi.NewMessage(msg.Chat.ID, StartMessage))
+
+	if err == nil {
+		if chat, err := repo.GetChatByChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
+			return OnGroup(api, repo, browser, cache, msg)
+		} else {
+			return err
+		}
+	}
+
 	return err
 }
 
