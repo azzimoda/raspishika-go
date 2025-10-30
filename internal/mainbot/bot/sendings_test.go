@@ -18,7 +18,7 @@ func TestBot_processPairSending(t *testing.T) {
 	logger.SetupLogger("trace")
 	cfg, repo, browserService, cacheService := initServices(t)
 	makeTestChats(t, repo, cfg.Telegram.AdminID)
-	if _, err := scraper.FetchGroups(repo, browserService, &cacheService); err != nil {
+	if _, err := scraper.FetchGroups(repo, browserService, cacheService); err != nil {
 		t.Fatalf("could not fetch groups: %v", err)
 	}
 
@@ -45,7 +45,7 @@ func TestBot_processPairSending(t *testing.T) {
 			cfg:       cfg,
 			repo:      repo,
 			browser:   browserService,
-			cache:     &cacheService,
+			cache:     cacheService,
 			startTime: startTime,
 		})
 	}
@@ -61,7 +61,7 @@ func TestBot_processPairSending(t *testing.T) {
 	}
 }
 
-func initServices(t *testing.T) (*config.Config, *database.Repository, *browser.BrowserService, cache.Cache) {
+func initServices(t *testing.T) (*config.Config, *database.Repository, *browser.BrowserService, *cache.Cache) {
 	cfg, err := config.Load("/home/mazza/code/raspishika-go/configs/config.yml")
 	if err != nil {
 		t.Fatalf("could not load config: %v", err)

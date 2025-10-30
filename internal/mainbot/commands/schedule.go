@@ -54,7 +54,7 @@ func SendWeekSchedule(
 	var err error
 	switch {
 	case scheduleCfg.Group != nil:
-		schedule, err = scraper.FetchSchedule(repo, scheduleCfg)
+		schedule, err = scraper.FetchSchedule(repo, cache.Config.Dir, scheduleCfg)
 	case scheduleCfg.Teacher != nil:
 		schedule, err = scraper.FetchScheduleWithBrowser(repo, browser, scheduleCfg)
 	}
@@ -117,7 +117,7 @@ func OnTomorrow(
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
@@ -167,7 +167,7 @@ func OnLeft(
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err

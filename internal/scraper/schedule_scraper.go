@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func FetchSchedule(repo *database.Repository, config ScheduleConfig) (schedule *RawSchedule, err error) {
+func FetchSchedule(repo *database.Repository, cacheDir string, config ScheduleConfig) (schedule *RawSchedule, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().Err(fmt.Errorf("panic: %+v", r)).Msg("Parser panicked")
@@ -54,7 +55,7 @@ func FetchSchedule(repo *database.Repository, config ScheduleConfig) (schedule *
 	}
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
-		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
+		filename := path.Join(cacheDir, fmt.Sprintf("schedule_%s.html", time.Now().Format("20060102")))
 		if err := os.WriteFile(filename, []byte(fixedEncoding), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {

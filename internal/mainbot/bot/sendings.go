@@ -151,7 +151,7 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		return fmt.Errorf("failed to get group by name %s: %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(b.Repo, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(b.Repo, b.Config.Cache.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		return fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)
 	}

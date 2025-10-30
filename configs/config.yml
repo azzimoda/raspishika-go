@@ -34,6 +34,7 @@ browser:
   timeout: 30 # seconds
   screenshot_dir: storage/screenshots
 cache:
+  dir: storage/cache
   default_ttl: 10 # minutes
   schedule_ttl: 20 # minutes
   group_ttl: 7 # days

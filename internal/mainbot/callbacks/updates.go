@@ -32,7 +32,7 @@ func OnUpdateGroup(
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	schedule, err := scraper.FetchSchedule(repo, scraper.GroupScheduleConfig(group))
+	schedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
@@ -118,7 +118,7 @@ func OnUpdateTomorrow(
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
@@ -163,7 +163,7 @@ func OnUpdateLeft(
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err

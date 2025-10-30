@@ -54,7 +54,7 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		})
 	})
 
-	cache.C.Set(DepartmentsCacheKey, departments, time.Duration(cache.Config.GroupTTL)*24*time.Hour)
+	cache.C.Set(DepartmentsCacheKey, departments, cache.Config.GroupTTLDuration())
 	return departments, nil
 }
 
@@ -84,7 +84,7 @@ func generateHeaders() map[string]string {
 func FetchGroups(
 	repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
 ) ([]database.Group, error) {
-	if groups, err := checkGroups(repo); err == nil && len(groups) > 0 {
+	if groups, err := checkGroups(repo, cache.Config.GroupTTLDuration()); err == nil && len(groups) > 0 {
 		log.Debug().Msg("Using cached groups")
 		return groups, nil
 	}
@@ -130,15 +130,14 @@ func FetchDepartmentGroups(
 	return departmentGroups, nil
 }
 
-func checkGroups(repo *database.Repository) ([]database.Group, error) {
+func checkGroups(repo *database.Repository, ttl time.Duration) ([]database.Group, error) {
 	groups, err := repo.GetGroups()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, group := range groups {
-		// Group is actual when it is updated in the last 7 days.
-		if time.Since(group.UpdatedAt) < 7*24*time.Hour {
+		if time.Since(group.UpdatedAt) < ttl {
 			return groups, nil
 		}
 	}
@@ -158,8 +157,7 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 		}
 
 		iframeLocator := p.FrameLocator("div.com-content-article__body iframe")
-		selectLocator := iframeLocator.Locator("#groups")
-		if err := selectLocator.WaitFor(playwright.LocatorWaitForOptions{
+		if err := iframeLocator.Locator("#groups").WaitFor(playwright.LocatorWaitForOptions{
 			Timeout: playwright.Float(60_000),
 		}); err != nil {
 			return err
@@ -186,6 +184,5 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 	if err != nil {
 		return nil, err
 	}
-
 	return groups, nil
 }

@@ -97,41 +97,33 @@ func (a *App) Report() reporter.ReportConfig {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	repo, err := database.New(cfg)
+	app := App{Config: cfg, Cache: cache.New(&cfg.Cache)}
+	var err error
+
+	app.Repo, err = database.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {
 		log.Debug().Msg("Created repository")
 	}
 
-	browser, err := browser.New(cfg)
+	app.Browser, err = browser.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create browser service")
 	} else {
 		log.Debug().Msg("Created browser service")
 	}
 
-	cache := cache.New(&cfg.Cache)
-
-	mainBot, err := mainbot.New(cfg, repo, browser, &cache)
+	app.MainBot, err = mainbot.New(cfg, app.Repo, app.Browser, app.Cache)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize main bot")
+		return nil, fmt.Errorf("failed to initialize main bot")
 	} else {
 		log.Info().Msg("Initialized main bot")
 	}
-
-	app := App{
-		Config:  cfg,
-		MainBot: mainBot,
-		Repo:    repo,
-		Browser: browser,
-		Cache:   &cache,
-	}
-
-	mainBot.Reporter = &app
+	app.MainBot.Reporter = &app
 
 	if cfg.Features.AdminBot {
-		app.AdminBot, err = adminbot.New(cfg, repo)
+		app.AdminBot, err = adminbot.New(cfg, app.Repo)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		}
