@@ -6,15 +6,15 @@ import (
 )
 
 type RecentTeacher struct {
-	ID        int64     `db:"id"`
-	ChatID    int64     `db:"chat_id"`
-	TeacherID int64     `db:"teacher_id"`
+	ID        int       `db:"id"`
+	ChatID    int       `db:"chat_id"`
+	TeacherID int       `db:"teacher_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) GetChatRecentTeachers(chatID int64) ([]RecentTeacher, error) {
+func (r *Repository) GetChatRecentTeachers(ID int) ([]RecentTeacher, error) {
 	var rt []RecentTeacher
-	err := r.db.Select(&rt, `SELECT * FROM recent_teachers WHERE chat_id = ? ORDER BY created_at ASC`, chatID)
+	err := r.db.Select(&rt, `SELECT * FROM recent_teachers WHERE chat_id = ? ORDER BY created_at ASC`, ID)
 	return rt, err
 }
 
@@ -24,7 +24,7 @@ func (r *Repository) GetChatRecentTeachers(chatID int64) ([]RecentTeacher, error
 // Args:
 // chatID is ID field of struct Chat;
 // teacherID is ID field of struct Teacher.
-func (r *Repository) AddChatRecentTeacher(chatID, teacherID int64) error {
+func (r *Repository) AddChatRecentTeacher(chatID, teacherID int) error {
 	tx, err := r.db.Beginx()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)

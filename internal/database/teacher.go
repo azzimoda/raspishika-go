@@ -5,7 +5,7 @@ import (
 )
 
 type Teacher struct {
-	ID        int64     `db:"id" json:"id"`
+	ID        int       `db:"id" json:"id"`
 	TeacherID string    `db:"teacher_id" json:"teacher_id"`
 	Name      string    `db:"name" json:"name"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
@@ -23,7 +23,7 @@ func (r *Repository) GetTeachers() (teachers []Teacher, err error) {
 	return
 }
 
-func (r *Repository) GetTeacherByChatID(ID int64) ([]Teacher, error) {
+func (r *Repository) GetTeacherByChatID(ID int) ([]Teacher, error) {
 	var teachers []Teacher
 	err := r.db.Select(&teachers,
 		`SELECT t.id, t.teacher_id, t.name, t.created_at, t.updated_at

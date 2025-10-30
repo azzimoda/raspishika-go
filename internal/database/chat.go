@@ -20,7 +20,7 @@ const (
 )
 
 type Chat struct {
-	ID               int64     `db:"id" json:"id"`
+	ID               int       `db:"id" json:"id"`
 	ChatID           int64     `db:"chat_id" json:"chat_id"`
 	UserName         *string   `db:"username" json:"username"`
 	State            ChatState `db:"state" json:"state"`
@@ -113,12 +113,12 @@ func (r *Repository) GetChatsWithPairSendingEnabled() (chats []Chat, err error) 
 	return
 }
 
-func (r *Repository) DeleteChat(id int64) error {
+func (r *Repository) DeleteChat(id int) error {
 	_, err := r.db.Exec(`DELETE FROM chats WHERE id = ?`, id)
 	if err == nil {
-		log.Debug().Int64("chatID", id).Msg("Chat is deleted")
+		log.Debug().Int("Chat.ID", id).Msg("Chat is deleted")
 	} else {
-		log.Error().Err(err).Int64("chatID", id).Msg("Failed to delete chat")
+		log.Error().Err(err).Int("Chat.ID", id).Msg("Failed to delete chat")
 	}
 	return err
 }

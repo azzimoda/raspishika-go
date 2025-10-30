@@ -122,15 +122,14 @@ func OnTomorrow(
 		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
-
 	schedule := rawSchedule.Transform()
+
 	var tomorrow scraper.ScheduleDay
 	if time.Now().Weekday() == time.Sunday {
 		tomorrow = schedule.Days[0]
 	} else {
 		tomorrow = schedule.Days[1]
 	}
-	// log.Trace().Msgf("Tomorrow schedule: %#v", tomorrow)
 
 	text := tomorrow.String()
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)

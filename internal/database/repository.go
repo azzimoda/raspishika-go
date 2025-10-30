@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog/log"
 )
 
 type Repository struct {
@@ -72,6 +73,7 @@ func createTables(db *sqlx.DB) error {
 	for _, query := range queries {
 		_, err := db.Exec(query)
 		if err != nil {
+			log.Error().Str("query", query).Msg("Failed to execute query")
 			return err
 		}
 	}

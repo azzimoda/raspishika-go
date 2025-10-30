@@ -96,7 +96,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 	chat, err := b.Repo.GetChatByChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(b.api, msg.Chat.ID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to get chat state: %w", err)
 	}
 
 	switch chat.State {
@@ -121,7 +121,8 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
 		if err := b.Repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
-			log.Error().Err(err).Msg("Error while updating chat state")
+			log.Error().Err(err).Msg("Failed to update chat state")
+			return fmt.Errorf("failed to update chat state: %w", err)
 		}
 		return nil
 	}
