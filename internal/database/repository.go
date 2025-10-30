@@ -65,8 +65,18 @@ func createTables(db *sqlx.DB) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS recent_teachers(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			chat_id INTEGER NOT NULL REFERENCES chat(id),
-			teacher_id INTEGER NOT NULL REFERENCES teachers(id),
+			chat_id INTEGER NOT NULL REFERENCES chat(id) ON DELETE CASCADE ON UPDATE CASCADE,
+			teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE ON UPDATE CASCADE,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS update_logs(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			chat_id INTEGER REFERENCES chat(id) ON UPDATE CASCADE,
+			kind TEXT NOT NULL,
+			message_id INTEGER,
+			data TEXT,
+			handling_time INTEGER NOT NULL DEFAULT 0, -- milliseconds
+			error TEXT,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
 	}

@@ -19,17 +19,39 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		return
 	}
 
+	startTime := time.Now()
+	updateLog := &database.UpdateLog{}
+
 	var err error
 	switch {
 	case update.Message != nil:
+		updateLog.ChatID = update.Message.Chat.ID
+		updateLog.Kind = tgbotapi.UpdateTypeMessage
+		updateLog.MessageID = update.Message.MessageID
+		updateLog.Data = update.Message.Text
+
 		err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
+		updateLog.ChatID = update.CallbackQuery.Message.Chat.ID
+		updateLog.Kind = tgbotapi.UpdateTypeCallbackQuery
+		updateLog.MessageID = update.CallbackQuery.Message.MessageID
+		updateLog.Data = update.CallbackQuery.Data
+
 		err = b.onCallbackQuery(update.CallbackQuery)
+	default:
+		log.Warn().Msgf("Unknown update type: %T", update)
 	}
+
+	elapsed := time.Since(startTime)
+	updateLog.HandlingTime = int(elapsed.Milliseconds())
+
 	if err != nil {
+		updateLog.Error = err.Error()
 		log.Error().Err(err).Msg("Error while handling update")
-		b.Report().Err(err).Send("Error while handling update") // TODO: .Debug("update", update)
+		b.Report().Err(err).Chat(int64(updateLog.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
+	log.Debug().Msgf("Update handled: %+v", updateLog)
+	b.Repo.InsertUpdateLog(updateLog)
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) error {
