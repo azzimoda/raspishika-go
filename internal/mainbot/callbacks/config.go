@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
@@ -15,30 +13,23 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func OnSelectDepartment(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
-	api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+func (ch *CallbackHandler) OnSelectDepartment(query *tgbotapi.CallbackQuery, args []string) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 
-	groups, err := scraper.FetchDepartmentGroups(repo, browser, cache, args[0])
+	groups, err := scraper.FetchDepartmentGroups(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), args[0])
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch groups: %w", err)
 	}
 
-	if err := repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateSelectingGroup); err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChatState(query.Message.Chat.ID, database.ChatStateSelectingGroup); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(query.Message.Chat.ID, "Выберите группу на клавиатуре")
 	newMsg.ReplyMarkup = groupsReplyMarkup(groups)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
@@ -62,10 +53,10 @@ func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 	}
 }
 
-func OnSetAccess(api *tgbotapi.BotAPI, repo *database.Repository, query *tgbotapi.CallbackQuery, args []string) error {
-	chat, err := repo.GetChatByChatID(query.Message.Chat.ID)
+func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []string) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
 	}
 
@@ -74,7 +65,7 @@ func OnSetAccess(api *tgbotapi.BotAPI, repo *database.Repository, query *tgbotap
 		chat.Access = 0
 		log.Error().Err(err).Msg("failed to parse access level; fallback to 0")
 	}
-	if err := repo.UpdateChat(chat); err != nil {
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
 	}
 
@@ -87,10 +78,10 @@ func OnSetAccess(api *tgbotapi.BotAPI, repo *database.Repository, query *tgbotap
 		2 — все команды только для админов`, chat.Access),
 		utils.AccessMenuInlineMarkup(chat.Access),
 	)
-	_, err = api.Send(editMsg)
+	_, err = ch.Bot.API().Send(editMsg)
 
 	if err != nil && strings.Contains(err.Error(), "message is not modified") {
-		api.Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
+		ch.Bot.API().Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
 		log.Warn().Int64("chatID", query.Message.Chat.ID).Msg("message is not modified")
 		return nil
 	}

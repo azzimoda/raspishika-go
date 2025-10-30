@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
+	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/internal/cache"
+	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 
@@ -15,6 +20,15 @@ const (
 	ErrMsgTryLater            = "Произошла ошибка, попробуйте позже"
 	ErrMsgFailedFetchSchedule = "Не удалось загрузить расписание, попробуйте позже"
 )
+
+type BotManager interface {
+	config.ConfigProvider
+	tgbot.BotAPIProvider
+	database.RepositoryProvider
+	browser.BrowserServiceProvider
+	cache.CacheProvider
+	reporter.Reporter
+}
 
 func SendErrorMessage(api *tgbotapi.BotAPI, chatID int64, text string) error {
 	err := tgbot.SendTempMessage(api, chatID, text, 10*time.Second)

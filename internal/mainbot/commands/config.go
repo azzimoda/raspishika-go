@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
@@ -13,32 +11,28 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func OnSettings(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
+func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
 	return fmt.Errorf("Unimplemented: commands.OnSettings")
 }
 
 // OnGroup sends department selection menu.
-func OnGroup(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
+func (ch *CommandHandler) OnGroup(
 	msg *tgbotapi.Message,
 ) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return err
 	}
 
-	departments, err := scraper.FetchDepartments(cache)
+	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
-	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingDepartment); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingDepartment); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
@@ -49,7 +43,7 @@ func OnGroup(
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("%s\n\nВыберите отделение", currentGroup))
 	newMsg.ReplyMarkup = departmentSelectionMarkup(departments, false)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
@@ -79,35 +73,35 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) t
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
-func OnTextGroup(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
-	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	group, err := repo.GetGroupByName(msg.Text)
+	group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", msg.Text, err)
 	}
 
 	chat.State = database.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := repo.UpdateChat(chat); err != nil {
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		return err
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("Теперь вы в группе %s", group.GroupName))
 	newMsg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
-func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnDailyTime(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
 	}
 
-	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTime); err != nil {
+	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTime); err != nil {
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
@@ -124,58 +118,58 @@ func OnDailyTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.
 	newMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete")))
 
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
-func OnTextTime(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, chat *database.Chat) error {
-	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
 	t, err := time.Parse("15:04", msg.Text)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
 		return nil
 	}
 	timeStr := t.Format("15:04")
 
 	chat.State = database.ChatStateDefault
 	chat.DailySendingTime = timeStr
-	if err := repo.UpdateChat(chat); err != nil {
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		return fmt.Errorf("failed to update chat: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Время рассылки установлено на "+timeStr)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
-func OnDailyOff(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
 	chat.DailySendingTime = ""
-	if err := repo.UpdateChat(chat); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat data: %w", err)
 	}
 
-	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, "Ежедневная рассылка выключена"))
+	_, err = ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, "Ежедневная рассылка выключена"))
 	return err
 }
 
-func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message, isOn bool) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d) %w", msg.Chat.ID, err)
 	}
 
 	chat.PairSending = isOn
-	if err := repo.UpdateChat(chat); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat data: %w", err)
 	}
 
@@ -183,14 +177,14 @@ func OnReminder(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.M
 	if isOn {
 		text = "Напоминания включены"
 	}
-	_, err = api.Send(tgbotapi.NewMessage(msg.Chat.ID, text))
+	_, err = ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, text))
 	return err
 }
 
-func OnAccess(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnAccess(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
@@ -202,6 +196,6 @@ func OnAccess(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Mes
 		2 — все команды только для админов`, chat.Access),
 	)
 	newMsg.ReplyMarkup = utils.AccessMenuInlineMarkup(chat.Access)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }

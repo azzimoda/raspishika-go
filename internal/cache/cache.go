@@ -6,6 +6,10 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+type CacheProvider interface {
+	Cache() *Cache
+}
+
 type Cache struct {
 	Config *config.CacheConfig
 	C      *cache.Cache

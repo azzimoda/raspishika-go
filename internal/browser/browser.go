@@ -11,6 +11,10 @@ import (
 
 // TODO: Implement regular restart.
 
+type BrowserServiceProvider interface {
+	Browser() *BrowserService
+}
+
 type BrowserService struct {
 	pw      *playwright.Playwright
 	browser playwright.Browser

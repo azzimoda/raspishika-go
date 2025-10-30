@@ -8,6 +8,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type RepositoryProvider interface {
+	Repo() *Repository
+}
+
 type Repository struct {
 	db *sqlx.DB
 }

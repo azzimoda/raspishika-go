@@ -9,6 +9,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type ConfigProvider interface {
+	Config() *Config
+}
+
 type Config struct {
 	Telegram struct {
 		Token         string              `yaml:"token"`

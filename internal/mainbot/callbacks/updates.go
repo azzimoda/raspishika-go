@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
-	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/rs/zerolog/log"
@@ -16,33 +13,25 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func OnUpdateGroup(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-	screenshotDir, templateFile string,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
+func (ch *CallbackHandler) OnUpdateGroup(query *tgbotapi.CallbackQuery, args []string) error {
 	groupName := args[0]
-	group, err := repo.GetGroupByName(groupName)
+	group, err := ch.Bot.Repo().GetGroupByName(groupName)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	schedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
+	schedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 
-	html := schedule.HTML(cache, templateFile)
+	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
 
-	imagePath := path.Join(screenshotDir, fmt.Sprintf("schedule_%s.png", group.GroupName))
-	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, fmt.Sprintf("schedule_%s.png", group.GroupName))
+	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return err
 	}
 
@@ -56,37 +45,29 @@ func OnUpdateGroup(
 		},
 		Media: media,
 	}
-	_, err = api.Send(editConfig)
+	_, err = ch.Bot.API().Send(editConfig)
 	return err
 }
 
-func OnUpdateTeacher(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-	screenshotDir, templateFile string,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
+func (ch *CallbackHandler) OnUpdateTeacher(query *tgbotapi.CallbackQuery, args []string) error {
 	teacherID := args[0]
-	teacher, err := repo.GetTeacherByTeacherID(teacherID)
+	teacher, err := ch.Bot.Repo().GetTeacherByTeacherID(teacherID)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get teacher by teacher id (%s): %w", teacherID, err)
 	}
 
 	scheduleConfig := scraper.TeacherScheduleConfig(teacher)
-	schedule, err := scraper.FetchScheduleWithBrowser(repo, browser, scheduleConfig)
+	schedule, err := scraper.FetchScheduleWithBrowser(ch.Bot.Repo(), ch.Bot.Browser(), scheduleConfig)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch schedule of teacher (%s): %w", teacherID, err)
 	}
 
-	html := schedule.HTML(cache, templateFile)
-	imagePath := path.Join(screenshotDir, utils.ScheduleScreenshotFileName(scheduleConfig))
-	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
+	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleConfig))
+	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to take screenshot of schedule: %w", err)
 	}
 
@@ -100,27 +81,21 @@ func OnUpdateTeacher(
 		},
 		Media: media,
 	}
-	_, err = api.Send(editConfig)
+	_, err = ch.Bot.API().Send(editConfig)
 	return err
 }
 
-func OnUpdateTomorrow(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	cache *cache.Cache,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
+func (ch *CallbackHandler) OnUpdateTomorrow(query *tgbotapi.CallbackQuery, args []string) error {
 	groupName := args[0]
-	group, err := repo.GetGroupByName(groupName)
+	group, err := ch.Bot.Repo().GetGroupByName(groupName)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 	schedule := rawSchedule.Transform()
@@ -139,33 +114,27 @@ func OnUpdateTomorrow(
 		utils.InlineButtonMarkupUpdate("tomorrow", groupName),
 	)
 	editMsg.ParseMode = "MarkdownV2"
-	_, err = api.Send(editMsg)
+	_, err = ch.Bot.API().Send(editMsg)
 
 	if err != nil && strings.Contains(err.Error(), "message is not modified") {
 		log.Warn().Int64("chatID", query.Message.Chat.ID).Msg("Message is not modified")
-		api.Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
+		ch.Bot.API().Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
 		return nil
 	}
 	return err
 }
 
-func OnUpdateLeft(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	cache *cache.Cache,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
+func (ch *CallbackHandler) OnUpdateLeft(query *tgbotapi.CallbackQuery, args []string) error {
 	groupName := args[0]
-	group, err := repo.GetGroupByName(groupName)
+	group, err := ch.Bot.Repo().GetGroupByName(groupName)
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 	schedule := rawSchedule.Transform()
@@ -184,11 +153,11 @@ func OnUpdateLeft(
 		utils.InlineButtonMarkupUpdate("left", groupName),
 	)
 	editMsg.ParseMode = "MarkdownV2"
-	_, err = api.Send(editMsg)
+	_, err = ch.Bot.API().Send(editMsg)
 
 	if err != nil && strings.Contains(err.Error(), "message is not modified") {
 		log.Warn().Int64("chatID", query.Message.Chat.ID).Msg("Message is not modified")
-		api.Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
+		ch.Bot.API().Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
 		return nil
 	}
 	return err

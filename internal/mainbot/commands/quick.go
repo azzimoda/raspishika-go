@@ -4,81 +4,72 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/rs/zerolog/log"
-	"github.com/schollz/closestmatch"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
+	"github.com/schollz/closestmatch"
 )
 
 // OnQuick sends department selection menu.
-func OnQuick(api *tgbotapi.BotAPI, repo *database.Repository, cache *cache.Cache, msg *tgbotapi.Message) error {
-	departments, err := scraper.FetchDepartments(cache)
+func (ch *CommandHandler) OnQuick(msg *tgbotapi.Message) error {
+	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
-	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateQuickSelectingDepartment); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateQuickSelectingDepartment); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Выберите отделение")
 	newMsg.ReplyMarkup = departmentSelectionMarkup(departments, true)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
-func OnTextQuickGroup(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-	screenshotDir, templateFile string,
-	msg *tgbotapi.Message,
-) error {
-	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
-	group, err := repo.GetGroupByName(msg.Text)
+	group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name %s: %w", msg.Text, err)
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, scheduleCfg)
+	return ch.SendWeekSchedule(msg.Chat.ID, scheduleCfg)
 }
 
-func OnTeacher(api *tgbotapi.BotAPI, repo *database.Repository, msg *tgbotapi.Message) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnTeacher(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
 	}
 
-	teachers, err := repo.GetTeacherByChatID(chat.ID)
+	teachers, err := ch.Bot.Repo().GetTeacherByChatID(chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get teachers by recent teachers: %w", err)
 	}
 
-	if err := repo.UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTeacher); err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTeacher); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Пришлите полное имя преподавателя или его часть")
 	newMsg.ReplyMarkup = recentTeachersInlineMarkup(teachers)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
@@ -94,17 +85,12 @@ func recentTeachersInlineMarkup(teachers []database.Teacher) tgbotapi.InlineKeyb
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
-func OnTextTeacherName(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	msg *tgbotapi.Message,
-) error {
-	api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+func (ch *CommandHandler) OnTextTeacherName(msg *tgbotapi.Message) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	teachers, err := scraper.FetchTeachers(repo, browser)
+	teachers, err := scraper.FetchTeachers(ch.Bot.Repo(), ch.Bot.Browser())
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch teachers: %w", err)
 	}
 	log.Trace().Int("teachers", len(teachers)).Msg("Fetched teachers")
@@ -126,13 +112,13 @@ func OnTextTeacherName(
 	if len(matchedNames) == 0 {
 		// Maybe this case is impossible.
 		newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Не удалось найти преподавателя, попробуйте снова")
-		_, err := api.Send(newMsg)
+		_, err := ch.Bot.API().Send(newMsg)
 		return err
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Выберите проподавателя из списка или попробуйте снова")
 	newMsg.ReplyMarkup = inlineButtonMarkupTeachers(matchedNames, ids)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 

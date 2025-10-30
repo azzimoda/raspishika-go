@@ -6,9 +6,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
-	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
@@ -16,72 +13,66 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func OnWeek(
-	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
-	screenshotDir string, templateFile string, msg *tgbotapi.Message,
-) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnWeek(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
 	if chat.GroupName == nil {
 		// Offer to set group.
 		log.Warn().Msg("Group not set, offering to set group")
-		return OnGroup(api, repo, browser, cache, msg)
+		return ch.OnGroup(msg)
 	}
 
-	group, err := repo.GetGroupByName(*chat.GroupName)
+	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	return SendWeekSchedule(api, repo, browser, cache, screenshotDir, templateFile, msg.Chat.ID, scheduleCfg)
+	return ch.SendWeekSchedule(msg.Chat.ID, scheduleCfg)
 }
 
-func SendWeekSchedule(
-	api *tgbotapi.BotAPI,
-	repo *database.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-	screenshotDir, templateFile string,
-	chatID int64,
-	scheduleCfg scraper.ScheduleConfig, // TODO: Change the function to take ScheduleConfig instead of a group name.
-) error {
+func (ch *CommandHandler) SendWeekSchedule(chatID int64, scheduleCfg scraper.ScheduleConfig) error {
 	var schedule *scraper.RawSchedule
 	var err error
+
+	repo := ch.Bot.Repo()
+	cache := ch.Bot.Cache()
+
 	switch {
 	case scheduleCfg.Group != nil:
-		schedule, err = scraper.FetchSchedule(repo, cache.Config.Dir, scheduleCfg)
+		cacheConfig := cache.Config
+		schedule, err = scraper.FetchSchedule(repo, cacheConfig.Dir, scheduleCfg)
 	case scheduleCfg.Teacher != nil:
-		schedule, err = scraper.FetchScheduleWithBrowser(repo, browser, scheduleCfg)
+		schedule, err = scraper.FetchScheduleWithBrowser(repo, ch.Bot.Browser(), scheduleCfg)
 	}
 	if err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(api, chatID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), chatID, utils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
-	html := schedule.HTML(cache, templateFile)
-	imagePath := path.Join(screenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
-	if err := browser.TakeScreenshotHTML(html, imagePath); err != nil {
+	html := schedule.HTML(cache, ch.Bot.Config().ScheduleTemplate)
+	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
+	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(api, chatID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), chatID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
-	api.Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
+	ch.Bot.API().Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
 
 	newPhotoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
 	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
-	_, err1 := api.Send(newPhotoMsg)
+	_, err1 := ch.Bot.API().Send(newPhotoMsg)
 
 	newMsg := tgbotapi.NewMessage(chatID, scheduleCfg.FormatMarkdown())
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
-	_, err2 := api.Send(newMsg)
+	_, err2 := ch.Bot.API().Send(newMsg)
 
 	return errors.Join(err1, err2)
 }
@@ -96,30 +87,27 @@ func weekScheduleInlineButtonMarkup(config scraper.ScheduleConfig) tgbotapi.Inli
 	}
 }
 
-func OnTomorrow(
-	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
-	msg *tgbotapi.Message,
-) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
 	if chat.GroupName == nil {
 		// Offer to set group.
 		log.Warn().Msg("Group not set, offering to set group")
-		return OnGroup(api, repo, browser, cache, msg)
+		return ch.OnGroup(msg)
 	}
-	group, err := repo.GetGroupByName(*chat.GroupName)
+	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 	schedule := rawSchedule.Transform()
@@ -136,40 +124,37 @@ func OnTomorrow(
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("tomorrow", *chat.GroupName)
 
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 
-func OnLeft(
-	api *tgbotapi.BotAPI, repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
-	msg *tgbotapi.Message,
-) error {
-	chat, err := repo.GetChatByChatID(msg.Chat.ID)
+func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 	}
 
 	if chat.GroupName == nil {
 		log.Warn().Msg("Group not set, offering to set group")
-		return OnGroup(api, repo, browser, cache, msg)
+		return ch.OnGroup(msg)
 	}
 
 	if time.Now().Weekday() == time.Sunday {
 		newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Сегодня воскресенье, отдыхайте!")
 		newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
-		_, err := api.Send(newMsg)
+		_, err := ch.Bot.API().Send(newMsg)
 		return err
 	}
 
-	group, err := repo.GetGroupByName(*chat.GroupName)
+	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(repo, cache.Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(api, msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return err
 	}
 
@@ -184,6 +169,6 @@ func OnLeft(
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
-	_, err = api.Send(newMsg)
+	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }

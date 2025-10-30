@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/callbacks"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/commands"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -15,7 +13,7 @@ import (
 )
 
 func (b *Bot) OnUpdate(update tgbotapi.Update) {
-	if !b.ApplyMiddleware(update, b.Repo) {
+	if !b.ApplyMiddleware(update, b.repo) {
 		return
 	}
 
@@ -51,7 +49,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		b.Report().Err(err).Chat(int64(updateLog.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
 	log.Debug().Msgf("Update handled: %+v", updateLog)
-	b.Repo.InsertUpdateLog(updateLog)
+	b.repo.InsertUpdateLog(updateLog)
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) error {
@@ -69,39 +67,38 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 
 	switch msg.Command() {
 	case "start":
-		return commands.OnStart(b.api, b.Repo, b.Browser, b.Cache, msg)
+		return b.CommandHandler.OnStart(msg)
 	case "help":
-		return commands.OnHelp(b.api, msg)
+		return b.CommandHandler.OnHelp(msg)
 	case "stop":
-		return commands.OnStop(b.api, b.Repo, msg)
+		return b.CommandHandler.OnStop(msg)
 
 	case "settings":
-		return commands.OnSettings(b.api, b.Repo, msg) // TODO
+		return b.CommandHandler.OnSettings(msg) // TODO
 	case "group":
-		return commands.OnGroup(b.api, b.Repo, b.Browser, b.Cache, msg)
+		return b.CommandHandler.OnGroup(msg)
 	case "daily_time":
-		return commands.OnDailyTime(b.api, b.Repo, msg)
+		return b.CommandHandler.OnDailyTime(msg)
 	case "daily_off":
-		return commands.OnDailyOff(b.api, b.Repo, msg)
+		return b.CommandHandler.OnDailyOff(msg)
 	case "reminder_on":
-		return commands.OnReminder(b.api, b.Repo, msg, true)
+		return b.CommandHandler.OnReminder(msg, true)
 	case "reminder_off":
-		return commands.OnReminder(b.api, b.Repo, msg, false)
+		return b.CommandHandler.OnReminder(msg, false)
 	case "access":
-		return commands.OnAccess(b.api, b.Repo, msg)
+		return b.CommandHandler.OnAccess(msg)
 
 	case "week":
-		return commands.OnWeek(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
-			b.Config.ScheduleTemplate, msg)
+		return b.CommandHandler.OnWeek(msg)
 	case "tomorrow":
-		return commands.OnTomorrow(b.api, b.Repo, b.Browser, b.Cache, msg)
+		return b.CommandHandler.OnTomorrow(msg)
 	case "left":
-		return commands.OnLeft(b.api, b.Repo, b.Browser, b.Cache, msg)
+		return b.CommandHandler.OnLeft(msg)
 
 	case "quick":
-		return commands.OnQuick(b.api, b.Repo, b.Cache, msg)
+		return b.CommandHandler.OnQuick(msg)
 	case "teacher":
-		return commands.OnTeacher(b.api, b.Repo, msg)
+		return b.CommandHandler.OnTeacher(msg)
 	default:
 		log.Debug().Str("text", msg.Text).Msg("Unknown command")
 		return nil
@@ -109,7 +106,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 }
 
 func (b *Bot) onText(msg *tgbotapi.Message) error {
-	chat, err := b.Repo.GetChatByChatID(msg.Chat.ID)
+	chat, err := b.repo.GetChatByChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(b.api, msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat state: %w", err)
@@ -123,20 +120,19 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		if strings.ToLower(msg.Text) == "отмена" {
 			return b.onTextCancel(msg)
 		}
-		return commands.OnTextGroup(b.api, b.Repo, msg, chat)
+		return b.CommandHandler.OnTextGroup(msg, chat)
 	case database.ChatStateSelectingTime:
-		return commands.OnTextTime(b.api, b.Repo, msg, chat)
+		return b.CommandHandler.OnTextTime(msg, chat)
 	case database.ChatStateQuickSelectingGroup:
 		if strings.ToLower(msg.Text) == "отмена" {
 			return b.onTextCancel(msg)
 		}
-		return commands.OnTextQuickGroup(b.api, b.Repo, b.Browser, b.Cache,
-			b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, msg)
+		return b.CommandHandler.OnTextQuickGroup(msg)
 	case database.ChatStateSelectingTeacher:
-		return commands.OnTextTeacherName(b.api, b.Repo, b.Browser, msg)
+		return b.CommandHandler.OnTextTeacherName(msg)
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
-		if err := b.Repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
+		if err := b.repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
 			log.Error().Err(err).Msg("Failed to update chat state")
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
@@ -147,7 +143,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	if err := b.Repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
+	if err := b.repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
@@ -172,31 +168,28 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	switch callbackCommand.Command {
 	case "delete":
 		b.api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-		if err := b.Repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
+		if err := b.repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
 
 	case "select_department":
-		err = callbacks.OnSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnSelectDepartment(query, callbackCommand.Args)
 	case "quick_select_department":
-		err = callbacks.OnQuickSelectDepartment(b.api, b.Repo, b.Browser, b.Cache, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnQuickSelectDepartment(query, callbackCommand.Args)
 	case "select_teacher":
-		err = callbacks.OnSelectTeacher(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
-			b.Config.ScheduleTemplate, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnSelectTeacher(b.CommandHandler, query, callbackCommand.Args)
 
 	case "set_access":
-		err = callbacks.OnSetAccess(b.api, b.Repo, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnSetAccess(query, callbackCommand.Args)
 
 	case "update_group":
-		err = callbacks.OnUpdateGroup(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
-			b.Config.ScheduleTemplate, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnUpdateGroup(query, callbackCommand.Args)
 	case "update_teacher":
-		err = callbacks.OnUpdateTeacher(b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir,
-			b.Config.ScheduleTemplate, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnUpdateTeacher(query, callbackCommand.Args)
 	case "update_tomorrow":
-		err = callbacks.OnUpdateTomorrow(b.api, b.Repo, b.Cache, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnUpdateTomorrow(query, callbackCommand.Args)
 	case "update_left":
-		err = callbacks.OnUpdateLeft(b.api, b.Repo, b.Cache, query, callbackCommand.Args)
+		err = b.CallbackHandler.OnUpdateLeft(query, callbackCommand.Args)
 
 	default:
 		b.api.Send(tgbotapi.NewCallback(query.ID, "?"))

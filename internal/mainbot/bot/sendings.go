@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/mainbot/commands"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -22,7 +21,7 @@ func (b *Bot) processDailySending() {
 	timeStart := time.Now()
 	timeStr := time.Now().Format("15:04")
 
-	chats, err := b.Repo.GetChatsByDailySendingTime(timeStr)
+	chats, err := b.repo.GetChatsByDailySendingTime(timeStr)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats by daily sending time")
 		b.Report().Err(err).Send("Failed to get chats by daily sending time")
@@ -47,7 +46,7 @@ func (b *Bot) processDailySending() {
 	errCount := 0
 	for groupName, chatIDs := range groupedChats {
 		log.Trace().Msgf("Sending daily notification to group %s", groupName)
-		group, err := b.Repo.GetGroupByName(groupName)
+		group, err := b.repo.GetGroupByName(groupName)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to get group by name %s", groupName)
 			b.Report().Err(err).Send(fmt.Sprintf("Failed to get group by name %s", groupName))
@@ -56,10 +55,7 @@ func (b *Bot) processDailySending() {
 		scheduleCfg := scraper.GroupScheduleConfig(group)
 
 		for _, chatID := range chatIDs {
-			if err := commands.SendWeekSchedule(
-				b.api, b.Repo, b.Browser, b.Cache, b.Config.Browser.ScreenshotDir, b.Config.ScheduleTemplate, chatID,
-				scheduleCfg,
-			); err != nil {
+			if err := b.CommandHandler.SendWeekSchedule(chatID, scheduleCfg); err != nil {
 				log.Error().Err(err).Int64("chatID", chatID).Msgf("Failed to send daily schedule to chat")
 				b.Report().Chat(chatID).Err(err).Send("Failed to send daily schedule to chat")
 				errCount++
@@ -102,7 +98,7 @@ func (b *Bot) processPairSending(startTime time.Time) {
 	timeStr := pairTime.Format("15:04")
 	log.Trace().Msgf("Processing pair sending for time %s", timeStr)
 
-	chats, err := b.Repo.GetChatsWithPairSendingEnabled()
+	chats, err := b.repo.GetChatsWithPairSendingEnabled()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		b.Report().Err(err).Send("Failed to get chats with pair sending enabled")
@@ -146,12 +142,12 @@ func (b *Bot) processPairSending(startTime time.Time) {
 func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, chatIDs []int64) error {
 	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chatIDs))
 
-	group, err := b.Repo.GetGroupByName(groupName)
+	group, err := b.repo.GetGroupByName(groupName)
 	if err != nil {
 		return fmt.Errorf("failed to get group by name %s: %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(b.Repo, b.Config.Cache.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(b.repo, b.config.Cache.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		return fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)
 	}
