@@ -88,7 +88,7 @@ func makeTestChats(t *testing.T, repo *database.Repository, adminID int64) {
 	departmentName := "Отделение СОНХ"
 
 	// Chat with enabled daily and pair sendings.
-	chat, err := repo.CreateOrUpdateChat(adminID, "")
+	chat, _, err := repo.CreateOrUpdateChat(adminID, "")
 	if err != nil {
 		t.Fatalf("could not create or update chat: %v", err)
 	}
@@ -102,7 +102,7 @@ func makeTestChats(t *testing.T, repo *database.Repository, adminID int64) {
 	}
 
 	// Chat with wrong chat ID.
-	_, err = repo.CreateOrUpdateChat(0, "")
+	_, _, err = repo.CreateOrUpdateChat(0, "")
 	if err != nil {
 		t.Fatalf("could not create or update chat: %v", err)
 	}

@@ -1,21 +1,34 @@
 package bot
 
 import (
-	"github.com/azzimoda/raspishika-go/internal/database"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/internal/database"
 )
 
 func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository) bool {
 	if update.Message != nil {
 		chatID := update.Message.Chat.ID
 		username := update.Message.Chat.UserName
-		chat, err := repo.CreateOrUpdateChat(chatID, username)
+		chat, created, err := repo.CreateOrUpdateChat(chatID, username)
 		if err != nil {
 			log.Error().Err(err).Int64("chatID", chatID).Str("username", username).
 				Msg("Failed to create or update chat")
 			return false
+		}
+
+		if created {
+			log.Trace().Int64("chatID", chatID).Str("username", username).Msg("New chat registered")
+			b.Reporter.Report().Chat(chatID).Send("New chat registered")
+			go func() {
+				time.Sleep(20 * time.Second)
+				if chat, err := repo.GetChatByChatID(chatID); err == nil && chat.GroupName != nil {
+					b.Reporter.Report().Chat(chatID).Sendf("Chat configured group %s", *chat.GroupName)
+				}
+			}()
 		}
 
 		isConfigCommand := isConfigCommand(update.Message.Command())

@@ -45,6 +45,7 @@ type Config struct {
 	} `yaml:"logger"`
 
 	ScheduleTemplate string `yaml:"schedule_template"`
+	AdminConfigFile  string `yaml:"admin_config_file"`
 }
 
 func (c *Config) EnsureDirs() error {

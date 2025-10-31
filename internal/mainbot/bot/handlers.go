@@ -20,10 +20,11 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	startTime := time.Now()
 	updateLog := &database.UpdateLog{}
 
+	var chat *database.Chat
 	var err error
 	switch {
 	case update.Message != nil:
-		chat, err := b.repo.GetChatByChatID(update.Message.Chat.ID)
+		chat, err = b.repo.GetChatByChatID(update.Message.Chat.ID)
 		if err != nil {
 			log.Error().Err(err).Int64("chatID", update.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
@@ -36,7 +37,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 
 		err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
-		chat, err := b.repo.GetChatByChatID(update.CallbackQuery.Message.Chat.ID)
+		chat, err = b.repo.GetChatByChatID(update.CallbackQuery.Message.Chat.ID)
 		if err != nil {
 			log.Error().Err(err).Int64("chatID", update.CallbackQuery.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")

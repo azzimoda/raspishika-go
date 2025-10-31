@@ -37,6 +37,8 @@ func (b *AdminBot) onMessage(msg *tgbotapi.Message) error {
 
 func (b *AdminBot) onCommand(msg *tgbotapi.Message) error {
 	switch msg.Command() {
+	case "start":
+		return b.onStart(msg)
 	case "chat":
 		return b.onChat(msg)
 	case "group":

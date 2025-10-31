@@ -48,7 +48,9 @@ func (r *Repository) CreateChat(chatID int64, username string) (int64, error) {
 	return res.LastInsertId()
 }
 
-func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, error) {
+// CreateOrUpdateChat creates or updates chat in the database.
+// If chat does not exist, it creates a new one and returns true as second return value.
+func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, bool, error) {
 	var chat Chat
 	err := r.db.Get(&chat, `SELECT * FROM chats WHERE chat_id = ?`, chatID)
 
@@ -56,18 +58,19 @@ func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, e
 		log.Debug().Int64("chatID", chatID).Msg("Chat does not exist, creating new one...")
 		id, err := r.CreateChat(chatID, username)
 		if err != nil {
-			return nil, err
+			return nil, true, err
 		}
-		return r.GetChat(id)
+		chat, err := r.GetChat(id)
+		return chat, true, err
 	}
 
 	if err != nil {
 		log.Error().Err(err).Int64("chatID", chatID).Msg("Failed to get chat")
-		return nil, err
+		return nil, false, err
 	}
 
 	log.Trace().Int64("chatID", chatID).Msg("Chat already exists")
-	return &chat, nil
+	return &chat, false, nil
 }
 
 func (r *Repository) UpdateChat(chat *Chat) error {

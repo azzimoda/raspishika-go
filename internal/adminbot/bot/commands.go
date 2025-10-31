@@ -12,6 +12,12 @@ import (
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
+// onStart handles /start command. It greets the user in a very friendly way ;)
+func (b *AdminBot) onStart(msg *tgbotapi.Message) error {
+	_, err := b.api.Send(tgbotapi.NewMessage(msg.Chat.ID, "Welcome back, Master!"))
+	return err
+}
+
 func (b *AdminBot) onChat(msg *tgbotapi.Message) error {
 
 	chatID, err := strconv.ParseInt(msg.CommandArguments(), 10, 64)

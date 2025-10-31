@@ -42,3 +42,4 @@ logger:
   level: debug
 
 schedule_template: storage/schedule_template.html
+admin_config_file: configs/admin.json
