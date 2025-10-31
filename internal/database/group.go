@@ -1,6 +1,8 @@
 package database
 
 import (
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -34,6 +36,22 @@ func (r *Repository) GetGroupByName(name string) (*Group, error) {
 func (r *Repository) GetDepartmentIDs() (departmentIDs []string, err error) {
 	err = r.db.Select(&departmentIDs, "SELECT DISTINCT department_id FROM groups")
 	return
+}
+
+func (r *Repository) ValidateGroupNameCase(name string) (string, error) {
+	nameLower := strings.ToLower(name)
+
+	groups, err := r.GetGroups()
+	if err != nil {
+		return name, err
+	}
+
+	for _, group := range groups {
+		if strings.ToLower(group.GroupName) == nameLower {
+			return name, nil
+		}
+	}
+	return name, errors.New("group name not found")
 }
 
 func (r *Repository) UpdateGroups(groups []Group) error {

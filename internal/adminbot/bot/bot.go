@@ -15,7 +15,7 @@ import (
 type AdminBot struct {
 	Config   *config.Config
 	api      *tgbotapi.BotAPI
-	Repo     *database.Repository
+	repo     *database.Repository
 	Reporter reporter.Reporter
 }
 
@@ -30,6 +30,13 @@ func (b *AdminBot) Start() {
 
 func (b *AdminBot) Stop() {
 	b.api.StopReceivingUpdates()
+}
+
+func (b *AdminBot) Report() reporter.ReportConfig {
+	if b.Reporter == nil {
+		return reporter.ReportConfig{}
+	}
+	return b.Reporter.Report().Admin()
 }
 
 func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
@@ -53,6 +60,6 @@ func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
 	return &AdminBot{
 		Config: cfg,
 		api:    api,
-		Repo:   repo,
+		repo:   repo,
 	}, nil
 }

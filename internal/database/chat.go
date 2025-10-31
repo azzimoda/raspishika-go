@@ -102,6 +102,22 @@ func (r *Repository) GetChatByChatID(chatID int64) (*Chat, error) {
 	return &chat, nil
 }
 
+func (r *Repository) GetChats() ([]Chat, error) {
+	var chats []Chat
+	if err := r.db.Select(&chats, `SELECT * FROM chats`); err != nil {
+		return nil, err
+	}
+	return chats, nil
+}
+
+func (r *Repository) GetChatsByGroup(group string) ([]Chat, error) {
+	var chats []Chat
+	if err := r.db.Select(&chats, `SELECT * FROM chats WHERE "group" = ?`, group); err != nil {
+		return nil, err
+	}
+	return chats, nil
+}
+
 func (r *Repository) GetChatsByDailySendingTime(timeStr string) ([]Chat, error) {
 	var chats []Chat
 	if err := r.db.Select(
@@ -120,7 +136,7 @@ func (r *Repository) GetChatsWithPairSendingEnabled() (chats []Chat, err error) 
 func (r *Repository) DeleteChat(id int) error {
 	_, err := r.db.Exec(`DELETE FROM chats WHERE id = ?`, id)
 	if err == nil {
-		log.Debug().Int("Chat.ID", id).Msg("Chat is deleted")
+		log.Debug().Int("Chat.ID", id).Msg("Chat deleted")
 	} else {
 		log.Error().Err(err).Int("Chat.ID", id).Msg("Failed to delete chat")
 	}

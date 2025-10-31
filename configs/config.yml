@@ -39,6 +39,6 @@ cache:
   schedule_ttl: 20 # minutes
   group_ttl: 7 # days
 logger:
-  level: trace
+  level: debug
 
 schedule_template: storage/schedule_template.html

@@ -48,14 +48,14 @@ func (b *Bot) Cache() *cache.Cache {
 }
 
 func (b *Bot) Start() {
-	log.Info().Msg("Starting main bot...")
 	tgbot.SetMyCommands(b.api, b.config.Telegram.MyCommands)
 	tgbot.StartPolling(b)
+	log.Info().Msg("Main bot started")
 }
 
 func (b *Bot) Stop() {
-	log.Info().Msg("Stopping bot...")
 	b.api.StopReceivingUpdates()
+	log.Info().Msg("Bot stopped")
 }
 
 func (b *Bot) Report() reporter.ReportConfig {

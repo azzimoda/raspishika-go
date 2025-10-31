@@ -23,14 +23,26 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	var err error
 	switch {
 	case update.Message != nil:
-		updateLog.ChatID = update.Message.Chat.ID
+		chat, err := b.repo.GetChatByChatID(update.Message.Chat.ID)
+		if err != nil {
+			log.Error().Err(err).Int64("chatID", update.Message.Chat.ID).
+				Msg("failed to get chat by chat ID")
+		}
+
+		updateLog.ChatID = chat.ID
 		updateLog.Kind = tgbotapi.UpdateTypeMessage
 		updateLog.MessageID = update.Message.MessageID
 		updateLog.Data = update.Message.Text
 
 		err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
-		updateLog.ChatID = update.CallbackQuery.Message.Chat.ID
+		chat, err := b.repo.GetChatByChatID(update.CallbackQuery.Message.Chat.ID)
+		if err != nil {
+			log.Error().Err(err).Int64("chatID", update.CallbackQuery.Message.Chat.ID).
+				Msg("failed to get chat by chat ID")
+		}
+
+		updateLog.ChatID = chat.ID
 		updateLog.Kind = tgbotapi.UpdateTypeCallbackQuery
 		updateLog.MessageID = update.CallbackQuery.Message.MessageID
 		updateLog.Data = update.CallbackQuery.Data
@@ -53,7 +65,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) error {
-	log.Debug().Str("text", msg.Text).Msg("Handling message")
+	log.Debug().Int64("chatID", msg.Chat.ID).Str("username", msg.Chat.UserName).Str("text", msg.Text).Msg("Handling message")
 
 	if msg.IsCommand() {
 		return b.onCommand(msg)

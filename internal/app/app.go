@@ -28,7 +28,7 @@ type App struct {
 }
 
 func (a *App) Run() error {
-	log.Debug().Msg("Starting application...")
+	log.Info().Msg("Starting application...")
 
 	go a.MainBot.Start()
 
@@ -68,20 +68,20 @@ func (a *App) Run() error {
 
 func (a *App) Shutdown() {
 	log.Info().Msg("Shutting down application...")
-	a.Report().Send(`Shutting down application\.\.\.`)
+	a.Report().Send("Shutting down application...")
 
 	a.MainBot.Stop()
-	log.Debug().Msg("Main bot stopped")
+	log.Info().Msg("Main bot stopped")
 
 	if a.AdminBot != nil {
 		a.AdminBot.Stop()
-		log.Debug().Msg("Admin bot stopped")
+		log.Info().Msg("Admin bot stopped")
 	}
 
 	if err := a.Repo.Close(); err != nil {
 		log.Error().Err(err).Msg("Database repository closed with error")
 	} else {
-		log.Debug().Msg("Repository closed")
+		log.Info().Msg("Repository closed")
 	}
 
 	a.Browser.Close()

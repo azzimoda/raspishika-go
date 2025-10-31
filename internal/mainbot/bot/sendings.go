@@ -89,7 +89,6 @@ func (b *Bot) SchedulePairSending(c *cron.Cron) error {
 			return err
 		}
 	}
-	log.Debug().Msg("Pair sending scheduled")
 	return nil
 }
 
