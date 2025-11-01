@@ -22,7 +22,7 @@ func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository)
 
 		if created {
 			log.Trace().Int64("chatID", chatID).Str("username", username).Msg("New chat registered")
-			b.Reporter.Report().Chat(chatID).Send("New chat registered")
+			b.Reporter.Report().Chat(chat).Send("New chat registered")
 			go func() {
 				time.Sleep(20 * time.Second)
 				if chat, err := repo.GetChatByChatID(chatID); err == nil && chat.GroupName != nil {

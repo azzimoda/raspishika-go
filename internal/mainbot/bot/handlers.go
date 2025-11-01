@@ -59,7 +59,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	if err != nil {
 		updateLog.Error = err.Error()
 		log.Error().Err(err).Msg("Error while handling update")
-		b.Report().Err(err).Chat(int64(updateLog.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
+		b.Report().Err(err).Chat(int64(chat.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
 	log.Debug().Msgf("Update handled: %+v", updateLog)
 	b.repo.InsertUpdateLog(updateLog)

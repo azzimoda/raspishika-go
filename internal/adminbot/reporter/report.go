@@ -3,6 +3,8 @@ package reporter
 import (
 	"fmt"
 
+	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -17,6 +19,7 @@ type ReportConfig struct {
 	admin           bool
 	recipientChatID int64 // RecipientChatID is the ID of the chat, where the report should be sent.
 	chatID          int64 // ChatID is the ID of the chat, whose message caused the error. Optional.
+	username        string
 	err             error
 }
 
@@ -25,8 +28,15 @@ func (r ReportConfig) Admin() ReportConfig {
 	return r
 }
 
-func (r ReportConfig) Chat(chatID int64) ReportConfig {
-	r.chatID = chatID
+func (r ReportConfig) Chat(chatOrID any) ReportConfig {
+	if chatID, ok := chatOrID.(int64); ok {
+		r.chatID = chatID
+	} else if chat, ok := chatOrID.(*database.Chat); ok {
+		r.chatID = chat.ChatID
+		r.username = utils.DerefOrTypeDefault(chat.UserName)
+	} else {
+		log.Error().Any("arg", chatOrID).Msg("Wrong type of chat argument")
+	}
 	return r
 }
 
@@ -45,7 +55,7 @@ func (r ReportConfig) Send(text string) {
 
 	msgText := ""
 	if r.chatID != 0 {
-		msgText += fmt.Sprintf("\n`/chat %d`", r.chatID)
+		msgText += fmt.Sprintf("\n`/chat %d` @%s", r.chatID, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.username))
 	}
 	if r.err != nil {
 		msgText += fmt.Sprintf("\nError: _%s_", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.err.Error()))

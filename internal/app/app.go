@@ -34,6 +34,7 @@ func (a *App) Run() error {
 
 	if a.AdminBot != nil {
 		go a.AdminBot.Start()
+		a.Report().Send("Starting application...")
 	}
 
 	c := cron.New()
