@@ -18,8 +18,6 @@ var scheduledStartTime = flag.String("start", "", "time for scheduled start in f
 func main() {
 	flag.Parse()
 
-	log.Trace().Msgf("Scheduled start time: %v", *scheduledStartTime)
-
 	cfg, err := config.Load(ConfigFile)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")

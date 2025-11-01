@@ -61,7 +61,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		log.Error().Err(err).Msg("Error while handling update")
 		b.Report().Err(err).Chat(int64(chat.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
-	log.Debug().Msgf("Update handled: %+v", updateLog)
+	log.Debug().Dur("elapsed", elapsed).Str("kind", updateLog.Kind).Msg("Update handled", )
 	b.repo.InsertUpdateLog(updateLog)
 }
 

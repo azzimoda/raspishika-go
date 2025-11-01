@@ -184,6 +184,7 @@ func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelec
 
 	day.Pair.Replaced = daySelection.Find("table").HasClass("zamena")
 	day.Pair.Kind = detectPairKind(daySelection)
+	log.Warn().Str("daySelection", daySelection.Text()).Str("kind", string(day.Pair.Kind)).Msg("Pair kind detected")
 
 	switch day.Pair.Kind {
 	case PairKindSubject:
@@ -247,6 +248,8 @@ func parseOtherPair(daySelection *goquery.Selection, pair *Pair) {
 
 func detectPairKind(daySelection *goquery.Selection) PairKind {
 	switch {
+	case strings.Contains(strings.ToLower(daySelection.Find(".disc").Text()), "снято"):
+		return PairKindEmpty
 	case daySelection.Find(".disc").Text() != "":
 		return PairKindSubject
 	case daySelection.HasClass("head_urok_kanik"):
