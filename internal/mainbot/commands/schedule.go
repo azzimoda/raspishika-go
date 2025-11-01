@@ -65,14 +65,14 @@ func (ch *CommandHandler) SendWeekSchedule(chatID int64, scheduleCfg scraper.Sch
 
 	ch.Bot.API().Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
 
-	newPhotoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
-	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
-	_, err1 := ch.Bot.API().Send(newPhotoMsg)
-
-	newMsg := tgbotapi.NewMessage(chatID, scheduleCfg.FormatMarkdown())
+	newMsg := tgbotapi.NewMessage(chatID, scheduleCfg.FormatMarkdown()+":")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
 	_, err2 := ch.Bot.API().Send(newMsg)
+
+	newPhotoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
+	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
+	_, err1 := ch.Bot.API().Send(newPhotoMsg)
 
 	return errors.Join(err1, err2)
 }

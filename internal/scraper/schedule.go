@@ -37,9 +37,9 @@ type ScheduleConfig struct {
 func (sc *ScheduleConfig) FormatMarkdown() string {
 	switch {
 	case sc.Group != nil:
-		return "Расписание группы: *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Group.GroupName) + "*"
+		return "Расписание группы — *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Group.GroupName) + "*"
 	case sc.Teacher != nil:
-		return "Расписание преподавателя: *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Teacher.Name) + "*"
+		return "Расписание преподавателя — *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Teacher.Name) + "*"
 	default:
 		return "?"
 	}

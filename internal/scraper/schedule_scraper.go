@@ -184,7 +184,6 @@ func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelec
 
 	day.Pair.Replaced = daySelection.Find("table").HasClass("zamena")
 	day.Pair.Kind = detectPairKind(daySelection)
-	log.Warn().Str("daySelection", daySelection.Text()).Str("kind", string(day.Pair.Kind)).Msg("Pair kind detected")
 
 	switch day.Pair.Kind {
 	case PairKindSubject:
