@@ -51,7 +51,7 @@ func (b *AdminBot) ReportNewChat(chat *database.Chat) {
 }
 
 func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
-	log.Debug().Msgf("Admin token: %s", cfg.Telegram.AdminToken)
+	log.Trace().Msgf("Admin token: %s", cfg.Telegram.AdminToken)
 
 	adminCfg, err := config.LoadAdminConfig(cfg.AdminConfigFile)
 	if err != nil {

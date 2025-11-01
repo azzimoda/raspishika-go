@@ -66,7 +66,7 @@ func (b *AdminBot) chatReport(repo *database.Repository, chat *database.Chat) st
 		chat.ID,
 		chat.ChatID,
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.UserName)),
-		chat.State,
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(chat.State)),
 		utils.DerefOrTypeDefault(chat.DepartmentName),
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.GroupName)),
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, chat.DailySendingTime),

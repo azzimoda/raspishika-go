@@ -71,7 +71,7 @@ func New(
 	browser *browser.BrowserService,
 	cache *cache.Cache,
 ) (*Bot, error) {
-	log.Debug().Msgf("Token: %s", cfg.Telegram.Token)
+	log.Trace().Msgf("Token: %s", cfg.Telegram.Token)
 
 	bot := Bot{
 		config:  cfg,
