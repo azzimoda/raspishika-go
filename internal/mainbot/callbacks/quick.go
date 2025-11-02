@@ -58,5 +58,5 @@ func (ch *CallbackHandler) OnSelectTeacher(commandHandler *commands.CommandHandl
 	}
 
 	scheduleCfg := scraper.TeacherScheduleConfig(teacher)
-	return commandHandler.SendWeekSchedule(query.Message.Chat.ID, scheduleCfg)
+	return commandHandler.SendWeekSchedule(chat, scheduleCfg)
 }

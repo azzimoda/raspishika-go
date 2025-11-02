@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -33,18 +34,18 @@ func (b *Bot) processDailySending() {
 	}
 	log.Debug().Msgf("Processing daily sending for time %s", timeStr)
 
-	groupedChats := make(map[string][]int64)
+	groupedChats := make(map[string][]*database.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
-			groupedChats[*chat.GroupName] = []int64{}
+			groupedChats[*chat.GroupName] = []*database.Chat{}
 		}
 
-		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], chat.ChatID)
+		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
 
 	okCount := 0
 	errCount := 0
-	for groupName, chatIDs := range groupedChats {
+	for groupName, chats := range groupedChats {
 		log.Trace().Msgf("Sending daily notification to group %s", groupName)
 		group, err := b.repo.GetGroupByName(groupName)
 		if err != nil {
@@ -54,10 +55,10 @@ func (b *Bot) processDailySending() {
 		}
 		scheduleCfg := scraper.GroupScheduleConfig(group)
 
-		for _, chatID := range chatIDs {
-			if err := b.CommandHandler.SendWeekSchedule(chatID, scheduleCfg); err != nil {
-				log.Error().Err(err).Int64("chatID", chatID).Msgf("Failed to send daily schedule to chat")
-				b.Report().Chat(chatID).Err(err).Send("Failed to send daily schedule to chat")
+		for _, chat := range chats {
+			if err := b.CommandHandler.SendWeekSchedule(chat, scheduleCfg); err != nil {
+				log.Error().Err(err).Int64("chatID", chat.ChatID).Msgf("Failed to send daily schedule to chat")
+				b.Report().Chat(chat).Err(err).Send("Failed to send daily schedule to chat")
 				errCount++
 			} else {
 				okCount++

@@ -61,7 +61,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		log.Error().Err(err).Msg("Error while handling update")
 		b.Report().Err(err).Chat(int64(chat.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
-	log.Debug().Dur("elapsed", elapsed).Str("kind", updateLog.Kind).Msg("Update handled", )
+	log.Debug().Dur("elapsed", elapsed).Str("kind", updateLog.Kind).Msg("Update handled")
 	b.repo.InsertUpdateLog(updateLog)
 }
 
@@ -127,7 +127,23 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 
 	switch chat.State {
 	case database.ChatStateDefault:
-		// TODO: Implement handling of reply buttons "Неделея", "Завтра", "Сегодня".
+		lowerText := strings.ToLower(msg.Text)
+
+		if chat.IsPrivate() {
+			switch lowerText {
+			case "неделя":
+				return b.CommandHandler.OnWeek(msg)
+			case "завтра":
+				return b.CommandHandler.OnTomorrow(msg)
+			case "сегодня":
+				return b.CommandHandler.OnLeft(msg)
+			case "другая группа":
+				return b.CommandHandler.OnQuick(msg)
+			case "преподаватель":
+				return b.CommandHandler.OnTeacher(msg)
+			}
+		}
+
 		return nil
 	case database.ChatStateSelectingGroup:
 		if strings.ToLower(msg.Text) == "отмена" {

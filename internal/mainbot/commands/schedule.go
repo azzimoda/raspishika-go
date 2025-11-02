@@ -6,6 +6,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
@@ -32,10 +33,10 @@ func (ch *CommandHandler) OnWeek(msg *tgbotapi.Message) error {
 		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	return ch.SendWeekSchedule(msg.Chat.ID, scheduleCfg)
+	return ch.SendWeekSchedule(chat, scheduleCfg)
 }
 
-func (ch *CommandHandler) SendWeekSchedule(chatID int64, scheduleCfg scraper.ScheduleConfig) error {
+func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scraper.ScheduleConfig) error {
 	var schedule *scraper.RawSchedule
 	var err error
 
@@ -51,7 +52,7 @@ func (ch *CommandHandler) SendWeekSchedule(chatID int64, scheduleCfg scraper.Sch
 	}
 	if err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chatID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), chat.ChatID, utils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
@@ -59,18 +60,18 @@ func (ch *CommandHandler) SendWeekSchedule(chatID int64, scheduleCfg scraper.Sch
 	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chatID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), chat.ChatID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
-	ch.Bot.API().Send(tgbotapi.NewChatAction(chatID, tgbotapi.ChatUploadPhoto))
+	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.ChatID, tgbotapi.ChatUploadPhoto))
 
-	newMsg := tgbotapi.NewMessage(chatID, scheduleCfg.FormatMarkdown()+":")
+	newMsg := tgbotapi.NewMessage(chat.ChatID, scheduleCfg.FormatMarkdown()+":")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
+	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(chat.IsPrivate())
 	_, err2 := ch.Bot.API().Send(newMsg)
 
-	newPhotoMsg := tgbotapi.NewPhoto(chatID, tgbotapi.FilePath(imagePath))
+	newPhotoMsg := tgbotapi.NewPhoto(chat.ChatID, tgbotapi.FilePath(imagePath))
 	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
 	_, err1 := ch.Bot.API().Send(newPhotoMsg)
 

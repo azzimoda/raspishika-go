@@ -70,3 +70,24 @@ func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
 	markup := tgbotapi.NewInlineKeyboardMarkup(rows...)
 	return markup
 }
+
+func MainMenuReplyMarkup(isPrivate bool) any {
+	if isPrivate {
+		markup := tgbotapi.NewReplyKeyboard(
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("Сегодня"),
+				tgbotapi.NewKeyboardButton("Завтра"),
+				tgbotapi.NewKeyboardButton("Неделя"),
+			),
+			tgbotapi.NewKeyboardButtonRow(
+				tgbotapi.NewKeyboardButton("Другая группа"),
+				tgbotapi.NewKeyboardButton("Преподаватель"),
+			),
+		)
+		// markup.OneTimeKeyboard = true
+		markup.ResizeKeyboard = true
+		return markup
+	} else {
+		return tgbotapi.NewRemoveKeyboard(false)
+	}
+}

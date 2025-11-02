@@ -35,6 +35,12 @@ func (ch *CommandHandler) OnQuick(msg *tgbotapi.Message) error {
 func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
+	}
+
 	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
@@ -46,7 +52,7 @@ func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
 		return fmt.Errorf("failed to get group by name %s: %w", msg.Text, err)
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	return ch.SendWeekSchedule(msg.Chat.ID, scheduleCfg)
+	return ch.SendWeekSchedule(chat, scheduleCfg)
 }
 
 func (ch *CommandHandler) OnTeacher(msg *tgbotapi.Message) error {

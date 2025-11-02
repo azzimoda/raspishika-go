@@ -3,6 +3,8 @@ package commands
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 )
 
 // TODO: Rewrite start message.
@@ -41,7 +43,9 @@ const HelpMessage = `Доступные команды:
 По всем вопросам обращайтесь к расработчику @MazzzaRellla или пишите в комментарии канала @mazzaLLM.`
 
 func (ch *CommandHandler) OnStart(msg *tgbotapi.Message) error {
-	_, err := ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, StartMessage))
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, StartMessage)
+	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
+	_, err := ch.Bot.API().Send(newMsg)
 
 	if err == nil {
 		if chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
@@ -55,7 +59,9 @@ func (ch *CommandHandler) OnStart(msg *tgbotapi.Message) error {
 }
 
 func (ch *CommandHandler) OnHelp(msg *tgbotapi.Message) error {
-	_, err := ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, HelpMessage))
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, HelpMessage)
+	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
+	_, err := ch.Bot.API().Send(newMsg)
 	return err
 }
 
@@ -69,6 +75,8 @@ func (ch *CommandHandler) OnStop(msg *tgbotapi.Message) error {
 		log.Error().Err(err).Int64("chatID", msg.Chat.ID).Msg("Failed to get chat by ID")
 	}
 
-	ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, "Ваши данные удалены и рассылки выключены"))
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Ваши данные удалены и рассылки выключены")
+	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
+	ch.Bot.API().Send(newMsg)
 	return err
 }
