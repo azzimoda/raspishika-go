@@ -13,11 +13,11 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
+
+	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
 )
 
@@ -170,10 +170,10 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 	row := RawScheduleRow{
 		Number:    number,
 		TimeRange: time_range.First().Text(),
-		Days:      [7]RawScheduleDay{},
+		Days:      []RawScheduleDay{},
 	}
 	rowSelection.Find("td:nth-child(n+3)").Each(func(i int, daySelection *goquery.Selection) {
-		row.Days[i] = parseScheduleDay(config, headers[i], daySelection)
+		row.Days = append(row.Days, parseScheduleDay(config, headers[i], daySelection))
 	})
 
 	return row

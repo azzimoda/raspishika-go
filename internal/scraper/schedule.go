@@ -86,7 +86,7 @@ type RawScheduleDay struct {
 type RawScheduleRow struct {
 	Number    int
 	TimeRange string
-	Days      [7]RawScheduleDay
+	Days      []RawScheduleDay
 }
 
 type RawSchedule struct {
@@ -97,21 +97,28 @@ type RawSchedule struct {
 func (s *RawSchedule) Transform() Schedule {
 	schedule := Schedule{
 		Config: s.Config,
-		Days:   [7]ScheduleDay{},
+		Days:   []ScheduleDay{},
 	}
 
 	for di := range len(s.Rows[0].Days) {
-		schedule.Days[di].Date = s.Rows[0].Days[di].Date
-		schedule.Days[di].WeekDay = s.Rows[0].Days[di].WeekDay
-		schedule.Days[di].WeekKind = s.Rows[0].Days[di].WeekKind
+		day := ScheduleDay{}
+
+		day.Date = s.Rows[0].Days[di].Date
+		day.WeekDay = s.Rows[0].Days[di].WeekDay
+		day.WeekKind = s.Rows[0].Days[di].WeekKind
 
 		for ri := 0; ri < len(s.Rows); ri++ {
-			schedule.Days[di].Pairs[ri] = s.Rows[ri].Days[di].Pair
-			schedule.Days[di].Pairs[ri].Number = s.Rows[ri].Number
+			pair := s.Rows[ri].Days[di].Pair
+
+			pair.Number = s.Rows[ri].Number
 			parts := strings.Split(s.Rows[ri].TimeRange, "-")
-			schedule.Days[di].Pairs[ri].StartTime = parts[0]
-			schedule.Days[di].Pairs[ri].EndTime = parts[1]
+			pair.StartTime = parts[0]
+			pair.EndTime = parts[1]
+
+			day.Pairs = append(day.Pairs, pair)
 		}
+
+		schedule.Days = append(schedule.Days, day)
 	}
 
 	// log.Trace().Msgf("Transformed schedule: %#v", schedule)
@@ -184,7 +191,7 @@ func (s *RawSchedule) generateTableBody(rows []RawScheduleRow) string {
 	return tableBody
 }
 
-func (s *RawSchedule) generateRowPairs(days [7]RawScheduleDay) string {
+func (s *RawSchedule) generateRowPairs(days []RawScheduleDay) string {
 	rowPairs := ""
 
 	for _, day := range days {
@@ -236,10 +243,10 @@ func (s *RawSchedule) generateRowPairs(days [7]RawScheduleDay) string {
 }
 
 type ScheduleDay struct {
-	Date     string  `json:"date"`
-	WeekDay  string  `json:"week_day"`
-	WeekKind string  `json:"week_kind"`
-	Pairs    [7]Pair `json:"pairs"`
+	Date     string `json:"date"`
+	WeekDay  string `json:"week_day"`
+	WeekKind string `json:"week_kind"`
+	Pairs    []Pair `json:"pairs"`
 }
 
 func (s ScheduleDay) DetectOneKind() *PairKind {
@@ -258,7 +265,7 @@ func (s ScheduleDay) IsEmpty() bool {
 }
 
 func (s ScheduleDay) Left() ScheduleDay {
-	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: [7]Pair{}}
+	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: []Pair{}}
 
 	now := time.Now()
 	p, err := s.CurrentPair(now)
@@ -269,7 +276,7 @@ func (s ScheduleDay) Left() ScheduleDay {
 		p = &Pair{Number: 8}
 	}
 
-	for i := range 7 {
+	for i := range len(leftSchedule.Pairs) {
 		if i < p.Number-1 {
 			leftSchedule.Pairs[i].Kind = PairKindEmpty
 		} else {
@@ -345,7 +352,7 @@ func (s ScheduleDay) String() string {
 
 type Schedule struct {
 	Config ScheduleConfig `json:"config"`
-	Days   [7]ScheduleDay `json:"days"`
+	Days   []ScheduleDay  `json:"days"`
 }
 
 func GroupScheduleConfig(group *database.Group) ScheduleConfig {
