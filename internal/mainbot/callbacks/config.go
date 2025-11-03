@@ -6,12 +6,22 @@ import (
 	"strings"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/mainbot/commands"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/rs/zerolog/log"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
 )
+
+func (ch *CallbackHandler) OnConfigGroup(
+	commandHandler *commands.CommandHandler,
+	query *tgbotapi.CallbackQuery,
+	args []string,
+) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+	return commandHandler.OnGroup(query.Message) // Выглядит как костыль, но работает
+}
 
 func (ch *CallbackHandler) OnSelectDepartment(query *tgbotapi.CallbackQuery, args []string) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
@@ -51,6 +61,82 @@ func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 		OneTimeKeyboard: true,
 		// Selective: true,
 	}
+}
+
+func (ch *CallbackHandler) OnConfigDailyTime(
+	commandHandler *commands.CommandHandler,
+	query *tgbotapi.CallbackQuery,
+	args []string,
+) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+	return commandHandler.OnDailyTime(query.Message) // Выглядит как костыль, но работает
+}
+
+func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []string) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+
+	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	chat.DailySendingTime = ""
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
+}
+
+func (ch *CallbackHandler) OnConfigReminder(
+	commandHandler *commands.CommandHandler,
+	query *tgbotapi.CallbackQuery,
+	args []string,
+) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+
+	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	chat.PairSending = args[0] == "true"
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+	}
+
+	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
+}
+
+func (ch *CallbackHandler) OnConfigAccess(
+	commandHandler *commands.CommandHandler,
+	query *tgbotapi.CallbackQuery,
+	args []string,
+) error {
+	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+
+	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	if err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	chat.Access, err = strconv.Atoi(args[0])
+	if err != nil {
+		chat.Access = 0
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		log.Error().Err(err).Msg("failed to parse access level; fallback to 0")
+	}
+
+	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
+		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
+	}
+
+	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
 }
 
 func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []string) error {

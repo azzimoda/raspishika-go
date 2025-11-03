@@ -5,14 +5,98 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
+	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
-	return fmt.Errorf("Unimplemented: commands.OnSettings")
+	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	if err != nil {
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
+		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
+	}
+
+	return SendSettingsMenu(ch.Bot.API(), chat, msg.Chat.ID)
+}
+
+func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, chatID int64) error {
+	dailyTime := chat.DailySendingTime
+	if chat.DailySendingTime == "" {
+		dailyTime = "выключено"
+	}
+	pairNotification := "выключено"
+	if chat.PairSending {
+		pairNotification = "включено"
+	}
+
+	text := fmt.Sprintf(`Меню настроек
+
+Группа: %s
+Ежедневная рассылка: %s
+Напоминания перед парами: %s`,
+		utils.DerefOrTypeDefault(chat.GroupName),
+		dailyTime,
+		pairNotification,
+	)
+	if !chat.IsPrivate() {
+		text += fmt.Sprintf("\nУровень доступа: %d", chat.Access)
+	}
+
+	newMsg := tgbotapi.NewMessage(chatID, text)
+	newMsg.ReplyMarkup = settingsInlineMarkup(chat)
+	_, err := api.Send(newMsg)
+	return err
+}
+
+func settingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
+	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
+
+	rows = append(rows, []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Изменить группу", "config_group"),
+	})
+
+	if chat.DailySendingTime == "" {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("Включить ежедневную рассылку", "config_daily_time"),
+		})
+	} else {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("Изменить время рассылки", "config_daily_time"),
+			tgbotapi.NewInlineKeyboardButtonData("Выключить ежедневную рассылку", "daily_off"),
+		})
+	}
+
+	if chat.PairSending {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("Выключить напоминания", "config_reminder\nfalse"),
+		})
+	} else {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("Включить напоминания", "config_reminder\ntrue"),
+		})
+	}
+
+	if !chat.IsPrivate() {
+		rows = append(rows, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("0", "config_access\n0"),
+			tgbotapi.NewInlineKeyboardButtonData("1", "config_access\n1"),
+			tgbotapi.NewInlineKeyboardButtonData("2", "config_access\n2"),
+		})
+		for i := range 3 {
+			if i == chat.Access {
+				rows[len(rows)-1][i].Text = fmt.Sprintf("[%d]", i)
+			}
+		}
+	}
+
+	rows = append(rows, []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Закрыть", "delete"),
+	})
+
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
 // OnGroup sends department selection menu.
@@ -21,18 +105,18 @@ func (ch *CommandHandler) OnGroup(
 ) error {
 	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return err
 	}
 
 	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
 	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingDepartment); err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
@@ -78,7 +162,7 @@ func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat
 
 	group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get group by name (%s): %w", msg.Text, err)
 	}
 
@@ -127,7 +211,7 @@ func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat)
 
 	t, err := time.Parse("15:04", msg.Text)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
 		return nil
 	}
 	timeStr := t.Format("15:04")
@@ -146,13 +230,13 @@ func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat)
 func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
 	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
 	chat.DailySendingTime = ""
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat data: %w", err)
 	}
 
@@ -163,13 +247,13 @@ func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
 func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
 	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d) %w", msg.Chat.ID, err)
 	}
 
 	chat.PairSending = isOn
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat data: %w", err)
 	}
 
@@ -184,7 +268,7 @@ func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
 func (ch *CommandHandler) OnAccess(msg *tgbotapi.Message) error {
 	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
@@ -195,7 +279,7 @@ func (ch *CommandHandler) OnAccess(msg *tgbotapi.Message) error {
 		1 — настройки только для админов
 		2 — все команды только для админов`, chat.Access),
 	)
-	newMsg.ReplyMarkup = utils.AccessMenuInlineMarkup(chat.Access)
+	newMsg.ReplyMarkup = botutils.AccessMenuInlineMarkup(chat.Access)
 	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }

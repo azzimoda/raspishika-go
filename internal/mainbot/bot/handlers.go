@@ -87,7 +87,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 		return b.CommandHandler.OnStop(msg)
 
 	case "settings":
-		return b.CommandHandler.OnSettings(msg) // TODO
+		return b.CommandHandler.OnSettings(msg)
 	case "group":
 		return b.CommandHandler.OnGroup(msg)
 	case "daily_time":
@@ -200,6 +200,17 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 		if err := b.repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
+
+	case "config_group":
+		err = b.CallbackHandler.OnConfigGroup(b.CommandHandler, query, callbackCommand.Args)
+	case "config_daily_time":
+		err = b.CallbackHandler.OnConfigDailyTime(b.CommandHandler, query, callbackCommand.Args)
+	case "daily_off":
+		err = b.CallbackHandler.OnDailyOff(query, callbackCommand.Args)
+	case "config_reminder":
+		err = b.CallbackHandler.OnConfigReminder(b.CommandHandler, query, callbackCommand.Args)
+	case "config_access":
+		err = b.CallbackHandler.OnConfigAccess(b.CommandHandler, query, callbackCommand.Args)
 
 	case "select_department":
 		err = b.CallbackHandler.OnSelectDepartment(query, callbackCommand.Args)
