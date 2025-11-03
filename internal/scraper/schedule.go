@@ -250,6 +250,11 @@ type ScheduleDay struct {
 }
 
 func (s ScheduleDay) DetectOneKind() *PairKind {
+	if len(s.Pairs) == 0 {
+		kind := PairKindEmpty
+		return &kind
+	}
+
 	kind := s.Pairs[0].Kind
 	for _, pair := range s.Pairs {
 		if pair.Kind != kind {
@@ -276,11 +281,9 @@ func (s ScheduleDay) Left() ScheduleDay {
 		p = &Pair{Number: 8}
 	}
 
-	for i := range len(leftSchedule.Pairs) {
-		if i < p.Number-1 {
-			leftSchedule.Pairs[i].Kind = PairKindEmpty
-		} else {
-			leftSchedule.Pairs[i] = s.Pairs[i]
+	for i := range len(s.Pairs) {
+		if i >= p.Number-1 {
+			leftSchedule.Pairs = append(leftSchedule.Pairs, s.Pairs[i])
 		}
 	}
 
@@ -288,7 +291,7 @@ func (s ScheduleDay) Left() ScheduleDay {
 }
 
 func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
-	log.Trace().Msgf("CurrentPair: %s", t.Format("15:04"))
+	log.Trace().Time("time", t).Str("timeStr", t.String()).Msg("CurrentPair")
 	year, month, day := t.Date()
 	for _, pair := range s.Pairs {
 		startTime, err := time.Parse("15:04", strings.TrimSpace(pair.StartTime))
