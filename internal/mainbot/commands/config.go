@@ -23,9 +23,9 @@ func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
 }
 
 func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, tgChatID int64) error {
-	dailyTime := chat.DailySendingTime
-	if chat.DailySendingTime == "" {
-		dailyTime = "выключено"
+	dailyTime := "выключено"
+	if chat.DailySendingTime != nil {
+		dailyTime = *chat.DailySendingTime
 	}
 	pairNotification := "выключено"
 	if chat.PairSending {
@@ -58,7 +58,7 @@ func settingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
 		tgbotapi.NewInlineKeyboardButtonData("Изменить группу", "config_group"),
 	})
 
-	if chat.DailySendingTime == "" {
+	if chat.DailySendingTime == nil {
 		rows = append(rows, []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("Включить ежедневную рассылку", "config_daily_time"),
 		})
@@ -190,10 +190,10 @@ func (ch *CommandHandler) OnDailyTime(msg *tgbotapi.Message) error {
 	}
 
 	time := ""
-	if chat.DailySendingTime == "" {
+	if chat.DailySendingTime == nil {
 		time = "Время не установлено"
 	} else {
-		time = "Установленное время: " + chat.DailySendingTime
+		time = "Установленное время: " + *chat.DailySendingTime
 	}
 	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
 
@@ -217,7 +217,7 @@ func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat)
 	timeStr := t.Format("15:04")
 
 	chat.State = database.ChatStateDefault
-	chat.DailySendingTime = timeStr
+	chat.DailySendingTime = &timeStr
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		return fmt.Errorf("failed to update chat: %w", err)
 	}
@@ -234,7 +234,7 @@ func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
-	chat.DailySendingTime = ""
+	chat.DailySendingTime = nil
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat data: %w", err)

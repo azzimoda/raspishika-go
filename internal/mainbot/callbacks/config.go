@@ -81,7 +81,7 @@ func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []stri
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
 	}
 
-	chat.DailySendingTime = ""
+	chat.DailySendingTime = nil
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)

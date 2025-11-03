@@ -45,7 +45,7 @@ func createTables(db *sqlx.DB) error {
 			state TEXT DEFAULT 'default',
 			department TEXT,
 			"group" TEXT,
-			daily_sending_time TEXT NOT NULL DEFAULT '',
+			daily_sending_time TEXT,
 			pair_sending BOOLEAN NOT NULL DEFAULT 0,
 			access INTEGER NOT NULL DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

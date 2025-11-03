@@ -5,4 +5,5 @@ storage/cache/
 storage/screenshots/
 
 *.sqlite3
+*.bak
 main

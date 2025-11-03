@@ -84,18 +84,19 @@ func initServices(t *testing.T) (*config.Config, *database.Repository, *browser.
 }
 
 func makeTestChats(t *testing.T, repo *database.Repository, adminID int64) {
-	groupName := "ИСПт-22-(9)-2"
-	departmentName := "Отделение СОНХ"
-
 	// Chat with enabled daily and pair sendings.
 	chat, _, err := repo.CreateOrUpdateChat(adminID, "")
 	if err != nil {
 		t.Fatalf("could not create or update chat: %v", err)
 	}
 
+	groupName := "ИСПт-22-(9)-2"
+	departmentName := "Отделение СОНХ"
+	dailySendingTime := time.Now().Add(time.Minute).Format("15:04")
+
 	chat.GroupName = &groupName
 	chat.DepartmentName = &departmentName
-	chat.DailySendingTime = time.Now().Add(time.Minute).Format("15:04")
+	chat.DailySendingTime = &dailySendingTime
 	chat.PairSending = true
 	if err := repo.UpdateChat(chat); err != nil {
 		t.Fatalf("could not update chat: %v", err)

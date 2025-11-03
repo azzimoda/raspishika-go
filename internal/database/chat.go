@@ -26,7 +26,7 @@ type Chat struct {
 	State            ChatState `db:"state" json:"state"`
 	DepartmentName   *string   `db:"department" json:"department"`
 	GroupName        *string   `db:"group" json:"group"`
-	DailySendingTime string    `db:"daily_sending_time" json:"daily_sending_time"`
+	DailySendingTime *string    `db:"daily_sending_time" json:"daily_sending_time"`
 	PairSending      bool      `db:"pair_sending" json:"pair_sending"`
 	Access           int       `db:"access" json:"access"`
 	CreatedAt        time.Time `db:"created_at" json:"created_at"`
