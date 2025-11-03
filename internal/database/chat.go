@@ -74,10 +74,17 @@ func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, b
 }
 
 func (r *Repository) UpdateChat(chat *Chat) error {
+	chat.UpdatedAt = time.Now()
 	_, err := r.db.NamedExec(
 		`UPDATE chats
-		SET username = :username, state = :state, department = :department, "group" = :group,
-		daily_sending_time = :daily_sending_time, pair_sending = :pair_sending, access = :access
+		SET username = :username,
+			state = :state,
+			department = :department,
+			"group" = :group,
+			daily_sending_time = :daily_sending_time,
+			pair_sending = :pair_sending,
+			access = :access,
+			updated_at = :updated_at
 		WHERE id = :id`,
 		chat,
 	)
@@ -85,7 +92,7 @@ func (r *Repository) UpdateChat(chat *Chat) error {
 }
 
 func (r *Repository) UpdateChatState(chatID int64, state ChatState) error {
-	_, err := r.db.Exec(`UPDATE chats SET state = ? WHERE chat_id = ?`, state, chatID)
+	_, err := r.db.Exec(`UPDATE chats SET state = ?, updated_at = ? WHERE chat_id = ?`, state, time.Now(), chatID)
 	return err
 }
 
