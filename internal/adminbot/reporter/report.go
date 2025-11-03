@@ -15,12 +15,12 @@ type Reporter interface {
 }
 
 type ReportConfig struct {
-	api             *tgbotapi.BotAPI
-	admin           bool
-	recipientChatID int64 // RecipientChatID is the ID of the chat, where the report should be sent.
-	chatID          int64 // ChatID is the ID of the chat, whose message caused the error. Optional.
-	username        string
-	err             error
+	api               *tgbotapi.BotAPI
+	admin             bool
+	recipientTgChatID int64 // RecipientChatID is the ID of the chat, where the report should be sent.
+	tgChatID          int64 // tgChatID is the ID of the chat, whose message caused the error. Optional.
+	username          string
+	err               error
 }
 
 func (r ReportConfig) Admin() ReportConfig {
@@ -29,10 +29,10 @@ func (r ReportConfig) Admin() ReportConfig {
 }
 
 func (r ReportConfig) Chat(chatOrID any) ReportConfig {
-	if chatID, ok := chatOrID.(int64); ok {
-		r.chatID = chatID
+	if tgChatID, ok := chatOrID.(int64); ok {
+		r.tgChatID = tgChatID
 	} else if chat, ok := chatOrID.(*database.Chat); ok {
-		r.chatID = chat.ChatID
+		r.tgChatID = chat.TgChatID
 		r.username = utils.DerefOrTypeDefault(chat.UserName)
 	} else {
 		log.Error().Any("arg", chatOrID).Msg("Wrong type of chat argument")
@@ -54,15 +54,15 @@ func (r ReportConfig) Send(text string) {
 	}
 
 	msgText := ""
-	if r.chatID != 0 {
-		msgText += fmt.Sprintf("\n`/chat %d` @%s", r.chatID, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.username))
+	if r.tgChatID != 0 {
+		msgText += fmt.Sprintf("\n`/chat %d` @%s", r.tgChatID, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.username))
 	}
 	if r.err != nil {
 		msgText += fmt.Sprintf("\nError: _%s_", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.err.Error()))
 	}
 	msgText += fmt.Sprintf("\n\n%s", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, text))
 
-	msg := tgbotapi.NewMessage(r.recipientChatID, msgText)
+	msg := tgbotapi.NewMessage(r.recipientTgChatID, msgText)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err := r.api.Send(msg)
 	if err != nil {
@@ -75,5 +75,5 @@ func (r ReportConfig) Sendf(format string, a ...any) {
 }
 
 func NewReportConfig(api *tgbotapi.BotAPI, recipientChatID int64) ReportConfig {
-	return ReportConfig{api: api, recipientChatID: recipientChatID}
+	return ReportConfig{api: api, recipientTgChatID: recipientChatID}
 }

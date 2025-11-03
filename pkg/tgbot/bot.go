@@ -28,14 +28,14 @@ func StartPolling(bot interface {
 	}
 }
 
-func SendTempMessage(api *tgbotapi.BotAPI, chatID int64, text string, dur time.Duration) error {
-	newMsg := tgbotapi.NewMessage(chatID, text)
+func SendTempMessage(api *tgbotapi.BotAPI, tgChatID int64, text string, dur time.Duration) error {
+	newMsg := tgbotapi.NewMessage(tgChatID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	sentMsg, err := api.Send(newMsg)
 
 	go func() {
 		time.Sleep(dur)
-		api.Send(tgbotapi.NewDeleteMessage(chatID, sentMsg.MessageID))
+		api.Send(tgbotapi.NewDeleteMessage(tgChatID, sentMsg.MessageID))
 	}()
 
 	return err

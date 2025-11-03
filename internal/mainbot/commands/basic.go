@@ -48,7 +48,7 @@ func (ch *CommandHandler) OnStart(msg *tgbotapi.Message) error {
 	_, err := ch.Bot.API().Send(newMsg)
 
 	if err == nil {
-		if chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
+		if chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
 			return ch.OnGroup(msg)
 		} else {
 			return err
@@ -66,13 +66,13 @@ func (ch *CommandHandler) OnHelp(msg *tgbotapi.Message) error {
 }
 
 func (ch *CommandHandler) OnStop(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err == nil {
 		if err := ch.Bot.Repo().DeleteChat(chat.ID); err != nil {
-			log.Error().Err(err).Int64("chatID", msg.Chat.ID).Msg("Failed to delete chat from DB")
+			log.Error().Err(err).Int64("tgChatID", msg.Chat.ID).Msg("Failed to delete chat from DB")
 		}
 	} else {
-		log.Error().Err(err).Int64("chatID", msg.Chat.ID).Msg("Failed to get chat by ID")
+		log.Error().Err(err).Int64("tgChatID", msg.Chat.ID).Msg("Failed to get chat by ID")
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Ваши данные удалены и рассылки выключены")

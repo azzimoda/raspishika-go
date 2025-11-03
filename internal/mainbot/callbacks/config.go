@@ -75,7 +75,7 @@ func (ch *CallbackHandler) OnConfigDailyTime(
 func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []string) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 
-	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
@@ -97,7 +97,7 @@ func (ch *CallbackHandler) OnConfigReminder(
 ) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 
-	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
@@ -118,7 +118,7 @@ func (ch *CallbackHandler) OnConfigAccess(
 ) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 
-	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
@@ -140,7 +140,7 @@ func (ch *CallbackHandler) OnConfigAccess(
 }
 
 func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []string) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(query.Message.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
@@ -168,7 +168,7 @@ func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []str
 
 	if err != nil && strings.Contains(err.Error(), "message is not modified") {
 		ch.Bot.API().Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
-		log.Warn().Int64("chatID", query.Message.Chat.ID).Msg("message is not modified")
+		log.Warn().Int64("tgChatID", query.Message.Chat.ID).Msg("message is not modified")
 		return nil
 	}
 	return err

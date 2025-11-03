@@ -54,8 +54,8 @@ func (b *AdminBot) onCommand(msg *tgbotapi.Message) error {
 }
 
 func (b *AdminBot) onText(msg *tgbotapi.Message) error {
-	if chatID, err := strconv.ParseInt(msg.Text, 10, 64); err == nil {
-		return b.sendChatReport(chatID, msg)
+	if tgChatID, err := strconv.ParseInt(msg.Text, 10, 64); err == nil {
+		return b.sendChatReport(tgChatID, msg)
 	}
 
 	if group, err := utils.ValidateGroupNameFormat(msg.Text); err == nil {

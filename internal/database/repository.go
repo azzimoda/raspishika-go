@@ -40,7 +40,7 @@ func createTables(db *sqlx.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS chats(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			chat_id INTEGER NOT NULL UNIQUE,
+			tg_chat_id INTEGER NOT NULL UNIQUE,
 			username TEXT,
 			state TEXT DEFAULT 'default',
 			department TEXT,

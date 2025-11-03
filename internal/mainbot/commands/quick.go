@@ -35,7 +35,7 @@ func (ch *CommandHandler) OnQuick(msg *tgbotapi.Message) error {
 func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
@@ -56,7 +56,7 @@ func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
 }
 
 func (ch *CommandHandler) OnTeacher(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)

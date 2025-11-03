@@ -13,7 +13,7 @@ import (
 )
 
 func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
@@ -22,7 +22,7 @@ func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
 	return SendSettingsMenu(ch.Bot.API(), chat, msg.Chat.ID)
 }
 
-func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, chatID int64) error {
+func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, tgChatID int64) error {
 	dailyTime := chat.DailySendingTime
 	if chat.DailySendingTime == "" {
 		dailyTime = "выключено"
@@ -45,7 +45,7 @@ func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, chatID int64) e
 		text += fmt.Sprintf("\nУровень доступа: %d", chat.Access)
 	}
 
-	newMsg := tgbotapi.NewMessage(chatID, text)
+	newMsg := tgbotapi.NewMessage(tgChatID, text)
 	newMsg.ReplyMarkup = settingsInlineMarkup(chat)
 	_, err := api.Send(newMsg)
 	return err
@@ -103,7 +103,7 @@ func settingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
 func (ch *CommandHandler) OnGroup(
 	msg *tgbotapi.Message,
 ) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return err
@@ -180,7 +180,7 @@ func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat
 }
 
 func (ch *CommandHandler) OnDailyTime(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
 	}
@@ -228,7 +228,7 @@ func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat)
 }
 
 func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
@@ -245,7 +245,7 @@ func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
 }
 
 func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d) %w", msg.Chat.ID, err)
@@ -266,7 +266,7 @@ func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
 }
 
 func (ch *CommandHandler) OnAccess(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)

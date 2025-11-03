@@ -57,7 +57,7 @@ func (b *Bot) processDailySending() {
 
 		for _, chat := range chats {
 			if err := b.CommandHandler.SendWeekSchedule(chat, scheduleCfg); err != nil {
-				log.Error().Err(err).Int64("chatID", chat.ChatID).Msgf("Failed to send daily schedule to chat")
+				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
 				b.Report().Chat(chat).Err(err).Send("Failed to send daily schedule to chat")
 				errCount++
 			} else {
@@ -117,7 +117,7 @@ func (b *Bot) processPairSending(startTime time.Time) {
 			groupedChats[*chat.GroupName] = []int64{}
 		}
 
-		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], chat.ChatID)
+		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], chat.TgChatID)
 	}
 
 	okCount := 0
@@ -139,8 +139,8 @@ func (b *Bot) processPairSending(startTime time.Time) {
 	// TODO: Implement reporting on too long processing time.
 }
 
-func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, chatIDs []int64) error {
-	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chatIDs))
+func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, tgChatIDs []int64) error {
+	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(tgChatIDs))
 
 	group, err := b.repo.GetGroupByName(groupName)
 	if err != nil {
@@ -180,8 +180,8 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 	}
 
 	errs := make([]error, 0)
-	for _, chatID := range chatIDs {
-		msg := tgbotapi.NewMessage(chatID, text)
+	for _, tgChatID := range tgChatIDs {
+		msg := tgbotapi.NewMessage(tgChatID, text)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 		if _, err := b.api.Send(msg); err != nil {
 			errs = append(errs, err)

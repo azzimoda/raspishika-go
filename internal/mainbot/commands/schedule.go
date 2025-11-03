@@ -15,7 +15,7 @@ import (
 )
 
 func (ch *CommandHandler) OnWeek(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
@@ -52,7 +52,7 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 	}
 	if err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chat.ChatID, utils.ErrMsgFailedFetchSchedule)
+		utils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, utils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
@@ -60,18 +60,18 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chat.ChatID, utils.ErrMsgTryLater)
+		utils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
-	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.ChatID, tgbotapi.ChatUploadPhoto))
+	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.TgChatID, tgbotapi.ChatUploadPhoto))
 
-	newMsg := tgbotapi.NewMessage(chat.ChatID, scheduleCfg.FormatMarkdown()+":")
+	newMsg := tgbotapi.NewMessage(chat.TgChatID, scheduleCfg.FormatMarkdown()+":")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(chat.IsPrivate())
 	_, err2 := ch.Bot.API().Send(newMsg)
 
-	newPhotoMsg := tgbotapi.NewPhoto(chat.ChatID, tgbotapi.FilePath(imagePath))
+	newPhotoMsg := tgbotapi.NewPhoto(chat.TgChatID, tgbotapi.FilePath(imagePath))
 	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)
 	_, err1 := ch.Bot.API().Send(newPhotoMsg)
 
@@ -89,7 +89,7 @@ func weekScheduleInlineButtonMarkup(config scraper.ScheduleConfig) tgbotapi.Inli
 }
 
 func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
@@ -130,7 +130,7 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 }
 
 func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByChatID(msg.Chat.ID)
+	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 	}

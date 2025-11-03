@@ -11,47 +11,48 @@ import (
 
 func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository) bool {
 	if update.Message != nil {
-		chatID := update.Message.Chat.ID
+		tgChatID := update.Message.Chat.ID
 		username := update.Message.Chat.UserName
-		chat, created, err := repo.CreateOrUpdateChat(chatID, username)
+		chat, created, err := repo.CreateOrUpdateChat(tgChatID, username)
 		if err != nil {
-			log.Error().Err(err).Int64("chatID", chatID).Str("username", username).
+			log.Error().Err(err).Int64("tgChatID", tgChatID).Str("username", username).
 				Msg("Failed to create or update chat")
 			return false
 		}
 
 		if created {
-			log.Trace().Int64("chatID", chatID).Str("username", username).Msg("New chat registered")
+			log.Trace().Int64("tgChatID", tgChatID).Str("username", username).Msg("New chat registered")
 			b.Reporter.Report().Chat(chat).Send("New chat registered")
 			go func() {
 				time.Sleep(20 * time.Second)
-				if chat, err := repo.GetChatByChatID(chatID); err == nil && chat.GroupName != nil {
-					b.Reporter.Report().Chat(chatID).Sendf("Chat configured group %s", *chat.GroupName)
+				if chat, err := repo.GetChatByTgChatID(tgChatID); err == nil && chat.GroupName != nil {
+					b.Reporter.Report().Chat(tgChatID).Sendf("Chat configured group %s", *chat.GroupName)
 				}
 			}()
 		}
 
-		if !chat.IsPrivate() && !b.checkAccess(chatID, update.Message.From.ID, chat.Access, update.Message.Command()) {
+		if !chat.IsPrivate() && !b.checkAccess(tgChatID, update.Message.From.ID, chat.Access, update.Message.Command()) {
 			return false
 		}
 	}
 
 	if update.CallbackQuery != nil {
-		chatID := update.CallbackQuery.Message.Chat.ID
+		tgChatID := update.CallbackQuery.Message.Chat.ID
 		callbackCommand := ParseCallbackData(update.CallbackQuery.Data)
 
-		chat, err := repo.GetChatByChatID(chatID)
+		chat, err := repo.GetChatByTgChatID(tgChatID)
 		if err == nil {
 			if !chat.IsPrivate() && !b.checkAccess(
-				chatID,
+				tgChatID,
 				update.CallbackQuery.From.ID,
 				chat.Access,
 				callbackCommand.Command,
 			) {
 				return false
 			}
+		} else {
+			log.Error().Err(err).Int64("tgChatID", tgChatID).Msg("Failed to get chat")
 		}
-		log.Error().Err(err).Int64("chatID", chatID).Msg("Failed to get chat")
 	}
 
 	return true
@@ -62,21 +63,22 @@ func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository)
 // User is restricted to use given command when chat is a supergroup and:
 // - chat access is 1, the command is config, the user is not admin of the chat;
 // - chat access is 2 and the user is not admin of the chat.
-func (b *Bot) checkAccess(chatID, userID int64, accessLevel int, command string) bool {
+func (b *Bot) checkAccess(tgChatID, tgUserID int64, accessLevel int, command string) bool {
 	isConfigCommand := isConfigCommand(command)
-	isAdmin := b.IsAdmin(chatID, userID)
+	isAdmin := b.IsAdmin(tgChatID, tgUserID)
 	if accessLevel == 1 && isConfigCommand && !isAdmin || accessLevel == 2 && !isAdmin {
 		return false
 	}
 	return true
 }
 
-func (b *Bot) IsAdmin(chatID, userID int64) bool {
+func (b *Bot) IsAdmin(tgChatID, tgUserID int64) bool {
 	chatMember, err := b.api.GetChatMember(tgbotapi.GetChatMemberConfig{
-		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatID: chatID, UserID: userID},
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatID: tgChatID, UserID: tgUserID},
 	})
 	if err != nil {
-		log.Error().Err(err).Int64("chatID", chatID).Int64("userID", userID).Msg("Failed to get chat member; fallback to admin")
+		log.Error().Err(err).Int64("tgChatID", tgChatID).Int64("tgUserID", tgUserID).
+			Msg("Failed to get chat member; fallback to admin")
 		return true
 	}
 	return chatMember.IsAdministrator() || chatMember.IsCreator()

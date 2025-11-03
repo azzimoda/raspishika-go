@@ -24,9 +24,9 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	var err error
 	switch {
 	case update.Message != nil:
-		chat, err = b.repo.GetChatByChatID(update.Message.Chat.ID)
+		chat, err = b.repo.GetChatByTgChatID(update.Message.Chat.ID)
 		if err != nil {
-			log.Error().Err(err).Int64("chatID", update.Message.Chat.ID).
+			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
 		}
 
@@ -37,9 +37,9 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 
 		err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
-		chat, err = b.repo.GetChatByChatID(update.CallbackQuery.Message.Chat.ID)
+		chat, err = b.repo.GetChatByTgChatID(update.CallbackQuery.Message.Chat.ID)
 		if err != nil {
-			log.Error().Err(err).Int64("chatID", update.CallbackQuery.Message.Chat.ID).
+			log.Error().Err(err).Int64("tgChatID", update.CallbackQuery.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
 		}
 
@@ -59,14 +59,14 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	if err != nil {
 		updateLog.Error = err.Error()
 		log.Error().Err(err).Msg("Error while handling update")
-		b.Report().Err(err).Chat(int64(chat.ChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
+		b.Report().Err(err).Chat(int64(chat.TgChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
 	log.Debug().Dur("elapsed", elapsed).Str("kind", updateLog.Kind).Msg("Update handled")
 	b.repo.InsertUpdateLog(updateLog)
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) error {
-	log.Debug().Int64("chatID", msg.Chat.ID).Str("username", msg.Chat.UserName).Str("text", msg.Text).Msg("Handling message")
+	log.Debug().Int64("tgChatID", msg.Chat.ID).Str("username", msg.Chat.UserName).Str("text", msg.Text).Msg("Handling message")
 
 	if msg.IsCommand() {
 		return b.onCommand(msg)
@@ -119,7 +119,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 }
 
 func (b *Bot) onText(msg *tgbotapi.Message) error {
-	chat, err := b.repo.GetChatByChatID(msg.Chat.ID)
+	chat, err := b.repo.GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(b.api, msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat state: %w", err)
@@ -161,7 +161,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		return b.CommandHandler.OnTextTeacherName(msg)
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
-		if err := b.repo.UpdateChatState(chat.ChatID, database.ChatStateDefault); err != nil {
+		if err := b.repo.UpdateChatState(chat.TgChatID, database.ChatStateDefault); err != nil {
 			log.Error().Err(err).Msg("Failed to update chat state")
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
@@ -200,6 +200,7 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 		if err := b.repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
+	// TODO: Add "delete_config"
 
 	case "config_group":
 		err = b.CallbackHandler.OnConfigGroup(b.CommandHandler, query, callbackCommand.Args)

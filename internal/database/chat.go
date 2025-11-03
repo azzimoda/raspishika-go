@@ -21,7 +21,7 @@ const (
 
 type Chat struct {
 	ID               int       `db:"id" json:"id"`
-	ChatID           int64     `db:"chat_id" json:"chat_id"`
+	TgChatID         int64     `db:"tg_chat_id" json:"tg_chat_id"`
 	UserName         *string   `db:"username" json:"username"`
 	State            ChatState `db:"state" json:"state"`
 	DepartmentName   *string   `db:"department" json:"department"`
@@ -34,14 +34,14 @@ type Chat struct {
 }
 
 func (c *Chat) IsPrivate() bool {
-	return c.ChatID > 0
+	return c.TgChatID > 0
 }
 
-func (r *Repository) CreateChat(chatID int64, username string) (int64, error) {
+func (r *Repository) CreateChat(tgChatID int64, username string) (int64, error) {
 	res, err := r.db.Exec(
-		`INSERT INTO chats (chat_id, username)
+		`INSERT INTO chats (tg_chat_id, username)
 		VALUES (?,?)`,
-		chatID, username)
+		tgChatID, username)
 	if err != nil {
 		return 0, err
 	}
@@ -50,13 +50,13 @@ func (r *Repository) CreateChat(chatID int64, username string) (int64, error) {
 
 // CreateOrUpdateChat creates or updates chat in the database.
 // If chat does not exist, it creates a new one and returns true as second return value.
-func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, bool, error) {
+func (r *Repository) CreateOrUpdateChat(tgChatID int64, username string) (*Chat, bool, error) {
 	var chat Chat
-	err := r.db.Get(&chat, `SELECT * FROM chats WHERE chat_id = ?`, chatID)
+	err := r.db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID)
 
 	if err == sql.ErrNoRows {
-		log.Debug().Int64("chatID", chatID).Msg("Chat does not exist, creating new one...")
-		id, err := r.CreateChat(chatID, username)
+		log.Debug().Int64("tgChatID", tgChatID).Msg("Chat does not exist, creating new one...")
+		id, err := r.CreateChat(tgChatID, username)
 		if err != nil {
 			return nil, true, err
 		}
@@ -65,11 +65,11 @@ func (r *Repository) CreateOrUpdateChat(chatID int64, username string) (*Chat, b
 	}
 
 	if err != nil {
-		log.Error().Err(err).Int64("chatID", chatID).Msg("Failed to get chat")
+		log.Error().Err(err).Int64("tgChatID", tgChatID).Msg("Failed to get chat")
 		return nil, false, err
 	}
 
-	log.Trace().Int64("chatID", chatID).Msg("Chat already exists")
+	log.Trace().Int64("tgChatID", tgChatID).Msg("Chat already exists")
 	return &chat, false, nil
 }
 
@@ -91,8 +91,8 @@ func (r *Repository) UpdateChat(chat *Chat) error {
 	return err
 }
 
-func (r *Repository) UpdateChatState(chatID int64, state ChatState) error {
-	_, err := r.db.Exec(`UPDATE chats SET state = ?, updated_at = ? WHERE chat_id = ?`, state, time.Now(), chatID)
+func (r *Repository) UpdateChatState(tgChatID int64, state ChatState) error {
+	_, err := r.db.Exec(`UPDATE chats SET state = ?, updated_at = ? WHERE tg_chat_id = ?`, state, time.Now(), tgChatID)
 	return err
 }
 
@@ -104,9 +104,9 @@ func (r *Repository) GetChat(id int64) (*Chat, error) {
 	return &chat, nil
 }
 
-func (r *Repository) GetChatByChatID(chatID int64) (*Chat, error) {
+func (r *Repository) GetChatByTgChatID(tgChatID int64) (*Chat, error) {
 	var chat Chat
-	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE chat_id = ?`, chatID); err != nil {
+	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID); err != nil {
 		return nil, err
 	}
 	return &chat, nil

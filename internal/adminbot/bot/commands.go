@@ -20,16 +20,16 @@ func (b *AdminBot) onStart(msg *tgbotapi.Message) error {
 
 func (b *AdminBot) onChat(msg *tgbotapi.Message) error {
 
-	chatID, err := strconv.ParseInt(msg.CommandArguments(), 10, 64)
+	tgChatID, err := strconv.ParseInt(msg.CommandArguments(), 10, 64)
 	if err != nil {
 		return fmt.Errorf("failed to parse chat ID: %w", err)
 	}
 
-	return b.sendChatReport(chatID, msg)
+	return b.sendChatReport(tgChatID, msg)
 }
 
-func (b *AdminBot) sendChatReport(chatID int64, msg *tgbotapi.Message) error {
-	chat, err := b.repo.GetChatByChatID(chatID)
+func (b *AdminBot) sendChatReport(tgChatID int64, msg *tgbotapi.Message) error {
+	chat, err := b.repo.GetChatByTgChatID(tgChatID)
 	if err != nil {
 		return fmt.Errorf("failed to get chat by chat ID: %w", err)
 	}
@@ -64,7 +64,7 @@ func (b *AdminBot) chatReport(repo *database.Repository, chat *database.Chat) st
 			"Access: %d\n\n"+
 			"Recent Teachers: %s",
 		chat.ID,
-		chat.ChatID,
+		chat.TgChatID,
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.UserName)),
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(chat.State)),
 		utils.DerefOrTypeDefault(chat.DepartmentName),
@@ -104,7 +104,7 @@ func (b *AdminBot) sendGroupReport(group string, msg *tgbotapi.Message) error {
 
 	text := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, fmt.Sprintf("Chats in group `%s` (%d):\n", group, len(chats)))
 	for _, chat := range chats {
-		text += fmt.Sprintf("• `/chat %d`\n", chat.ChatID)
+		text += fmt.Sprintf("• `/chat %d`\n", chat.TgChatID)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)

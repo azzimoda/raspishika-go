@@ -30,8 +30,8 @@ type BotManager interface {
 	reporter.Reporter
 }
 
-func SendErrorMessage(api *tgbotapi.BotAPI, chatID int64, text string) error {
-	err := tgbot.SendTempMessage(api, chatID, text, 10*time.Second)
+func SendErrorMessage(api *tgbotapi.BotAPI, tgChatID int64, text string) error {
+	err := tgbot.SendTempMessage(api, tgChatID, text, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send error message")
 	}

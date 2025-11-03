@@ -47,7 +47,7 @@ func (b *AdminBot) ReportNewChat(chat *database.Chat) {
 		log.Trace().Msg("New chat report is disabled.")
 		return
 	}
-	b.Report().Chat(chat.ChatID).Sendf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
+	b.Report().Chat(chat.TgChatID).Sendf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
 }
 
 func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
