@@ -11,6 +11,11 @@ import (
 
 func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository) bool {
 	if update.Message != nil {
+		if int64(update.Message.Date)-time.Now().Unix() > int64((10 * time.Minute).Seconds()) {
+			// Ignore old messages
+			return false
+		}
+
 		tgChatID := update.Message.Chat.ID
 		username := update.Message.Chat.UserName
 		chat, created, err := repo.CreateOrUpdateChat(tgChatID, username)
