@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/corpix/uarand"
 	"github.com/playwright-community/playwright-go"
 	"github.com/rs/zerolog/log"
 )
@@ -56,29 +54,6 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 
 	cache.C.Set(DepartmentsCacheKey, departments, cache.Config.GroupTTLDuration())
 	return departments, nil
-}
-
-func httpGetRequest(url string, headers map[string]string) (*http.Response, error) {
-	log.Debug().Str("url", url).Any("headers", headers).Msg("HTTP GET request")
-
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	for key, value := range headers {
-		req.Header.Add(key, value)
-	}
-	return client.Do(req)
-}
-
-func generateHeaders() map[string]string {
-	return map[string]string{
-		"User-Agent": uarand.GetRandom(),
-		"Referer":    "https://coworking.tyuiu.ru/shs/all_t/",
-	}
 }
 
 func FetchGroups(
