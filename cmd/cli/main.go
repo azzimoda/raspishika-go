@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/app"
@@ -13,10 +14,17 @@ import (
 
 const ConfigFile = `configs/config.yml`
 
-var scheduledStartTime = flag.String("start", "", "time for scheduled start in format 2006-01-02T15:04")
+var help = flag.Bool("help", false, "Prints help message.")
+var notification = flag.String("notify", "", "Sends notification to all chats; does not start the bot and features.")
+var scheduledStartTime = flag.String("start", "", "Schedules start on the given date/time in format '2006-01-02T15:04' (system time zone).")
 
 func main() {
 	flag.Parse()
+
+	if help != nil && *help {
+		flag.Usage()
+		os.Exit(0)
+	}
 
 	cfg, err := config.Load(ConfigFile)
 	if err != nil {
@@ -32,6 +40,11 @@ func main() {
 	app, err := app.New(cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create application")
+	}
+
+	if notification != nil && *notification != "" {
+		app.SendNotification(*notification)
+		os.Exit(0)
 	}
 
 	if scheduledStartTime != nil && *scheduledStartTime != "" {
