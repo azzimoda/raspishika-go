@@ -178,7 +178,7 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Действие отменено")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(false)
+	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
 	sentMsg, err := b.api.Send(newMsg)
 	go func() {
 		time.Sleep(3 * time.Second)

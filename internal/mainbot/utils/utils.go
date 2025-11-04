@@ -71,6 +71,9 @@ func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
 	return markup
 }
 
+// MainMenuReplyMarkup returns a ReplyKeyboardMarkup or a ReplyKeyboardRemove object
+// depending on the isPrivate parameter.
+// If isPrivate is true, a ReplyKeyboardMarkup is returned, else a ReplyKeyboardRemove is returned.
 func MainMenuReplyMarkup(isPrivate bool) any {
 	if isPrivate {
 		markup := tgbotapi.NewReplyKeyboard(
@@ -84,7 +87,6 @@ func MainMenuReplyMarkup(isPrivate bool) any {
 				tgbotapi.NewKeyboardButton("Преподаватель"),
 			),
 		)
-		// markup.OneTimeKeyboard = true
 		markup.ResizeKeyboard = true
 		return markup
 	} else {
