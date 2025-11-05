@@ -110,7 +110,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	app.Browser, err = browser.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create browser service")
+		return nil, fmt.Errorf("failed to create browser service: %w", err)
 	} else {
 		log.Debug().Msg("Created browser service")
 	}

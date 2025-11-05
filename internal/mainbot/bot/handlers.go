@@ -28,25 +28,26 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		if err != nil {
 			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
+			return
+		} else {
+			updateLog.ChatID = chat.ID
+			updateLog.Kind = tgbotapi.UpdateTypeMessage
+			updateLog.MessageID = update.Message.MessageID
+			updateLog.Data = update.Message.Text
 		}
-
-		updateLog.ChatID = chat.ID
-		updateLog.Kind = tgbotapi.UpdateTypeMessage
-		updateLog.MessageID = update.Message.MessageID
-		updateLog.Data = update.Message.Text
 
 		err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
 		chat, err = b.repo.GetChatByTgChatID(update.CallbackQuery.Message.Chat.ID)
-		if err != nil {
+		if err != nil || chat == nil {
 			log.Error().Err(err).Int64("tgChatID", update.CallbackQuery.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
+		} else {
+			updateLog.ChatID = chat.ID
+			updateLog.Kind = tgbotapi.UpdateTypeCallbackQuery
+			updateLog.MessageID = update.CallbackQuery.Message.MessageID
+			updateLog.Data = update.CallbackQuery.Data
 		}
-
-		updateLog.ChatID = chat.ID
-		updateLog.Kind = tgbotapi.UpdateTypeCallbackQuery
-		updateLog.MessageID = update.CallbackQuery.Message.MessageID
-		updateLog.Data = update.CallbackQuery.Data
 
 		err = b.onCallbackQuery(update.CallbackQuery)
 	default:
@@ -57,7 +58,8 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	updateLog.HandlingTime = int(elapsed.Milliseconds())
 
 	if err != nil {
-		updateLog.Error = err.Error()
+		errStr := err.Error()
+		updateLog.Error = &errStr
 		log.Error().Err(err).Msg("Error while handling update")
 		b.Report().Err(err).Chat(int64(chat.TgChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
@@ -66,7 +68,11 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) error {
-	log.Debug().Int64("tgChatID", msg.Chat.ID).Str("username", msg.Chat.UserName).Str("text", msg.Text).Msg("Handling message")
+	log.Debug().
+		Int64("tgChatID", msg.Chat.ID).
+		Str("username", msg.Chat.UserName).
+		Str("text", msg.Text).
+		Msg("Handling message")
 
 	if msg.IsCommand() {
 		return b.onCommand(msg)
@@ -188,7 +194,11 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 }
 
 func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
-	log.Debug().Str("data", strings.ReplaceAll(query.Data, "\n", " // ")).Msg("Handling callback query")
+	log.Debug().
+		Int64("tgChatID", query.Message.Chat.ID).
+		Str("username", query.Message.Chat.UserName).
+		Str("data", strings.ReplaceAll(query.Data, "\n", " // ")).
+		Msg("Handling callback query")
 
 	callbackCommand := ParseCallbackData(query.Data)
 	log.Trace().Strs("args", callbackCommand.Args).Msgf("Command: %s", callbackCommand.Command)

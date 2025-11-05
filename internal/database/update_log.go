@@ -11,12 +11,12 @@ type UpdateLog struct {
 	MessageID    int       `db:"message_id"`
 	Data         string    `db:"data"`
 	HandlingTime int       `db:"handling_time"` // Milliseconds
-	Error        string    `db:"error"`
+	Error        *string   `db:"error"`
 	CreatedAt    time.Time `db:"created_at"`
 }
 
 func (ul *UpdateLog) IsOk() bool {
-	return ul.Error == ""
+	return ul.Error == nil || *ul.Error == ""
 }
 
 func (r *Repository) GetUpdateLogByChatID(ID int) ([]UpdateLog, error) {
