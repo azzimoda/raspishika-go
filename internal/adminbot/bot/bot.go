@@ -15,7 +15,8 @@ import (
 )
 
 type AdminBot struct {
-	Config      *config.Config
+	Config      *config.MainConfig
+	myCommands  []map[string]string
 	adminConfig *config.AdminConfig
 	api         *tgbotapi.BotAPI
 	repo        *database.Repository
@@ -28,6 +29,7 @@ func (b *AdminBot) API() *tgbotapi.BotAPI {
 
 func (b *AdminBot) Start() {
 	log.Info().Msg("Starting admin bot...")
+	tgbot.SetMyCommands(b.api, b.myCommands)
 	tgbot.StartPolling(b)
 }
 
@@ -47,10 +49,11 @@ func (b *AdminBot) ReportNewChat(chat *database.Chat) {
 		log.Trace().Msg("New chat report is disabled.")
 		return
 	}
-	b.Report().Chat(chat.TgChatID).Sendf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
+	b.Report().Chat(chat.TgChatID).
+		Sendf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
 }
 
-func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
+func New(cfg *config.MainConfig, myCommands []map[string]string, repo *database.Repository) (*AdminBot, error) {
 	log.Trace().Msgf("Admin token: %s", cfg.Telegram.AdminToken)
 
 	adminCfg, err := config.LoadAdminConfig(cfg.AdminConfigFile)
@@ -58,7 +61,7 @@ func New(cfg *config.Config, repo *database.Repository) (*AdminBot, error) {
 		return nil, fmt.Errorf("failed to load admin config: %w", err)
 	}
 
-	bot := AdminBot{Config: cfg, adminConfig: adminCfg, repo: repo}
+	bot := AdminBot{Config: cfg, myCommands: myCommands, adminConfig: adminCfg, repo: repo}
 
 	err = errors.New("fake error")
 	retries := 0

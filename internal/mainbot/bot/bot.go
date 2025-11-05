@@ -17,7 +17,8 @@ import (
 )
 
 type Bot struct {
-	config          *config.Config
+	config          *config.MainConfig
+	myCommands      []map[string]string
 	api             *tgbotapi.BotAPI
 	repo            *database.Repository
 	browser         *browser.BrowserService
@@ -27,7 +28,7 @@ type Bot struct {
 	Reporter        reporter.Reporter
 }
 
-func (b *Bot) Config() *config.Config {
+func (b *Bot) Config() *config.MainConfig {
 	return b.config
 }
 
@@ -48,7 +49,7 @@ func (b *Bot) Cache() *cache.Cache {
 }
 
 func (b *Bot) Start() {
-	tgbot.SetMyCommands(b.api, b.config.Telegram.MyCommands)
+	tgbot.SetMyCommands(b.api, b.myCommands)
 	tgbot.StartPolling(b)
 	log.Info().Msg("Main bot started")
 }
@@ -66,7 +67,8 @@ func (b *Bot) Report() reporter.ReportConfig {
 }
 
 func New(
-	cfg *config.Config,
+	cfg *config.MainConfig,
+	myCommands []map[string]string,
 	repo *database.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,
@@ -74,11 +76,12 @@ func New(
 	log.Trace().Msgf("Token: %s", cfg.Telegram.Token)
 
 	bot := Bot{
-		config:  cfg,
-		api:     nil,
-		repo:    repo,
-		browser: browser,
-		cache:   cache,
+		config:     cfg,
+		myCommands: myCommands,
+		api:        nil,
+		repo:       repo,
+		browser:    browser,
+		cache:      cache,
 	}
 	bot.CommandHandler = &commands.CommandHandler{Bot: &bot}
 	bot.CallbackHandler = &callbacks.CallbackHandler{Bot: &bot}

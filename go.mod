@@ -17,6 +17,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+require gopkg.in/natefinch/lumberjack.v2 v2.2.1
+
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/deckarep/golang-set/v2 v2.7.0 // indirect

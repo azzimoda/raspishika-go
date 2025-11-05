@@ -20,7 +20,7 @@ func (r *Repository) Close() error {
 	return r.db.Close()
 }
 
-func New(cfg *config.Config) (*Repository, error) {
+func New(cfg *config.MainConfig) (*Repository, error) {
 	db, err := sqlx.Open("sqlite3", cfg.Database.File)
 	if err != nil {
 		return nil, err

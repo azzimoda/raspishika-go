@@ -3,26 +3,6 @@ telegram:
   token: ''
   admin_token: ''
   admin_id: 0
-  my_commands:
-    - week: Расписание на неделю
-    - tomorrow: Расписание на завтра
-    - left: Оставшиеся пары
-    - quick: Расписание другой группы
-    - teacher: Расписание преподавателя
-
-    - settings: Меню настроек
-    - group: Изменить группу
-    - daily_time: Задать время рассылки
-    - daily_off: Выключить рассылку
-    - reminder_on: Включить напоминания перед парами
-    - reminder_off: Выключить напоминания перед парами
-    - access: Настройки доступа в группах
-
-    - help: Список команд
-    - stop: Остановить бота
-    - start: Запустить бота
-  admin_commands:
-    - stats: Get general statistics
 features:
   admin_bot: false
   daily_sending: false
@@ -40,6 +20,7 @@ cache:
   group_ttl: 7 # days
 logger:
   level: debug
+  dir: storage/logs
 
 schedule_template: storage/schedule_template.html
 admin_config_file: configs/admin.json

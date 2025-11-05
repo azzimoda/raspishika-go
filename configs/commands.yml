@@ -1,0 +1,27 @@
+---
+mainbot:
+  - week: Расписание на неделю
+  - tomorrow: Расписание на завтра
+  - left: Оставшиеся пары
+  - quick: Расписание другой группы
+  - teacher: Расписание преподавателя
+
+  - settings: Меню настроек
+  - group: Изменить группу
+  - daily_time: Задать время рассылки
+  - daily_off: Выключить рассылку
+  - reminder_on: Включить напоминания перед парами
+  - reminder_off: Выключить напоминания перед парами
+  - access: Настройки доступа в группах
+
+  - help: Список команд
+  - stop: Остановить бота
+  - start: Запустить бота
+adminbot:
+  - chats: Send all chats stats
+  - groups: Send all groups stats
+
+  - chat: Send chat data view
+  - group: Send group data view
+
+  - start: Greet the admin

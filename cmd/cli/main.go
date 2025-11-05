@@ -12,7 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const ConfigFile = `configs/config.yml`
+const MainConfigFile = `configs/config.yml`
+const CommandsConfigFile = `configs/commands.yml`
 
 var help = flag.Bool("help", false, "Prints help message.")
 var notification = flag.String("notify", "", "Sends notification to all chats; does not start the bot and features.")
@@ -26,18 +27,24 @@ func main() {
 		os.Exit(0)
 	}
 
-	cfg, err := config.Load(ConfigFile)
+	mainConfig, err := config.LoadMainConfig(MainConfigFile)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")
 	}
-	logger.SetupLogger(cfg.Logger.Level)
-	log.Info().Msg("Loaded configuration")
+	log.Debug().Msg("Loaded configuration")
 
-	if err := cfg.EnsureDirs(); err != nil {
+	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
+	if err != nil {
+		log.Panic().Err(err).Msg("Failed to load commands configuration")
+	}
+
+	logger.SetupLogger(mainConfig.Logger)
+
+	if err := mainConfig.EnsureDirs(); err != nil {
 		log.Fatal().Err(err).Msg("Failed to create directories")
 	}
 
-	app, err := app.New(cfg)
+	app, err := app.New(mainConfig, commandsConfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create application")
 	}

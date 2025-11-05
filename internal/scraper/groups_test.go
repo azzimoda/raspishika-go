@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
 func Test_httpGetRequest(t *testing.T) {
-	logger.SetupLogger("trace")
+	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 
 	tests := []struct {
 		name string // description of this test case

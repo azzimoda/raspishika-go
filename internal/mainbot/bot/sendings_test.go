@@ -15,7 +15,7 @@ import (
 func TestBot_processPairSending(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
-	logger.SetupLogger("trace")
+	logger.SetupLogger(config.LoggerConfig{"trace", ""})
 	cfg, repo, browserService, cacheService := initServices(t)
 	makeTestChats(t, repo, cfg.Telegram.AdminID)
 	if _, err := scraper.FetchGroups(repo, browserService, cacheService); err != nil {
@@ -25,7 +25,7 @@ func TestBot_processPairSending(t *testing.T) {
 	type test struct {
 		name string // description of this test case
 		// Named input parameters for receiver constructor.
-		cfg     *config.Config
+		cfg     *config.MainConfig
 		repo    *database.Repository
 		browser *browser.BrowserService
 		cache   *cache.Cache
@@ -52,7 +52,7 @@ func TestBot_processPairSending(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b, err := New(tt.cfg, tt.repo, tt.browser, tt.cache)
+			b, err := New(tt.cfg, nil, tt.repo, tt.browser, tt.cache)
 			if err != nil {
 				t.Fatalf("could not construct receiver type: %v", err)
 			}
@@ -61,8 +61,8 @@ func TestBot_processPairSending(t *testing.T) {
 	}
 }
 
-func initServices(t *testing.T) (*config.Config, *database.Repository, *browser.BrowserService, *cache.Cache) {
-	cfg, err := config.Load("/home/mazza/code/raspishika-go/configs/config.yml")
+func initServices(t *testing.T) (*config.MainConfig, *database.Repository, *browser.BrowserService, *cache.Cache) {
+	cfg, err := config.LoadMainConfig("/home/mazza/code/raspishika-go/configs/config.yml")
 	if err != nil {
 		t.Fatalf("could not load config: %v", err)
 	}

@@ -69,7 +69,7 @@ func (b *BrowserService) TakeScreenshotHTML(html string, filename string) error 
 	})
 }
 
-func New(cfg *config.Config) (*BrowserService, error) {
+func New(cfg *config.MainConfig) (*BrowserService, error) {
 	pw, err := playwright.Run()
 	if err != nil {
 		return nil, err

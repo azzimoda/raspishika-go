@@ -19,7 +19,7 @@ import (
 )
 
 type App struct {
-	Config   *config.Config
+	Config   *config.MainConfig
 	MainBot  *mainbot.Bot
 	AdminBot *adminbot.AdminBot
 	Repo     *database.Repository
@@ -97,7 +97,7 @@ func (a *App) Report() reporter.ReportConfig {
 	return reporter.NewReportConfig(a.AdminBot.API(), a.Config.Telegram.AdminID)
 }
 
-func New(cfg *config.Config) (*App, error) {
+func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, error) {
 	app := App{Config: cfg, Cache: cache.New(&cfg.Cache)}
 	var err error
 
@@ -115,7 +115,7 @@ func New(cfg *config.Config) (*App, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
-	app.MainBot, err = mainbot.New(cfg, app.Repo, app.Browser, app.Cache)
+	app.MainBot, err = mainbot.New(cfg, commandsCfg.MainBot, app.Repo, app.Browser, app.Cache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize main bot")
 	} else {
@@ -124,9 +124,11 @@ func New(cfg *config.Config) (*App, error) {
 	app.MainBot.Reporter = &app
 
 	if cfg.Features.AdminBot {
-		app.AdminBot, err = adminbot.New(cfg, app.Repo)
+		app.AdminBot, err = adminbot.New(cfg, commandsCfg.AdminBot, app.Repo)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
+		} else {
+			log.Info().Msg("Initialized admin bot")
 		}
 		app.AdminBot.Reporter = &app
 	}

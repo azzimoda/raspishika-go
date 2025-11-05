@@ -10,16 +10,14 @@ import (
 )
 
 type ConfigProvider interface {
-	Config() *Config
+	Config() *MainConfig
 }
 
-type Config struct {
+type MainConfig struct {
 	Telegram struct {
-		Token         string              `yaml:"token"`
-		AdminToken    string              `yaml:"admin_token"`
-		AdminID       int64               `yaml:"admin_id"`
-		MyCommands    []map[string]string `yaml:"my_commands"`
-		AdminCommands []map[string]string `yaml:"admin_commands"`
+		Token      string `yaml:"token"`
+		AdminToken string `yaml:"admin_token"`
+		AdminID    int64  `yaml:"admin_id"`
 	} `yaml:"telegram"`
 
 	Features struct {
@@ -38,21 +36,19 @@ type Config struct {
 		ScreenshotDir string `yaml:"screenshot_dir"`
 	} `yaml:"browser"`
 
-	Cache CacheConfig `yaml:"cache"`
-
-	Logger struct {
-		Level string `yaml:"level"`
-	} `yaml:"logger"`
+	Cache  CacheConfig  `yaml:"cache"`
+	Logger LoggerConfig `yaml:"logger"`
 
 	ScheduleTemplate string `yaml:"schedule_template"`
 	AdminConfigFile  string `yaml:"admin_config_file"`
 }
 
-func (c *Config) EnsureDirs() error {
+func (c *MainConfig) EnsureDirs() error {
 	dirs := []string{
 		path.Dir(c.Database.File),
 		c.Browser.ScreenshotDir,
 		c.Cache.Dir,
+		c.Logger.Dir,
 	}
 	log.Trace().Strs("dirs", dirs).Msg("Ensuring dirs...")
 
@@ -89,16 +85,34 @@ func (c *CacheConfig) GroupTTLDuration() time.Duration {
 	return time.Duration(c.GroupTTL) * 24 * time.Hour
 }
 
-func Load(filename string) (*Config, error) {
+type LoggerConfig struct {
+	Level string `yaml:"level"`
+	Dir   string `yaml:"dir"`
+}
+
+func LoadMainConfig(filename string) (*MainConfig, error) {
+	var config MainConfig
+	if err := loadConfig(filename, &config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func LoadCommandsConfig(filename string) (*CommandsConfig, error) {
+	var config CommandsConfig
+	if err := loadConfig(filename, &config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func loadConfig[T any](filename string, config *T) error {
 	yamlData, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	var config Config
-	if err := yaml.Unmarshal(yamlData, &config); err != nil {
-		return nil, err
+	if err := yaml.Unmarshal(yamlData, config); err != nil {
+		return err
 	}
-
-	return &config, nil
+	return nil
 }
