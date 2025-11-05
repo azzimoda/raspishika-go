@@ -27,7 +27,7 @@ func httpGetRequest(url string, headers map[string]string) (*http.Response, erro
 	retries := 0
 	for retries < MaxRetries {
 		resp, err := client.Do(req)
-		if err == nil {
+		if err == nil && resp.StatusCode == 200 {
 			log.Debug().Str("url", url).Int("statusCode", resp.StatusCode).Msg("HTTP GET request succeeded")
 			return resp, nil
 		}

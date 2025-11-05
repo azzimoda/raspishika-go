@@ -60,17 +60,18 @@ type Pair struct {
 }
 
 func (p Pair) String() string {
-	discipline := utils.EscapeMarkdown(p.Discipline)
-	timeRange := utils.EscapeMarkdown(p.StartTime + "-" + p.EndTime)
-	classroom := utils.EscapeMarkdown(p.Classroom)
+	discipline := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Discipline)
+	teacher := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(p.Teacher))
+	timeRange := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.StartTime+"-"+p.EndTime)
+	classroom := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Classroom)
 
 	switch p.Kind {
 	case PairKindSubject:
 		return fmt.Sprintf("%d \\| %s \\| %s\n    *%s*\n    %s",
-			p.Number, timeRange, classroom, discipline, *p.Teacher)
+			p.Number, timeRange, classroom, discipline, teacher)
 	case PairKindExam, PairKindConsultation:
 		return fmt.Sprintf("%d \\| %s \\| %s\n    _%s_\n    *%s*\n    %s",
-			p.Number, timeRange, classroom, p.Label, discipline, *p.Teacher)
+			p.Number, timeRange, classroom, p.Label, discipline, teacher)
 	default:
 		return fmt.Sprintf("%d \\| %s — %s", p.Number, timeRange, p.Label)
 	}
@@ -342,9 +343,7 @@ func (s ScheduleDay) String() string {
 		return text
 	}
 
-	// log.Trace().Msgf("Pairs: %d", len(s.Pairs))
 	for _, pair := range s.Pairs {
-		// log.Trace().Msgf("Pair: %+v", pair)
 		if pair.Kind == PairKindEmpty {
 			continue
 		}
