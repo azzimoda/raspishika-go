@@ -31,7 +31,12 @@ type BotManager interface {
 }
 
 func SendErrorMessage(api *tgbotapi.BotAPI, tgChatID int64, text string) error {
-	err := tgbot.SendTempMessage(api, tgChatID, text, 10*time.Second)
+	err := tgbot.SendTempMessage(
+		api,
+		tgChatID,
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, text),
+		10*time.Second,
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send error message")
 	}
