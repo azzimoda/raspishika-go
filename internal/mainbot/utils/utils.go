@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
@@ -19,6 +21,12 @@ import (
 const (
 	ErrMsgTryLater            = "Произошла ошибка, попробуйте позже"
 	ErrMsgFailedFetchSchedule = "Не удалось загрузить расписание, попробуйте позже"
+	ErrMsgSelectGroupAgain    = "Не удалось найти группу, выберите группу ещё раз"
+)
+
+var (
+	ErrWrongGroupNameFormat = errors.New("wrong group name format")
+	ErrGroupNotFound        = errors.New("group not found")
 )
 
 type BotManager interface {
@@ -97,4 +105,41 @@ func MainMenuReplyMarkup(isPrivate bool) any {
 	} else {
 		return tgbotapi.NewRemoveKeyboard(false)
 	}
+}
+
+// FetchGroupByNameWithVadiation tries to validate given group name and fetch group from the database.
+//
+// When the group name format cannot be validated, it returns ErrWrongGroupNameFormat.
+// When given group name is not found in database, it fetches group from the website and
+// updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
+// When any other error occurs, it returns the error.
+func FetchGroupByNameWithVadiation(
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	cache *cache.Cache,
+	name string,
+) (*database.Group, error) {
+	groupName, err := utils.ValidateGroupNameFormat(name)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrWrongGroupNameFormat, err)
+	}
+
+	if groupName, err = repo.ValidateGroupNameCase(groupName); err != nil {
+		// Try to update groups.
+		if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
+			return nil, fmt.Errorf("failed to fetch groups: %w", err)
+		}
+
+		// Try again.
+		if groupName, err = repo.ValidateGroupNameCase(groupName); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
+		}
+	}
+
+	// Group found.
+	group, err := repo.GetGroupByName(groupName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group by name (%s) after successful update: %w", groupName, err)
+	}
+	return group, nil
 }

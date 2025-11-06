@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
+	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
@@ -57,13 +58,20 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	elapsed := time.Since(startTime)
 	updateLog.HandlingTime = int(elapsed.Milliseconds())
 
+	log.Debug().
+		Int64("tgChatID", chat.TgChatID).
+		Str("username", utils.DerefOrTypeDefault(chat.UserName)).
+		Str("kind", updateLog.Kind).
+		Str("text", updateLog.Data).
+		Dur("elapsed", elapsed).
+		Msg("Update handled")
+
 	if err != nil {
 		errStr := err.Error()
 		updateLog.Error = &errStr
 		log.Error().Err(err).Msg("Error while handling update")
-		b.Report().Err(err).Chat(int64(chat.TgChatID)).Send("Error while handling update") // TODO: .Debug("update", update)
+		b.Report().Err(err).Chat(chat).Send("Error while handling update") // TODO: .Debug("update", update)
 	}
-	log.Debug().Dur("elapsed", elapsed).Str("kind", updateLog.Kind).Msg("Update handled")
 	b.repo.InsertUpdateLog(updateLog)
 }
 
@@ -127,7 +135,7 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) error {
 func (b *Bot) onText(msg *tgbotapi.Message) error {
 	chat, err := b.repo.GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(b.api, msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(b.api, msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat state: %w", err)
 	}
 
@@ -155,6 +163,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		if strings.ToLower(msg.Text) == "отмена" {
 			return b.onTextCancel(msg)
 		}
+
 		return b.CommandHandler.OnTextGroup(msg, chat)
 	case database.ChatStateSelectingTime:
 		return b.CommandHandler.OnTextTime(msg, chat)
@@ -162,6 +171,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 		if strings.ToLower(msg.Text) == "отмена" {
 			return b.onTextCancel(msg)
 		}
+
 		return b.CommandHandler.OnTextQuickGroup(msg)
 	case database.ChatStateSelectingTeacher:
 		return b.CommandHandler.OnTextTeacherName(msg)
@@ -171,6 +181,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) error {
 			log.Error().Err(err).Msg("Failed to update chat state")
 			return fmt.Errorf("failed to update chat state: %w", err)
 		}
+
 		return nil
 	}
 }
@@ -184,7 +195,7 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Действие отменено")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
+	newMsg.ReplyMarkup = botutils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
 	sentMsg, err := b.api.Send(newMsg)
 	go func() {
 		time.Sleep(3 * time.Second)
@@ -248,7 +259,7 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	}
 
 	if err != nil {
-		b.api.Send(tgbotapi.NewCallback(query.ID, utils.ErrMsgTryLater))
+		b.api.Send(tgbotapi.NewCallback(query.ID, botutils.ErrMsgTryLater))
 	}
 	return err
 }

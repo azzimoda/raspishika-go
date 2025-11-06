@@ -15,7 +15,7 @@ import (
 func TestBot_processPairSending(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
-	logger.SetupLogger(config.LoggerConfig{"trace", ""})
+	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 	cfg, repo, browserService, cacheService := initServices(t)
 	makeTestChats(t, repo, cfg.Telegram.AdminID)
 	if _, err := scraper.FetchGroups(repo, browserService, cacheService); err != nil {

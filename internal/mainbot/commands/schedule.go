@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
+	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -17,7 +17,7 @@ import (
 func (ch *CommandHandler) OnWeek(msg *tgbotapi.Message) error {
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
@@ -27,11 +27,11 @@ func (ch *CommandHandler) OnWeek(msg *tgbotapi.Message) error {
 		return ch.OnGroup(msg)
 	}
 
-	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
+	group, shouldReturn, err := ch.tryGetGroup(chat, msg)
+	if shouldReturn {
+		return err
 	}
+
 	scheduleCfg := scraper.GroupScheduleConfig(group)
 	return ch.SendWeekSchedule(chat, scheduleCfg)
 }
@@ -52,15 +52,15 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 	}
 	if err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, utils.ErrMsgFailedFetchSchedule)
+		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
 	html := schedule.HTML(cache, ch.Bot.Config().ScheduleTemplate)
-	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleCfg))
+	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, botutils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
-		utils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
@@ -68,7 +68,7 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 
 	newMsg := tgbotapi.NewMessage(chat.TgChatID, scheduleCfg.FormatMarkdown()+":")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = utils.MainMenuReplyMarkup(chat.IsPrivate())
+	newMsg.ReplyMarkup = botutils.MainMenuReplyMarkup(chat.IsPrivate())
 	_, err2 := ch.Bot.API().Send(newMsg)
 
 	newPhotoMsg := tgbotapi.NewPhoto(chat.TgChatID, tgbotapi.FilePath(imagePath))
@@ -80,9 +80,9 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 
 func weekScheduleInlineButtonMarkup(config scraper.ScheduleConfig) tgbotapi.InlineKeyboardMarkup {
 	if config.Group != nil {
-		return utils.InlineButtonMarkupUpdate("group", config.Group.GroupName)
+		return botutils.InlineButtonMarkupUpdate("group", config.Group.GroupName)
 	} else if config.Teacher != nil {
-		return utils.InlineButtonMarkupUpdate("teacher", config.Teacher.TeacherID)
+		return botutils.InlineButtonMarkupUpdate("teacher", config.Teacher.TeacherID)
 	} else {
 		panic("unreachable")
 	}
@@ -91,7 +91,7 @@ func weekScheduleInlineButtonMarkup(config scraper.ScheduleConfig) tgbotapi.Inli
 func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
 	}
 
@@ -100,10 +100,9 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 		log.Warn().Msg("Group not set, offering to set group")
 		return ch.OnGroup(msg)
 	}
-	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
+	group, shouldReturn, err := ch.tryGetGroup(chat, msg)
+	if shouldReturn {
+		return err
 	}
 
 	rawSchedule, err := scraper.FetchSchedule(
@@ -112,7 +111,7 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 		scraper.GroupScheduleConfig(group),
 	)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 	schedule := rawSchedule.Transform()
@@ -127,7 +126,7 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 	text := tomorrow.String()
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("tomorrow", *chat.GroupName)
+	newMsg.ReplyMarkup = botutils.InlineButtonMarkupUpdate("tomorrow", *chat.GroupName)
 
 	_, err = ch.Bot.API().Send(newMsg)
 	return err
@@ -136,7 +135,7 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
 	}
 
 	if chat.GroupName == nil {
@@ -146,20 +145,19 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 
 	if time.Now().Weekday() == time.Sunday {
 		newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Сегодня воскресенье, отдыхайте!")
-		newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
+		newMsg.ReplyMarkup = botutils.InlineButtonMarkupUpdate("left", *chat.GroupName)
 		_, err := ch.Bot.API().Send(newMsg)
 		return err
 	}
 
-	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
+	group, shouldReturn, err := ch.tryGetGroup(chat, msg)
+	if shouldReturn {
+		return err
 	}
 
 	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 
@@ -173,7 +171,36 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 	}
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = utils.InlineButtonMarkupUpdate("left", *chat.GroupName)
+	newMsg.ReplyMarkup = botutils.InlineButtonMarkupUpdate("left", *chat.GroupName)
 	_, err = ch.Bot.API().Send(newMsg)
 	return err
+}
+
+func (ch *CommandHandler) tryGetGroup(chat *database.Chat, msg *tgbotapi.Message) (*database.Group, bool, error) {
+	group, err := botutils.FetchGroupByNameWithVadiation(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), *chat.GroupName)
+	if err == nil {
+		return group, false, nil
+	}
+
+	switch {
+	case errors.Is(err, botutils.ErrWrongGroupNameFormat):
+		// Should be impossible, since group name is validated before setting it to chat.
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
+		return nil, true, fmt.Errorf("wrong group name format: %w", err)
+	case errors.Is(err, botutils.ErrGroupNotFound):
+		// Group not found, offer to set group again.
+		chat.DepartmentName = nil
+		chat.GroupName = nil
+		if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+			botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
+			return nil, true, fmt.Errorf("failed to update chat: %w", err)
+		}
+
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgSelectGroupAgain)
+		return nil, true, ch.OnGroup(msg)
+	default:
+		// Any other error, return error.
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
+		return nil, true, fmt.Errorf("failed to fetch group: %w", err)
+	}
 }

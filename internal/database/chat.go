@@ -2,8 +2,10 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,7 +28,7 @@ type Chat struct {
 	State            ChatState `db:"state" json:"state"`
 	DepartmentName   *string   `db:"department" json:"department"`
 	GroupName        *string   `db:"group" json:"group"`
-	DailySendingTime *string    `db:"daily_sending_time" json:"daily_sending_time"`
+	DailySendingTime *string   `db:"daily_sending_time" json:"daily_sending_time"`
 	PairSending      bool      `db:"pair_sending" json:"pair_sending"`
 	Access           int       `db:"access" json:"access"`
 	CreatedAt        time.Time `db:"created_at" json:"created_at"`
@@ -50,25 +52,41 @@ func (r *Repository) CreateChat(tgChatID int64, username string) (int64, error) 
 
 // CreateOrUpdateChat creates or updates chat in the database.
 // If chat does not exist, it creates a new one and returns true as second return value.
+// If chat exists, it updates its username and returns false as second return value.
 func (r *Repository) CreateOrUpdateChat(tgChatID int64, username string) (*Chat, bool, error) {
 	var chat Chat
 	err := r.db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID)
 
 	if err == sql.ErrNoRows {
+		// Create new chat.
 		log.Debug().Int64("tgChatID", tgChatID).Msg("Chat does not exist, creating new one...")
 		id, err := r.CreateChat(tgChatID, username)
 		if err != nil {
-			return nil, true, err
+			return nil, true, fmt.Errorf("failed to create chat (%d, %s): %w", tgChatID, username, err)
 		}
+
 		chat, err := r.GetChat(id)
 		return chat, true, err
 	}
 
 	if err != nil {
 		log.Error().Err(err).Int64("tgChatID", tgChatID).Msg("Failed to get chat")
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to get chat by Telegram chat ID (%d): %w", tgChatID, err)
 	}
 
+	if utils.DerefOrTypeDefault(chat.UserName) != username {
+		// Update username.
+		chat.UserName = &username
+		if err := r.UpdateChat(&chat); err != nil {
+			err := fmt.Errorf("failed to update chat's username (%v -> %s): %w", chat.UserName, username, err)
+			return nil, false, err
+		}
+
+		chat, err := r.GetChat(int64(chat.ID))
+		return chat, false, err
+	}
+
+	// Return existing chat.
 	log.Trace().Int64("tgChatID", tgChatID).Msg("Chat already exists")
 	return &chat, false, nil
 }

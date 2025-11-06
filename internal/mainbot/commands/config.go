@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 
-	"github.com/rs/zerolog/log"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -161,17 +161,21 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) t
 func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	// TODO: Validate group name.
-	// groupName, err := utils.ValidateGroupNameFormat(msg.Text)
-	// if err != nil {
-	// }
-
-	group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
-	if err != nil {
-		// TODO: Try to scrape groups again instead of error.
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, fmt.Sprintf(`Группа "%s" не найдена, попробуйте ещё раз`, msg.Text))
-		log.Error().Err(err).Str("groupName", msg.Text).Msg("Failed to get group by name from DB")
-		return nil // fmt.Errorf("failed to get group by name (%s): %w", msg.Text, err)
+	group, err := botutils.FetchGroupByNameWithVadiation(
+		ch.Bot.Repo(),
+		ch.Bot.Browser(),
+		ch.Bot.Cache(),
+		msg.Text,
+	)
+	if errors.Is(err, botutils.ErrWrongGroupNameFormat) {
+		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, "Неправильный формат группы, попробуйте ещё раз")
+		return nil
+	} else if errors.Is(err, botutils.ErrGroupNotFound) {
+		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, fmt.Sprintf(`Группа "%s" не найдена, попробуйте ещё раз`, msg.Text))
+		return nil
+	} else if err != nil {
+		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgTryLater)
+		return err
 	}
 
 	chat.State = database.ChatStateDefault
