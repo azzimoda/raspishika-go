@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (r *Repository) UpdateGroups(groups []Group) error {
 
 	tx, err := r.db.Beginx()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
 	for _, group := range groups {

@@ -21,18 +21,25 @@ func (ch *CallbackHandler) OnUpdateGroup(query *tgbotapi.CallbackQuery, args []s
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	schedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
+	schedule, err := scraper.FetchSchedule(
+		ch.Bot.Repo(),
+		ch.Bot.Cache().Config.Dir,
+		scraper.GroupScheduleConfig(group),
+	)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 
 	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
 
-	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, fmt.Sprintf("schedule_%s.png", group.GroupName))
+	imagePath := path.Join(
+		ch.Bot.Config().Browser.ScreenshotDir,
+		fmt.Sprintf("schedule_%s.png", group.GroupName),
+	)
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to take screenshot of schedule HTML render: %w", err)
 	}
 
 	markup := utils.InlineButtonMarkupUpdate("group", groupName)
@@ -96,7 +103,7 @@ func (ch *CallbackHandler) OnUpdateTomorrow(query *tgbotapi.CallbackQuery, args 
 	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 	schedule := rawSchedule.Transform()
 
@@ -135,7 +142,7 @@ func (ch *CallbackHandler) OnUpdateLeft(query *tgbotapi.CallbackQuery, args []st
 	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 	schedule := rawSchedule.Transform()
 

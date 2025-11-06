@@ -48,9 +48,10 @@ func (ch *CommandHandler) OnStart(msg *tgbotapi.Message) error {
 	_, err := ch.Bot.API().Send(newMsg)
 
 	if err == nil {
-		if chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID); err == nil && chat.GroupName == nil {
+		if chat, repoErr := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID); repoErr == nil && chat.GroupName == nil {
 			return ch.OnGroup(msg)
 		} else {
+			log.Warn().Err(repoErr).Int64("tgChatID", msg.Chat.ID).Msg("Failed to get chat by ID on /start")
 			return err
 		}
 	}

@@ -128,20 +128,20 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 		log.Trace().Msg("Navigating to department page")
 
 		if _, err := p.Goto(department.URL); err != nil {
-			return err
+			return fmt.Errorf("failed to navigate to department page: %w", err)
 		}
 
-		iframeLocator := p.FrameLocator("div.com-content-article__body iframe")
-		if err := iframeLocator.Locator("#groups").WaitFor(playwright.LocatorWaitForOptions{
+		frameLocator := p.FrameLocator("div.com-content-article__body iframe")
+		if err := frameLocator.Locator("#groups").WaitFor(playwright.LocatorWaitForOptions{
 			Timeout: playwright.Float(60_000),
 		}); err != nil {
-			return err
+			return fmt.Errorf("failed to wait for groups iframe: %w", err)
 		}
 
-		options, err := iframeLocator.Locator("#groups option").EvaluateAll(
+		options, err := frameLocator.Locator("#groups option").EvaluateAll(
 			`els => els.map(el => ({ text: el.textContent.trim(), value: el.value, sid: el.getAttribute("sid") }))`)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get groups options: %w", err)
 		}
 
 		for _, opt := range options.([]any) {

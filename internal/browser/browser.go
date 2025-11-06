@@ -33,7 +33,7 @@ func (b *BrowserService) Close() error {
 func (b *BrowserService) WithContext(f func(playwright.BrowserContext) error) error {
 	ctx, err := b.browser.NewContext()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create browser context: %w", err)
 	}
 	defer ctx.Close()
 
@@ -44,7 +44,7 @@ func (b *BrowserService) WithPage(f func(playwright.Page) error) error {
 	return b.WithContext(func(bc playwright.BrowserContext) error {
 		page, err := bc.NewPage()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create page: %w", err)
 		}
 		defer page.Close()
 

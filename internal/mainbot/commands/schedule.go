@@ -103,13 +103,17 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := scraper.FetchSchedule(
+		ch.Bot.Repo(),
+		ch.Bot.Cache().Config.Dir,
+		scraper.GroupScheduleConfig(group),
+	)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 	schedule := rawSchedule.Transform()
 
@@ -150,13 +154,13 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 	group, err := ch.Bot.Repo().GetGroupByName(*chat.GroupName)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to get group by name (%s): %w", *chat.GroupName, err)
 	}
 
 	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgFailedFetchSchedule)
-		return err
+		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 
 	schedule := rawSchedule.Transform()

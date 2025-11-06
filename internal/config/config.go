@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -54,7 +55,7 @@ func (c *MainConfig) EnsureDirs() error {
 
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
+			return fmt.Errorf("failed to make dir '%s': %w", dir, err)
 		}
 	}
 	return nil
@@ -109,10 +110,10 @@ func LoadCommandsConfig(filename string) (*CommandsConfig, error) {
 func loadConfig[T any](filename string, config *T) error {
 	yamlData, err := os.ReadFile(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read config file: %w", err)
 	}
 	if err := yaml.Unmarshal(yamlData, config); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal YAML config: %w", err)
 	}
 	return nil
 }

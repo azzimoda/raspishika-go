@@ -106,7 +106,7 @@ func (ch *CommandHandler) OnGroup(
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to get chat by TG chat ID (%d): %w", msg.Chat.ID, err)
 	}
 
 	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
@@ -170,7 +170,7 @@ func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		return err
+		return fmt.Errorf("failed to update chat: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("Теперь вы в группе %s", group.GroupName))

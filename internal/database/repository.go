@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/azzimoda/raspishika-go/internal/config"
 
 	"github.com/jmoiron/sqlx"
@@ -88,7 +90,7 @@ func createTables(db *sqlx.DB) error {
 		_, err := db.Exec(query)
 		if err != nil {
 			log.Error().Str("query", query).Msg("Failed to execute query")
-			return err
+			return fmt.Errorf("failed to execute query: %w", err)
 		}
 	}
 	return nil

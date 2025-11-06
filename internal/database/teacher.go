@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -37,7 +38,7 @@ func (r *Repository) GetTeacherByChatID(ID int) ([]Teacher, error) {
 func (r *Repository) UpdateTeachers(teachers []Teacher) error {
 	tx, err := r.db.Beginx()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
 	for _, t := range teachers {

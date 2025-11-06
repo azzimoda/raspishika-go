@@ -47,19 +47,19 @@ func checkTeachers(repo *database.Repository) ([]database.Teacher, error) {
 func scrapeTeachers(browser *browser.BrowserService) (teachers []database.Teacher, err error) {
 	err = browser.WithPage(func(p playwright.Page) error {
 		if _, err := p.Goto(TeachersPageURL); err != nil {
-			return err
+			return fmt.Errorf("failed to goto teachers page: %w", err)
 		}
 
 		iframeLocator := p.FrameLocator("div.com-content-article__body iframe")
 		selectLocator := iframeLocator.Locator("#preps")
 		if err := selectLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
-			return err
+			return fmt.Errorf("failed to wait for teacher select: %w", err)
 		}
 
 		options, err := iframeLocator.Locator("#preps option").EvaluateAll(
 			`els => els.map(el => ({ text: el.textContent.trim(), value: el.value }))`)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get teacher options: %w", err)
 		}
 
 		for _, opt := range options.([]any) {
