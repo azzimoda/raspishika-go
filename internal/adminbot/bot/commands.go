@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -19,25 +20,34 @@ func (b *AdminBot) onStart(msg *tgbotapi.Message) error {
 }
 
 func (b *AdminBot) onChat(msg *tgbotapi.Message) error {
-
 	tgChatID, err := strconv.ParseInt(msg.CommandArguments(), 10, 64)
+	var chat *database.Chat
 	if err != nil {
-		return fmt.Errorf("failed to parse chat ID: %w", err)
+		// Get last chat if no chat ID provided.
+		chats, err := b.repo.GetChats()
+		if err != nil {
+			return fmt.Errorf("failed to get chats: %w", err)
+		}
+		if len(chats) == 0 {
+			return fmt.Errorf("no chats found")
+		}
+
+		chat = &chats[len(chats)-1]
+	} else {
+		chat, err = b.repo.GetChatByTgChatID(tgChatID)
+		if err != nil {
+			return fmt.Errorf("failed to get chat by chat ID: %w", err)
+		}
 	}
 
-	return b.sendChatReport(tgChatID, msg)
+	return b.sendChatReport(chat, msg)
 }
 
-func (b *AdminBot) sendChatReport(tgChatID int64, msg *tgbotapi.Message) error {
-	chat, err := b.repo.GetChatByTgChatID(tgChatID)
-	if err != nil {
-		return fmt.Errorf("failed to get chat by chat ID: %w", err)
-	}
-
+func (b *AdminBot) sendChatReport(chat *database.Chat, msg *tgbotapi.Message) error {
 	text := b.chatReport(b.repo, chat)
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err = b.api.Send(newMsg)
+	_, err := b.api.Send(newMsg)
 	return err
 }
 
@@ -52,27 +62,43 @@ func (b *AdminBot) chatReport(repo *database.Repository, chat *database.Chat) st
 		recentTeachersNames[i] = t.Name
 	}
 
+	recentUpdates, err := repo.GetRecentChatUpdateLogs(chat.ID, 48*time.Hour)
+	if err != nil {
+		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
+		recentUpdates = []database.UpdateLog{}
+	}
+	recentUpdatesStr := ""
+	for i := len(recentUpdates) - 1; i >= 0 && i >= len(recentUpdates)-5; i-- {
+		recentUpdatesStr += tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, fmt.Sprintf("- %s (time: %dms, error: %s)\n",
+			recentUpdates[i].Data, recentUpdates[i].HandlingTime, utils.DerefOrTypeDefault(recentUpdates[i].Error)))
+	}
+
 	return fmt.Sprintf(
-		"ID: %d\n"+
-			"Chat ID: `%d`\n"+
-			"Username: %s\n"+
-			"State: %s\n"+
-			"Department: %s\n"+
-			"Group: `%s`\n"+
-			"Daily Sending Time: %s\n"+
-			"Pair Sending: %t\n"+
-			"Access: %d\n\n"+
-			"Recent Teachers: %s",
+		`ID: %d
+Chat ID: %s
+Username: @%s
+State: %s
+Department: %s
+Group: %s
+Daily Sending Time: %s
+Pair Sending: %t
+Access: %d
+
+Recent Teachers: %s
+
+Recent updates:
+%s`,
 		chat.ID,
-		chat.TgChatID,
+		fmt.Sprintf("`%d`", chat.TgChatID),
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.UserName)),
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(chat.State)),
 		utils.DerefOrTypeDefault(chat.DepartmentName),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.GroupName)),
+		"`"+tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.GroupName))+"`",
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(chat.DailySendingTime)),
 		chat.PairSending,
 		chat.Access,
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, strings.Join(recentTeachersNames, ", ")),
+		recentUpdatesStr,
 	)
 }
 

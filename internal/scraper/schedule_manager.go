@@ -37,6 +37,7 @@ func (sm *ScheduleManager) Get(
 		if rawSchedule, ok := rawScheduleCache.(*RawSchedule); ok {
 			return rawSchedule, nil
 		} else {
+			cache.C.Delete(key)
 			log.Error().Type("cacheValueType", rawScheduleCache).Msgf("Invalid cache value type")
 			return nil, fmt.Errorf("invalid cache value type: %T", rawScheduleCache)
 		}

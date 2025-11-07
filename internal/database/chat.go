@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -125,6 +126,14 @@ func (r *Repository) GetChat(id int64) (*Chat, error) {
 func (r *Repository) GetChatByTgChatID(tgChatID int64) (*Chat, error) {
 	var chat Chat
 	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID); err != nil {
+		return nil, err
+	}
+	return &chat, nil
+}
+
+func (r *Repository) GetChatByUserName(username string) (*Chat, error) {
+	var chat Chat
+	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE LOWER(username) = ?`, strings.ToLower(username)); err != nil {
 		return nil, err
 	}
 	return &chat, nil

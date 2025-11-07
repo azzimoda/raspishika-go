@@ -3,10 +3,12 @@ package bot
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func (b *AdminBot) OnUpdate(update tgbotapi.Update) {
@@ -59,7 +61,21 @@ func (b *AdminBot) onCommand(msg *tgbotapi.Message) error {
 
 func (b *AdminBot) onText(msg *tgbotapi.Message) error {
 	if tgChatID, err := strconv.ParseInt(msg.Text, 10, 64); err == nil {
-		return b.sendChatReport(tgChatID, msg)
+		chat, err := b.repo.GetChatByTgChatID(tgChatID)
+		if err != nil {
+			return fmt.Errorf("failed to get chat by chat ID: %w", err)
+		}
+
+		return b.sendChatReport(chat, msg)
+	}
+
+	if username, found := strings.CutPrefix(msg.Text, "@"); found {
+		chat, err := b.repo.GetChatByUserName(username)
+		if err != nil {
+			return fmt.Errorf("failed to get chat by username: %w", err)
+		}
+
+		return b.sendChatReport(chat, msg)
 	}
 
 	if group, err := utils.ValidateGroupNameFormat(msg.Text); err == nil {
