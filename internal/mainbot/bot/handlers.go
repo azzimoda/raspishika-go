@@ -22,6 +22,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	updateLog := &database.UpdateLog{}
 
 	var chat *database.Chat
+	var handled bool
 	var err error
 	switch {
 	case update.Message != nil:
@@ -37,7 +38,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 			updateLog.Data = update.Message.Text
 		}
 
-		err = b.onMessage(update.Message)
+		handled, err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
 		chat, err = b.repo.GetChatByTgChatID(update.CallbackQuery.Message.Chat.ID)
 		if err != nil || chat == nil {
@@ -50,7 +51,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 			updateLog.Data = update.CallbackQuery.Data
 		}
 
-		err = b.onCallbackQuery(update.CallbackQuery)
+		handled, err = b.onCallbackQuery(update.CallbackQuery)
 	default:
 		log.Warn().Msgf("Unknown update type: %T", update)
 	}
@@ -58,13 +59,23 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	elapsed := time.Since(startTime)
 	updateLog.HandlingTime = int(elapsed.Milliseconds())
 
-	log.Debug().
-		Int64("tgChatID", chat.TgChatID).
-		Str("username", utils.DerefOrTypeDefault(chat.UserName)).
-		Str("kind", updateLog.Kind).
-		Str("text", updateLog.Data).
-		Dur("elapsed", elapsed).
-		Msg("Update handled")
+	if handled {
+		log.Info().
+			Int64("tgChatID", chat.TgChatID).
+			Str("username", utils.DerefOrTypeDefault(chat.UserName)).
+			Str("kind", updateLog.Kind).
+			Str("data", shortenText(updateLog.Data, 64)).
+			Dur("elapsed", elapsed).
+			Msg("Update handled")
+	} else {
+		log.Trace().
+			Int64("tgChatID", chat.TgChatID).
+			Str("username", utils.DerefOrTypeDefault(chat.UserName)).
+			Str("kind", updateLog.Kind).
+			Str("data", shortenText(updateLog.Data, 64)).
+			Dur("elapsed", elapsed).
+			Msg("Update not handled")
+	}
 
 	if err != nil {
 		errStr := err.Error()
@@ -75,7 +86,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	b.repo.InsertUpdateLog(updateLog)
 }
 
-func (b *Bot) onMessage(msg *tgbotapi.Message) error {
+func (b *Bot) onMessage(msg *tgbotapi.Message) (bool, error) {
 	log.Debug().
 		Int64("tgChatID", msg.Chat.ID).
 		Str("username", msg.Chat.UserName).
@@ -89,101 +100,102 @@ func (b *Bot) onMessage(msg *tgbotapi.Message) error {
 	}
 }
 
-func (b *Bot) onCommand(msg *tgbotapi.Message) error {
+func (b *Bot) onCommand(msg *tgbotapi.Message) (handled bool, err error) {
 	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
+	handled = true
 	switch msg.Command() {
 	case "start":
-		return b.CommandHandler.OnStart(msg)
+		err = b.CommandHandler.OnStart(msg)
 	case "help":
-		return b.CommandHandler.OnHelp(msg)
+		err = b.CommandHandler.OnHelp(msg)
 	case "stop":
-		return b.CommandHandler.OnStop(msg)
+		err = b.CommandHandler.OnStop(msg)
 
 	case "settings":
-		return b.CommandHandler.OnSettings(msg)
+		err = b.CommandHandler.OnSettings(msg)
 	case "group":
-		return b.CommandHandler.OnGroup(msg)
+		err = b.CommandHandler.OnGroup(msg)
 	case "daily_time":
-		return b.CommandHandler.OnDailyTime(msg)
+		err = b.CommandHandler.OnDailyTime(msg)
 	case "daily_off":
-		return b.CommandHandler.OnDailyOff(msg)
+		err = b.CommandHandler.OnDailyOff(msg)
 	case "reminder_on":
-		return b.CommandHandler.OnReminder(msg, true)
+		err = b.CommandHandler.OnReminder(msg, true)
 	case "reminder_off":
-		return b.CommandHandler.OnReminder(msg, false)
+		err = b.CommandHandler.OnReminder(msg, false)
 	case "access":
-		return b.CommandHandler.OnAccess(msg)
+		err = b.CommandHandler.OnAccess(msg)
 
 	case "week":
-		return b.CommandHandler.OnWeek(msg)
+		err = b.CommandHandler.OnWeek(msg)
 	case "tomorrow":
-		return b.CommandHandler.OnTomorrow(msg)
+		err = b.CommandHandler.OnTomorrow(msg)
 	case "left":
-		return b.CommandHandler.OnLeft(msg)
+		err = b.CommandHandler.OnLeft(msg)
 
 	case "quick":
-		return b.CommandHandler.OnQuick(msg)
+		err = b.CommandHandler.OnQuick(msg)
 	case "teacher":
-		return b.CommandHandler.OnTeacher(msg)
+		err = b.CommandHandler.OnTeacher(msg)
 	default:
 		log.Debug().Str("text", msg.Text).Msg("Unknown command")
-		return nil
+		handled = false
 	}
+	return
 }
 
-func (b *Bot) onText(msg *tgbotapi.Message) error {
+func (b *Bot) onText(msg *tgbotapi.Message) (handled bool, err error) {
 	chat, err := b.repo.GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
 		botutils.SendErrorMessage(b.api, msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat state: %w", err)
+		return false, fmt.Errorf("failed to get chat state: %w", err)
 	}
 
+	handled = true
 	switch chat.State {
 	case database.ChatStateDefault:
-		lowerText := strings.ToLower(msg.Text)
-
 		if chat.IsPrivate() {
-			switch lowerText {
+			switch strings.ToLower(msg.Text) {
 			case "неделя":
-				return b.CommandHandler.OnWeek(msg)
+				err = b.CommandHandler.OnWeek(msg)
 			case "завтра":
-				return b.CommandHandler.OnTomorrow(msg)
+				err = b.CommandHandler.OnTomorrow(msg)
 			case "сегодня":
-				return b.CommandHandler.OnLeft(msg)
+				err = b.CommandHandler.OnLeft(msg)
 			case "другая группа":
-				return b.CommandHandler.OnQuick(msg)
+				err = b.CommandHandler.OnQuick(msg)
 			case "преподаватель":
-				return b.CommandHandler.OnTeacher(msg)
+				err = b.CommandHandler.OnTeacher(msg)
+			default:
+				handled = false
 			}
 		}
-
-		return nil
 	case database.ChatStateSelectingGroup:
 		if strings.ToLower(msg.Text) == "отмена" {
-			return b.onTextCancel(msg)
+			err = b.onTextCancel(msg)
+		} else {
+			err = b.CommandHandler.OnTextGroup(msg, chat)
 		}
-
-		return b.CommandHandler.OnTextGroup(msg, chat)
 	case database.ChatStateSelectingTime:
-		return b.CommandHandler.OnTextTime(msg, chat)
+		err = b.CommandHandler.OnTextTime(msg, chat)
 	case database.ChatStateQuickSelectingGroup:
 		if strings.ToLower(msg.Text) == "отмена" {
-			return b.onTextCancel(msg)
+			err = b.onTextCancel(msg)
+		} else {
+			err = b.CommandHandler.OnTextQuickGroup(msg)
 		}
-
-		return b.CommandHandler.OnTextQuickGroup(msg)
 	case database.ChatStateSelectingTeacher:
-		return b.CommandHandler.OnTextTeacherName(msg)
+		err = b.CommandHandler.OnTextTeacherName(msg)
+
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
 		if err := b.repo.UpdateChatState(chat.TgChatID, database.ChatStateDefault); err != nil {
 			log.Error().Err(err).Msg("Failed to update chat state")
-			return fmt.Errorf("failed to update chat state: %w", err)
+			err = fmt.Errorf("failed to update chat state: %w", err)
 		}
-
-		return nil
 	}
+	return
 }
 
 func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
@@ -204,7 +216,7 @@ func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
 	return err
 }
 
-func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
+func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) (bool, error) {
 	log.Debug().
 		Int64("tgChatID", query.Message.Chat.ID).
 		Str("username", query.Message.Chat.UserName).
@@ -214,12 +226,13 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 	callbackCommand := ParseCallbackData(query.Data)
 	log.Trace().Strs("args", callbackCommand.Args).Msgf("Command: %s", callbackCommand.Command)
 
+	var handled bool = true
 	var err error
 	switch callbackCommand.Command {
 	case "delete":
 		b.api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
 		if err := b.repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
-			return fmt.Errorf("failed to update chat state: %w", err)
+			return false, fmt.Errorf("failed to update chat state: %w", err)
 		}
 	// TODO: Add "delete_config"
 
@@ -255,11 +268,18 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) error {
 
 	default:
 		b.api.Send(tgbotapi.NewCallback(query.ID, "?"))
-		// err = nil
+		handled = false
 	}
 
 	if err != nil {
 		b.api.Send(tgbotapi.NewCallback(query.ID, botutils.ErrMsgTryLater))
 	}
-	return err
+	return handled, err
+}
+
+func shortenText(text string, maxLength int) string {
+	if len(text) > maxLength {
+		return text[:maxLength-2] + "…"
+	}
+	return text
 }

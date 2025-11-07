@@ -31,8 +31,9 @@ func (sm *ScheduleManager) Get(
 	config ScheduleConfig,
 ) (*RawSchedule, error) {
 	// Check cache.
-	cacheKey := scheduleCackeKey(config)
-	if rawScheduleCache, found := cache.C.Get(cacheKey); found {
+	key := scheduleKey(config)
+	if rawScheduleCache, found := cache.C.Get(key); found {
+		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		if rawSchedule, ok := rawScheduleCache.(*RawSchedule); ok {
 			return rawSchedule, nil
 		} else {
@@ -42,7 +43,8 @@ func (sm *ScheduleManager) Get(
 	}
 
 	// Update cache.
-	result, err, _ := sm.sf.Do(config.FormatMarkdown(), func() (schedule any, err error) {
+	log.Debug().Str("cacheKey", key).Msg("Cache miss, scraping schedule")
+	result, err, _ := sm.sf.Do(key, func() (schedule any, err error) {
 		return sm.scrapeSchedule(repo, config, cache, browser)
 	})
 
@@ -51,7 +53,7 @@ func (sm *ScheduleManager) Get(
 	}
 
 	// Save cache.
-	cache.C.Set(cacheKey, result, cache.Config.ScheduleTTLDuration())
+	cache.C.Set(key, result, cache.Config.ScheduleTTLDuration())
 
 	return result.(*RawSchedule), nil
 }
@@ -77,7 +79,7 @@ func (*ScheduleManager) scrapeSchedule(
 	}
 }
 
-func scheduleCackeKey(config ScheduleConfig) string {
+func scheduleKey(config ScheduleConfig) string {
 	if config.Group != nil {
 		return fmt.Sprintf("schedule_%s_%s", config.Group.DepartmentID, config.Group.GroupID)
 	} else if config.Teacher != nil {
