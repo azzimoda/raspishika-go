@@ -125,6 +125,7 @@ func FetchGroupByNameWithVadiation(
 	}
 
 	if groupName, err = repo.ValidateGroupNameCase(groupName); err != nil {
+		log.Warn().Err(err).Msg("Updating groups")
 		// Try to update groups.
 		if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
 			return nil, fmt.Errorf("failed to fetch groups: %w", err)
@@ -134,12 +135,16 @@ func FetchGroupByNameWithVadiation(
 		if groupName, err = repo.ValidateGroupNameCase(groupName); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
 		}
+	} else {
+		log.Trace().Str("given", name).Str("groupName", groupName).
+			Bool("give == validated", name == groupName).
+			Msg("Group name case is validated")
 	}
 
 	// Group found.
 	group, err := repo.GetGroupByName(groupName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get group by name (%s) after successful update: %w", groupName, err)
+		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
 	}
 	return group, nil
 }

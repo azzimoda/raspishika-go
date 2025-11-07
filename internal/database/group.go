@@ -30,7 +30,7 @@ func (r *Repository) GetGroups() ([]Group, error) {
 
 func (r *Repository) GetGroupByName(name string) (*Group, error) {
 	var group Group
-	err := r.db.Get(&group, "SELECT * FROM groups WHERE LOWER(group_name) = ?", name)
+	err := r.db.Get(&group, "SELECT * FROM groups WHERE group_name = ?", name)
 	return &group, err
 }
 

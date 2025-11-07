@@ -175,7 +175,7 @@ func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat
 		return nil
 	} else if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgTryLater)
-		return err
+		return fmt.Errorf("failed to try get group: %w", err)
 	}
 
 	chat.State = database.ChatStateDefault

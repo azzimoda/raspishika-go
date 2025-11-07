@@ -19,11 +19,12 @@ func TestValidateGroupName(t *testing.T) {
 		{"name without dashes be validated", "ИСПт 22 (11) 2", "ИСПт-22-(11)-2", false},
 		{"name without dashes and parens be validated", "ИСПт 22 11 2", "ИСПт-22-(11)-2", false},
 		{"name without spaces and parens be validated", "ИСПт2292", "ИСПт-22-(9)-2", false},
-		
+
 		{"invalid case must valudate format but not case", "испт-22-(11)-2", "испт-22-(11)-2", false},
 		{"invalid case without spaces and parens must valudate format but not case", "испт2292", "испт-22-(9)-2", false},
-		
-		{"must return error on CЭЗт-25-(9)-1 (C is latin capital letter)", "CЭЗт-25-(9)-1", "", true},
+
+		{"must validate CЭЗт-25-(9)-1 (C is latin capital letter)", "CЭЗт-25-(9)-1", "CЭЗт-25-(9)-1", false},
+
 		{"empty string must cause error", "", "", true},
 	}
 	for _, tt := range tests {

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/transform"
 )
 
-const GroupRegexp = `^(\p{Cyrillic}{3,5})[- ]*(\d{2})[- ]*\(?(9|11)\)?[- ]*(\d)$`
+const GroupRegexp = `^([\w\p{Cyrillic}]{3,5})[- ]*(\d{2})[- ]*\(?(9|11)\)?[- ]*(\d)$`
 
 func Windows1251ToUTF8(s string) (string, error) {
 	decoder := charmap.Windows1251.NewDecoder()
