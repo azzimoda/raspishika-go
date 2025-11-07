@@ -19,6 +19,8 @@ require (
 
 require gopkg.in/natefinch/lumberjack.v2 v2.2.1
 
+require golang.org/x/sync v0.17.0
+
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/deckarep/golang-set/v2 v2.7.0 // indirect

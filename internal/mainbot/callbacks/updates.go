@@ -21,9 +21,10 @@ func (ch *CallbackHandler) OnUpdateGroup(query *tgbotapi.CallbackQuery, args []s
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	schedule, err := scraper.FetchSchedule(
+	schedule, err := ch.Bot.ScheduleManager().Get(
 		ch.Bot.Repo(),
-		ch.Bot.Cache().Config.Dir,
+		ch.Bot.Browser(),
+		ch.Bot.Cache(),
 		scraper.GroupScheduleConfig(group),
 	)
 	if err != nil {
@@ -65,7 +66,7 @@ func (ch *CallbackHandler) OnUpdateTeacher(query *tgbotapi.CallbackQuery, args [
 	}
 
 	scheduleConfig := scraper.TeacherScheduleConfig(teacher)
-	schedule, err := scraper.FetchScheduleWithBrowser(ch.Bot.Repo(), ch.Bot.Browser(), scheduleConfig)
+	schedule, err := ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scheduleConfig)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to fetch schedule of teacher (%s): %w", teacherID, err)
@@ -100,7 +101,7 @@ func (ch *CallbackHandler) OnUpdateTomorrow(query *tgbotapi.CallbackQuery, args 
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
@@ -139,7 +140,7 @@ func (ch *CallbackHandler) OnUpdateLeft(query *tgbotapi.CallbackQuery, args []st
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)

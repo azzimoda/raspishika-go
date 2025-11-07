@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	"github.com/PuerkitoBio/goquery"
@@ -23,16 +22,11 @@ import (
 )
 
 var (
-	ErrParserPanicked  = errors.New("parser panicked")
+	ErrParserPanicked = errors.New("parser panicked")
 )
 
-func FetchSchedule(repo *database.Repository, cacheDir string, config ScheduleConfig) (schedule *RawSchedule, err error) {
-	departmentIDs, err := repo.GetDepartmentIDs()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get department IDs: %w", err)
-	}
-
-	url := scheduleURL(config, departmentIDs)
+func ScrapeSchedule(cacheDir, url string, config ScheduleConfig) (*RawSchedule, error) {
+	log.Trace().Msg("Scraping schedule with HTTP")
 
 	resp, err := httpGetRequest(url, generateHeaders())
 	if err != nil {
@@ -64,19 +58,15 @@ func FetchSchedule(repo *database.Repository, cacheDir string, config ScheduleCo
 	return parseSchedule(fixedEncoding, config)
 }
 
-func FetchScheduleWithBrowser(
-	repo *database.Repository,
+func ScrapeScheduleWithBrowser(
 	browser *browser.BrowserService,
+	url string,
 	config ScheduleConfig,
-) (schedule *RawSchedule, err error) {
-	departmentIDs, err := repo.GetDepartmentIDs()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get department IDs: %w", err)
-	}
+) (*RawSchedule, error) {
+	log.Trace().Msg("Scraping schedule with browser")
 
-	url := scheduleURL(config, departmentIDs)
-
-	err = browser.WithPage(func(p playwright.Page) error {
+	var html string
+	err := browser.WithPage(func(p playwright.Page) (err error) {
 		if err := p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
 			return fmt.Errorf("failed to set extra HTTP headers: %w", err)
 		}
@@ -91,24 +81,26 @@ func FetchScheduleWithBrowser(
 
 		time.Sleep(1 * time.Second)
 
-		html, err := p.Content()
+		html, err = p.Content()
 		if err != nil {
 			return fmt.Errorf("failed to get HTML content: %w", err)
 		}
-
-		if log.Logger.GetLevel() == zerolog.TraceLevel {
-			filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
-			if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
-				log.Error().Err(err).Msg("Failed to save schedule HTML to file")
-			} else {
-				log.Debug().Msgf("Saved schedule HTML to file %s", filename)
-			}
-		}
-
-		schedule, err = parseSchedule(html, config)
-		return err
+		return nil
 	})
-	return
+
+	if log.Logger.GetLevel() == zerolog.TraceLevel {
+		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
+		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
+			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
+		} else {
+			log.Debug().Msgf("Saved schedule HTML to file %s", filename)
+		}
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to run browser: %w", err)
+	}
+	return parseSchedule(html, config)
 }
 
 func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSchedule, err error) {

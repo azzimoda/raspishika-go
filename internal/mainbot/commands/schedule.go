@@ -40,23 +40,14 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 	var schedule *scraper.RawSchedule
 	var err error
 
-	repo := ch.Bot.Repo()
-	cache := ch.Bot.Cache()
-
-	switch {
-	case scheduleCfg.Group != nil:
-		cacheConfig := cache.Config
-		schedule, err = scraper.FetchSchedule(repo, cacheConfig.Dir, scheduleCfg)
-	case scheduleCfg.Teacher != nil:
-		schedule, err = scraper.FetchScheduleWithBrowser(repo, ch.Bot.Browser(), scheduleCfg)
-	}
+	schedule, err = ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scheduleCfg)
 	if err != nil {
 		// TODO: Try to send old photo on error.
 		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
-	html := schedule.HTML(cache, ch.Bot.Config().ScheduleTemplate)
+	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
 	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, botutils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.
@@ -105,9 +96,10 @@ func (ch *CommandHandler) OnTomorrow(msg *tgbotapi.Message) error {
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(
+	rawSchedule, err := ch.Bot.ScheduleManager().Get(
 		ch.Bot.Repo(),
-		ch.Bot.Cache().Config.Dir,
+		ch.Bot.Browser(),
+		ch.Bot.Cache(),
 		scraper.GroupScheduleConfig(group),
 	)
 	if err != nil {
@@ -155,7 +147,12 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 		return err
 	}
 
-	rawSchedule, err := scraper.FetchSchedule(ch.Bot.Repo(), ch.Bot.Cache().Config.Dir, scraper.GroupScheduleConfig(group))
+	rawSchedule, err := ch.Bot.ScheduleManager().Get(
+		ch.Bot.Repo(),
+		ch.Bot.Browser(),
+		ch.Bot.Cache(),
+		scraper.GroupScheduleConfig(group),
+	)
 	if err != nil {
 		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgFailedFetchSchedule)
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
@@ -176,6 +173,7 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 	return err
 }
 
+// TODO: Move this function somewhere else and use everywhere,
 func (ch *CommandHandler) tryGetGroup(chat *database.Chat, msg *tgbotapi.Message) (*database.Group, bool, error) {
 	group, err := botutils.FetchGroupByNameWithVadiation(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), *chat.GroupName)
 	if err == nil {

@@ -36,6 +36,7 @@ type BotManager interface {
 	browser.BrowserServiceProvider
 	cache.CacheProvider
 	reporter.Reporter
+	scraper.ScheduleManagerProvider
 }
 
 func SendErrorMessage(api *tgbotapi.BotAPI, tgChatID int64, text string) error {

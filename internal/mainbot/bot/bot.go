@@ -10,6 +10,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/callbacks"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/commands"
+	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -26,6 +27,7 @@ type Bot struct {
 	CommandHandler  *commands.CommandHandler
 	CallbackHandler *callbacks.CallbackHandler
 	Reporter        reporter.Reporter
+	scheduleManager *scraper.ScheduleManager
 }
 
 func (b *Bot) Config() *config.MainConfig {
@@ -46,6 +48,10 @@ func (b *Bot) Browser() *browser.BrowserService {
 
 func (b *Bot) Cache() *cache.Cache {
 	return b.cache
+}
+
+func (b *Bot) ScheduleManager() *scraper.ScheduleManager {
+	return b.scheduleManager
 }
 
 func (b *Bot) Start() {
@@ -76,12 +82,13 @@ func New(
 	log.Trace().Msgf("Token: %s", cfg.Telegram.Token)
 
 	bot := Bot{
-		config:     cfg,
-		myCommands: myCommands,
-		api:        nil,
-		repo:       repo,
-		browser:    browser,
-		cache:      cache,
+		config:          cfg,
+		myCommands:      myCommands,
+		api:             nil,
+		repo:            repo,
+		browser:         browser,
+		cache:           cache,
+		scheduleManager: scraper.NewScheduleManager(),
 	}
 	bot.CommandHandler = &commands.CommandHandler{Bot: &bot}
 	bot.CallbackHandler = &callbacks.CallbackHandler{Bot: &bot}
