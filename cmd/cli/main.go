@@ -15,9 +15,11 @@ import (
 const MainConfigFile = `configs/config.yml`
 const CommandsConfigFile = `configs/commands.yml`
 
-var help = flag.Bool("help", false, "Prints help message.")
-var notification = flag.String("notify", "", "Sends notification to all chats; does not start the bot and features.")
-var scheduledStartTime = flag.String("start", "", "Schedules start on the given date/time in format '2006-01-02T15:04' (system time zone).")
+var help = flag.Bool("help", false, "Prints help message")
+var configFileOption = flag.String("config", MainConfigFile, "Path to the main configuration file")
+var notification = flag.String("notify", "", "Sends notification to all chats; does not start the bot and features")
+var scheduledStartTime = flag.String("start", "",
+	"Schedules start on the given date/time in format '2006-01-02T15:04' (system time zone)")
 
 func main() {
 	flag.Parse()
@@ -27,11 +29,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	mainConfig, err := config.LoadMainConfig(MainConfigFile)
+	configFile := MainConfigFile
+	if configFileOption != nil && *configFileOption != "" {
+		configFile = *configFileOption
+	}
+
+	mainConfig, err := config.LoadMainConfig(configFile)
 	if err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")
 	}
-	log.Debug().Msg("Loaded configuration")
+	log.Debug().Str("filename", configFile).Msg("Loaded configuration")
 
 	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
 	if err != nil {
