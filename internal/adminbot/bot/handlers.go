@@ -43,8 +43,12 @@ func (b *AdminBot) onCommand(msg *tgbotapi.Message) error {
 		return b.onChat(msg)
 	case "group":
 		return b.onGroup(msg)
+
 	case "chats":
 		return b.onChats(msg)
+	case "updates":
+		return b.onUpdates(msg)
+
 	default:
 		b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 		log.Warn().Msgf("Unknown command: %s", msg.Command())

@@ -139,3 +139,41 @@ func (b *AdminBot) onChats(msg *tgbotapi.Message) error {
 	_, err = b.api.Send(newMsg)
 	return err
 }
+
+func (b *AdminBot) onUpdates(msg *tgbotapi.Message) error {
+	startTime := time.Now().Add(-24 * time.Hour) // TODO: Make it configurable from args.
+
+	updateLogs, err := b.repo.GetUpdateLogsByPeriod(startTime, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to get update logs by period: %w", err)
+	}
+
+	errorCount := 0
+	scheduleCommandCount := 0
+	updateCallbackCount := 0
+	for _, log := range updateLogs {
+		if log.Error != nil && *log.Error != "" {
+			errorCount += 1
+		}
+
+		if log.Kind == "message" &&
+			(log.Data == "/week" || log.Data == "Неделя" || log.Data == "/tomorrow" || log.Data == "Завтра" ||
+				log.Data == "/left" || log.Data == "Сегодня") {
+			scheduleCommandCount += 1
+		}
+
+		if log.Kind == "callback_query" && strings.Contains(log.Data, "update_") {
+			updateCallbackCount += 1
+		}
+	}
+
+	successfulCount := len(updateLogs) - errorCount
+	newMsg := tgbotapi.NewMessage(
+		msg.Chat.ID,
+		fmt.Sprintf("Success: %d\nError: %d\nSchedule: %d\nUpdate callback: %d",
+			successfulCount, errorCount, scheduleCommandCount, updateCallbackCount),
+	)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err = b.api.Send(newMsg)
+	return err
+}
