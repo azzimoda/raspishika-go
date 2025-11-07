@@ -185,8 +185,17 @@ func (ch *CommandHandler) tryGetGroup(chat *database.Chat, msg *tgbotapi.Message
 	switch {
 	case errors.Is(err, botutils.ErrWrongGroupNameFormat):
 		// Should be impossible, since group name is validated before setting it to chat.
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return nil, true, fmt.Errorf("wrong group name format: %w", err)
+		log.Warn().Int64("tgChatID", chat.TgChatID).Str("groupName", *chat.GroupName).Msg("Wrong group name format, offer to set group again")
+
+		chat.DepartmentName = nil
+		chat.GroupName = nil
+		if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
+			botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
+			return nil, true, fmt.Errorf("failed to update chat: %w", err)
+		}
+
+		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgSelectGroupAgain)
+		return nil, true, ch.OnGroup(msg)
 	case errors.Is(err, botutils.ErrGroupNotFound):
 		// Group not found, offer to set group again.
 		chat.DepartmentName = nil
