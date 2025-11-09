@@ -37,6 +37,8 @@ type MainConfig struct {
 		ScreenshotDir string `yaml:"screenshot_dir"`
 	} `yaml:"browser"`
 
+	Sendings SendingConfig `yaml:"sendings"`
+
 	Cache  CacheConfig  `yaml:"cache"`
 	Logger LoggerConfig `yaml:"logger"`
 
@@ -61,6 +63,18 @@ func (c *MainConfig) EnsureDirs() error {
 	return nil
 }
 
+type SendingConfig struct {
+	// minutes
+	PairNotificationTTL int64 `yaml:"pair_notification_ttl"`
+}
+
+// PairNotificationTTLDuration retrnus the pair notification TTL as a time.Duration.
+//
+// Value of SendingConfig.PairNotificationTTL is in minutes, so it is multiplied by time.Minute.
+func (sc *SendingConfig) PairNotificationTTLDuration() time.Duration {
+	return time.Duration(sc.PairNotificationTTL) * time.Minute
+}
+
 type CacheConfig struct {
 	Dir         string `yaml:"dir"`
 	DefaultTTL  int64  `yaml:"default_ttl"`  // Minutes
@@ -68,19 +82,22 @@ type CacheConfig struct {
 	GroupTTL    int64  `yaml:"group_ttl"`    // Days
 }
 
-// DefaultTTLDuration returns the default TTL duration as a time.Duration.
+// DefaultTTLDuration retrnus the default TTL as a time.Duration.
+//
 // Value of CacheConfig.DefaultTTL is in minutes, so it is multiplied by time.Minute.
 func (c *CacheConfig) DefaultTTLDuration() time.Duration {
 	return time.Duration(c.DefaultTTL) * time.Minute
 }
 
-// ScheduleTTLDuration returns the schedule TTL duration as a time.Duration.
+// ScheduleTTLDuration returns the schedule TTL as a time.Duration.
+//
 // Value of CacheConfig.ScheduleTTL is in minutes, so it is multiplied by time.Minute.
 func (c *CacheConfig) ScheduleTTLDuration() time.Duration {
 	return time.Duration(c.ScheduleTTL) * time.Minute
 }
 
-// GroupTTLDuration returns the group TTL duration as a time.Duration.
+// GroupTTLDuration returns the group TTL as a time.Duration.
+//
 // Value of CacheConfig.GroupTTL is in days, so it is multiplied by 24 hours.
 func (c *CacheConfig) GroupTTLDuration() time.Duration {
 	return time.Duration(c.GroupTTL) * 24 * time.Hour

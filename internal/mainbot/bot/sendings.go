@@ -179,13 +179,31 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		// TODO: Use tgbotapi.EscapeText() instead of my own implementation.
 	}
 
+	messagesToDelete := make([]tgbotapi.Message, 0)
+
 	errs := make([]error, 0)
 	for _, tgChatID := range tgChatIDs {
 		msg := tgbotapi.NewMessage(tgChatID, text)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
-		if _, err := b.api.Send(msg); err != nil {
+		if sentMsg, err := b.api.Send(msg); err != nil {
 			errs = append(errs, err)
+		} else {
+			messagesToDelete = append(messagesToDelete, sentMsg)
 		}
+	}
+
+	// Delete notifications after a while.
+	if len(messagesToDelete) != 0 {
+		go func() {
+			log.Trace().Dur("PairNotificationTTLDuration", b.config.Sendings.PairNotificationTTLDuration()).Send()
+			time.Sleep(b.config.Sendings.PairNotificationTTLDuration())
+			for _, msg := range messagesToDelete {
+				_, err := b.api.Request(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+				if err != nil {
+					log.Error().Err(err).Msg("Failed to delete pair notification message")
+				}
+			}
+		}()
 	}
 
 	if len(errs) == 0 {

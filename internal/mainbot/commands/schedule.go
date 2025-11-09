@@ -40,6 +40,8 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 	var schedule *scraper.RawSchedule
 	var err error
 
+	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.TgChatID, tgbotapi.ChatTyping))
+
 	schedule, err = ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scheduleCfg)
 	if err != nil {
 		// TODO: Try to send old photo on error.
@@ -55,12 +57,12 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 		return fmt.Errorf("failed to take screenshot of schedule; %w", err)
 	}
 
-	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.TgChatID, tgbotapi.ChatUploadPhoto))
-
 	newMsg := tgbotapi.NewMessage(chat.TgChatID, scheduleCfg.FormatMarkdown()+":")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = botutils.MainMenuReplyMarkup(chat.IsPrivate())
 	_, err2 := ch.Bot.API().Send(newMsg)
+
+	ch.Bot.API().Send(tgbotapi.NewChatAction(chat.TgChatID, tgbotapi.ChatUploadPhoto))
 
 	newPhotoMsg := tgbotapi.NewPhoto(chat.TgChatID, tgbotapi.FilePath(imagePath))
 	newPhotoMsg.ReplyMarkup = weekScheduleInlineButtonMarkup(scheduleCfg)

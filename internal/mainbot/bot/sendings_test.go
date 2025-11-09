@@ -15,8 +15,9 @@ import (
 func TestBot_processPairSending(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
-	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 	cfg, repo, browserService, cacheService := initServices(t)
+	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
+
 	makeTestChats(t, repo, cfg.Telegram.AdminID)
 	if _, err := scraper.FetchGroups(repo, browserService, cacheService); err != nil {
 		t.Fatalf("could not fetch groups: %v", err)
@@ -53,16 +54,20 @@ func TestBot_processPairSending(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, err := New(tt.cfg, nil, tt.repo, tt.browser, tt.cache)
+			// TODO: Stub method to test deleting in seconds, not minutes.
 			if err != nil {
 				t.Fatalf("could not construct receiver type: %v", err)
 			}
 			b.processPairSending(tt.startTime)
 		})
 	}
+
+	// Wait for deleting the messages.
+	time.Sleep(10 * time.Second)
 }
 
 func initServices(t *testing.T) (*config.MainConfig, *database.Repository, *browser.BrowserService, *cache.Cache) {
-	cfg, err := config.LoadMainConfig("/home/mazza/code/raspishika-go/configs/config.yml")
+	cfg, err := config.LoadMainConfig("/home/mazza/code/raspishika-go/configs/.debug-config.yml")
 	if err != nil {
 		t.Fatalf("could not load config: %v", err)
 	}

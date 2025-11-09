@@ -3,10 +3,6 @@ telegram:
   token: ''
   admin_token: ''
   admin_id: 0
-features:
-  admin_bot: false
-  daily_sending: false
-  pair_sending: false
 database:
   file: database/db.sqlite3
 browser:
@@ -21,6 +17,13 @@ cache:
 logger:
   level: debug
   dir: storage/logs
+features:
+  admin_bot: false
+  daily_sending: false
+  pair_sending: false
+
+sendings:
+  pair_notification_ttl: 90
 
 schedule_template: storage/schedule_template.html
 admin_config_file: configs/admin.json
