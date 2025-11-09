@@ -16,7 +16,7 @@ func httpGetRequest(url string, headers map[string]string) (*http.Response, erro
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	for key, value := range headers {
@@ -32,7 +32,7 @@ func httpGetRequest(url string, headers map[string]string) (*http.Response, erro
 			return resp, nil
 		}
 
-		log.Error().Err(err).Msgf("HTTP GET request failed")
+		log.Error().Err(err).Str("status", resp.Status).Msgf("HTTP GET request failed")
 		retries++
 		time.Sleep(time.Duration(retries) * time.Second)
 	}

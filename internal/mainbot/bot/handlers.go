@@ -59,6 +59,10 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	elapsed := time.Since(startTime)
 	updateLog.HandlingTime = int(elapsed.Milliseconds())
 
+	if chat == nil {
+		chat = &database.Chat{}
+	}
+
 	if handled {
 		log.Info().
 			Int64("tgChatID", chat.TgChatID).
