@@ -140,6 +140,23 @@ func (ch *CallbackHandler) OnUpdateLeft(query *tgbotapi.CallbackQuery, args []st
 		return fmt.Errorf("failed to get group by name (%s): %w", groupName, err)
 	}
 
+	if time.Now().Weekday() == time.Sunday {
+		newMsg := tgbotapi.NewEditMessageTextAndMarkup(
+			query.Message.Chat.ID,
+			query.Message.MessageID,
+			"Сегодня воскресенье, отдыхайте!",
+			utils.InlineButtonMarkupUpdate("left", group.GroupName),
+		)
+		_, err := ch.Bot.API().Send(newMsg)
+
+		if err != nil && strings.Contains(err.Error(), "message is not modified") {
+			log.Warn().Int64("tgChatID", query.Message.Chat.ID).Msg("Message is not modified")
+			ch.Bot.API().Send(tgbotapi.NewCallback(query.ID, "Ничего не изменилось"))
+			return nil
+		}
+		return err
+	}
+
 	rawSchedule, err := ch.Bot.ScheduleManager().Get(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), scraper.GroupScheduleConfig(group))
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgFailedFetchSchedule)
