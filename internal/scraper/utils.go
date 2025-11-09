@@ -9,10 +9,29 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func httpGetRequestRetryingRandomHeaders(url string, maxRetries int) (*http.Response, error) {
+	retries := 0
+	for retries < maxRetries {
+		resp, err := httpGetRequest(url, generateHeaders())
+		if err == nil && resp.StatusCode == 200 {
+			log.Debug().Str("url", url).Int("statusCode", resp.StatusCode).Msg("HTTP GET request succeeded")
+			return resp, nil
+		}
+
+		e := log.Error().Err(err)
+		if resp != nil {
+			e = e.Str("status", resp.Status)
+		}
+		e.Msgf("HTTP GET request failed")
+
+		retries++
+		time.Sleep(time.Duration(retries) * time.Second)
+	}
+	return nil, fmt.Errorf("failed to get %s after %d retries", url, maxRetries)
+}
+
 func httpGetRequest(url string, headers map[string]string) (*http.Response, error) {
 	log.Debug().Str("url", url).Any("headers", headers).Msg("HTTP GET request")
-
-	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -23,20 +42,12 @@ func httpGetRequest(url string, headers map[string]string) (*http.Response, erro
 		req.Header.Add(key, value)
 	}
 
-	const MaxRetries = 3 // TODO: Move it into config.
-	retries := 0
-	for retries < MaxRetries {
-		resp, err := client.Do(req)
-		if err == nil && resp.StatusCode == 200 {
-			log.Debug().Str("url", url).Int("statusCode", resp.StatusCode).Msg("HTTP GET request succeeded")
-			return resp, nil
-		}
-
-		log.Error().Err(err).Str("status", resp.Status).Msgf("HTTP GET request failed")
-		retries++
-		time.Sleep(time.Duration(retries) * time.Second)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("failed to get %s after %d retries", url, MaxRetries)
+	return resp, nil
 }
 
 func generateHeaders() map[string]string {

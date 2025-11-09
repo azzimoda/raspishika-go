@@ -15,16 +15,15 @@ func Test_httpGetRequest(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		url     string
-		headers map[string]string
 		want    *http.Response
 		wantErr bool
 	}{
-		{"must succeed", "https://www.google.com", map[string]string{}, &http.Response{}, false},
-		{"must fail", "https://kek.huher.huh/42", map[string]string{}, nil, true},
+		{"must succeed", "https://www.google.com", &http.Response{}, false},
+		{"must fail", "https://chatgpt.com", nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := httpGetRequest(tt.url, tt.headers)
+			got, gotErr := httpGetRequestRetryingRandomHeaders(tt.url, 3)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("httpGetRequest() failed: %v", gotErr)

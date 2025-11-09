@@ -28,7 +28,7 @@ var (
 func ScrapeSchedule(cacheDir, url string, config ScheduleConfig) (*RawSchedule, error) {
 	log.Trace().Msg("Scraping schedule with HTTP")
 
-	resp, err := httpGetRequest(url, generateHeaders())
+	resp, err := httpGetRequestRetryingRandomHeaders(url, 10)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

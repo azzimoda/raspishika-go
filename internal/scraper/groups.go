@@ -28,7 +28,7 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		return data.([]Department), nil
 	}
 
-	resp, err := httpGetRequest(DepartmentsURL, generateHeaders())
+	resp, err := httpGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
 	if err != nil {
 		return nil, err
 	}
