@@ -80,11 +80,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create application")
 	}
 
-	if options.Notify != "" {
-		app.SendNotification(options.Notify)
-		os.Exit(0)
-	}
-
+	// Check for scheduled start.
 	if options.Start != "" {
 		startTime, err := time.Parse("2006-01-02T15:04", options.Start)
 		startTime = time.Date(
@@ -100,6 +96,13 @@ func main() {
 		time.Sleep(time.Until(startTime))
 	}
 
+	// Send notification if the option provided.
+	if options.Notify != "" {
+		app.SendNotification(options.Notify)
+		os.Exit(0)
+	}
+
+	// Run the application.
 	if err := app.Run(); err != nil {
 		log.Fatal().Err(err).Msg("Application exited with error")
 	}

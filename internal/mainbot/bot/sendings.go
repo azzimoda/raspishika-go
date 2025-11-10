@@ -3,6 +3,7 @@ package bot
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
@@ -111,19 +112,19 @@ func (b *Bot) processPairSending(startTime time.Time) {
 	}
 	log.Debug().Msgf("Processing daily sending for time %s to %d chats", timeStr, len(chats))
 
-	groupedChats := make(map[string][]int64)
+	groupedChats := make(map[string][]*database.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
-			groupedChats[*chat.GroupName] = []int64{}
+			groupedChats[*chat.GroupName] = []*database.Chat{}
 		}
 
-		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], chat.TgChatID)
+		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
 
 	okCount := 0
 	errCount := 0
-	for groupName, chatIDs := range groupedChats {
-		err = b.sendPairNotificationToGroup(groupName, pairTime, chatIDs)
+	for groupName, chats := range groupedChats {
+		err = b.sendPairNotificationToGroup(groupName, pairTime, chats)
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to send pair notification to group %s", groupName)
 			log.Error().Err(err).Msg(errMsg)
@@ -139,8 +140,8 @@ func (b *Bot) processPairSending(startTime time.Time) {
 	// TODO: Implement reporting on too long processing time.
 }
 
-func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, tgChatIDs []int64) error {
-	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(tgChatIDs))
+func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, chats []*database.Chat) error {
+	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chats))
 
 	group, err := b.repo.GetGroupByName(groupName)
 	if err != nil {
@@ -182,10 +183,19 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 	messagesToDelete := make([]tgbotapi.Message, 0)
 
 	errs := make([]error, 0)
-	for _, tgChatID := range tgChatIDs {
-		msg := tgbotapi.NewMessage(tgChatID, text)
+	for _, chat := range chats {
+		msg := tgbotapi.NewMessage(chat.TgChatID, text)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 		if sentMsg, err := b.api.Send(msg); err != nil {
+			var tgErr *tgbotapi.Error
+			if errors.As(err, &tgErr) {
+				if strings.Contains(strings.ToLower(tgErr.Message), "forbidden") {
+					log.Error().Int64("tgChatID", chat.TgChatID).Msg("Forbidden")
+					b.repo.DeleteChat(chat.ID)
+					continue
+				}
+			}
+
 			errs = append(errs, err)
 		} else {
 			messagesToDelete = append(messagesToDelete, sentMsg)
