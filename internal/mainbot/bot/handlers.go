@@ -281,6 +281,15 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) (bool, error) {
 	return handled, err
 }
 
+func (b *Bot) handleTelegramAPIError(tgErr *tgbotapi.Error, chat *database.Chat) bool {
+	if strings.Contains(strings.ToLower(tgErr.Message), "forbidden") {
+		log.Warn().Int64("tgChatID", chat.TgChatID).Msg("Forbidden, deleting chat")
+		b.repo.DeleteChat(chat.ID)
+		return true
+	}
+	return false
+}
+
 func shortenText(text string, maxLength int) string {
 	if len(text) > maxLength {
 		return text[:maxLength-2] + "…"

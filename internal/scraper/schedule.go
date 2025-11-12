@@ -154,9 +154,6 @@ func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
 	).Replace(template)
 
 	if log.Logger.GetLevel() <= zerolog.DebugLevel {
-		if err := os.MkdirAll("storage/cache/", 0755); err != nil {
-			log.Error().Err(err).Msg("Failed to create cache directory")
-		}
 		filename := scheduleCacheFileName(s.Config)
 		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML")

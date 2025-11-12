@@ -56,6 +56,7 @@ func (c *MainConfig) EnsureDirs() error {
 	log.Trace().Strs("dirs", dirs).Msg("Ensuring dirs...")
 
 	for _, dir := range dirs {
+		log.Trace().Str("dir", dir).Msg("Ensuring dir...")
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to make dir '%s': %w", dir, err)
 		}

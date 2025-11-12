@@ -40,6 +40,31 @@ func (c *Chat) IsPrivate() bool {
 	return c.TgChatID > 0
 }
 
+// InsertChats inserts multiple chats into the database.
+func (r *Repository) InsertChats(chats []Chat) error {
+	log.Trace().Any("chats", chats).Msg("Inserting chats...")
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	for _, chat := range chats {
+		if _, err := tx.NamedExec(
+			`INSERT INTO chats (
+				tg_chat_id, username, state, department, "group", daily_sending_time, pair_sending, access
+			) VALUES (
+			 	:tg_chat_id, :username, :state, :department, :group, :daily_sending_time, :pair_sending, :access
+			)`,
+			chat,
+		); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to insert chat: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *Repository) CreateChat(tgChatID int64, username string) (int64, error) {
 	res, err := r.db.Exec(
 		`INSERT INTO chats (tg_chat_id, username)
@@ -156,6 +181,7 @@ func (r *Repository) GetChatsByGroup(group string) ([]Chat, error) {
 }
 
 func (r *Repository) GetChatsByDailySendingTime(timeStr string) ([]Chat, error) {
+	log.Trace().Str("timeStr", timeStr).Msg("Getting chats by daily sending time")
 	var chats []Chat
 	if err := r.db.Select(
 		&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND daily_sending_time = ?`, timeStr,
@@ -167,6 +193,7 @@ func (r *Repository) GetChatsByDailySendingTime(timeStr string) ([]Chat, error) 
 
 func (r *Repository) GetChatsWithPairSendingEnabled() (chats []Chat, err error) {
 	err = r.db.Select(&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND pair_sending = 1`)
+	log.Trace().Int("count", len(chats)).Any("chats", chats).Msg("Chats with pair sending enabled")
 	return
 }
 
@@ -177,5 +204,13 @@ func (r *Repository) DeleteChat(id int) error {
 	} else {
 		log.Error().Err(err).Int("Chat.ID", id).Msg("Failed to delete chat")
 	}
+	return err
+}
+
+// DeleteAllChats deletes all chats from the database.
+//
+// This function is intended for testing purposes only.
+func (r *Repository) DeleteAllChats() error {
+	_, err := r.db.Exec(`DELETE FROM chats`)
 	return err
 }

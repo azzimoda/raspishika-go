@@ -3,7 +3,6 @@ package bot
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
@@ -15,25 +14,27 @@ import (
 )
 
 func (b *Bot) ScheduleDailySending(c *cron.Cron) error {
-	_, err := c.AddFunc("* * * * *", func() { go b.processDailySending() })
+	_, err := c.AddFunc("* * * * *", func() { go b.processDailySending(time.Now()) })
 	return err
 }
 
-func (b *Bot) processDailySending() {
-	timeStart := time.Now()
-	timeStr := time.Now().Format("15:04")
+func (b *Bot) processDailySending(t time.Time) {
+	log.Trace().Time("sendingTime", t).Msg("Processing daily sending")
+	startTime := time.Now()
+	timeStr := t.Format("15:04")
 
 	chats, err := b.repo.GetChatsByDailySendingTime(timeStr)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chats by daily sending time")
+		log.Error().Err(err).Time("sendingTime", t).Msg("Failed to get chats by daily sending time")
 		b.Report().Err(err).Send("Failed to get chats by daily sending time")
 		return
 	}
 
 	if len(chats) == 0 {
+		log.Trace().Time("sendingTime", t).Msg("No chats with daily sending enabled")
 		return
 	}
-	log.Debug().Msgf("Processing daily sending for time %s", timeStr)
+	log.Debug().Time("sendingTime", t).Int("chatCount", len(chats)).Msg("Processing daily sending")
 
 	groupedChats := make(map[string][]*database.Chat)
 	for _, chat := range chats {
@@ -43,33 +44,64 @@ func (b *Bot) processDailySending() {
 
 		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
+	log.Trace().Time("sendingTime", t).Int("groupsCount", len(groupedChats)).Msg("Chats grouped by group name")
 
-	okCount := 0
+	var errs []error
 	errCount := 0
 	for groupName, chats := range groupedChats {
-		log.Trace().Msgf("Sending daily notification to group %s", groupName)
-		group, err := b.repo.GetGroupByName(groupName)
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to get group by name %s", groupName)
-			b.Report().Err(err).Send(fmt.Sprintf("Failed to get group by name %s", groupName))
-			continue
+		groupErrs, failedAll := b.sendWeekScheduleToGroup(groupName, chats)
+		if failedAll {
+			errCount += len(chats)
+		} else if len(groupErrs) != 0 {
+			errCount += len(groupErrs)
 		}
-		scheduleCfg := scraper.GroupScheduleConfig(group)
-
-		for _, chat := range chats {
-			if err := b.CommandHandler.SendWeekSchedule(chat, scheduleCfg); err != nil {
-				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
-				b.Report().Chat(chat).Err(err).Send("Failed to send daily schedule to chat")
-				errCount++
-			} else {
-				okCount++
-			}
-		}
+		errs = append(errs, groupErrs...)
 	}
 
-	log.Debug().Int("okCount", okCount).Int("errCount", errCount).Dur("timeTaken", time.Since(timeStart)).
+	if err := errors.Join(errs...); err != nil {
+		log.Error().Err(err).Msg("Errors while daily sending")
+		b.Report().Err(err).Send("Errors while daily sending")
+	}
+
+	takenTime := time.Since(startTime)
+	log.Debug().
+		Time("sendingTime", t).
+		Int("okCount", len(chats)-errCount).
+		Int("errCount", errCount).
+		Dur("timeTaken", takenTime).
 		Msgf("Daily sending for time %s finished", timeStr)
-	// TODO: Implement reporting on too long processing time.
+
+	takenTimeFloat := float64(takenTime)
+	takenTimePerChat := takenTimeFloat / float64(len(chats))
+	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
+		b.Report().Sendf("Daily sending for time %s took too long (%s)", t, takenTime)
+	}
+}
+
+func (b *Bot) sendWeekScheduleToGroup(groupName string, chats []*database.Chat) ([]error, bool) {
+	log.Trace().Msgf("Sending daily notification to group %s", groupName)
+
+	group, err := b.repo.GetGroupByName(groupName)
+	if err != nil {
+		return []error{fmt.Errorf("failed to get group by name %s", groupName)}, true
+	}
+	scheduleCfg := scraper.GroupScheduleConfig(group)
+
+	var errs []error
+	for _, chat := range chats {
+		if err := b.CommandHandler.SendWeekSchedule(chat, scheduleCfg); err != nil {
+			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
+			var tgErr *tgbotapi.Error
+			if errors.As(err, &tgErr) {
+				if b.handleTelegramAPIError(tgErr, chat) {
+					continue
+				}
+			}
+
+			errs = append(errs, err)
+		}
+	}
+	return errs, false
 }
 
 func (b *Bot) SchedulePairSending(c *cron.Cron) error {
@@ -121,36 +153,44 @@ func (b *Bot) processPairSending(startTime time.Time) {
 		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
 
-	okCount := 0
+	var errs []error
 	errCount := 0
 	for groupName, chats := range groupedChats {
-		err = b.sendPairNotificationToGroup(groupName, pairTime, chats)
-		if err != nil {
-			errMsg := fmt.Sprintf("Failed to send pair notification to group %s", groupName)
-			log.Error().Err(err).Msg(errMsg)
-			b.Report().Err(err).Send(fmt.Sprint(errMsg))
-			errCount++
-		} else {
-			okCount++
+		groupErrs, failedAll := b.sendPairNotificationToGroup(groupName, pairTime, chats)
+		if failedAll {
+			errCount += len(chats)
+		} else if len(groupErrs) != 0 {
+			errCount += len(groupErrs)
 		}
+		errs = append(errs, groupErrs...)
 	}
 
-	log.Debug().Int("okCount", okCount).Int("errCount", errCount).Dur("timeTaken", time.Since(startTime)).
+	if len(errs) != 0 {
+		err := errors.Join(errs...)
+		log.Error().Err(err).Msg("Errors while sending pair notification")
+		b.Report().Err(err).Send("Errors while sending pair notification")
+	}
+
+	log.Debug().Int("okCount", len(chats)-errCount).Int("errCount", errCount).Dur("timeTaken", time.Since(startTime)).
 		Msgf("Pair sending for time %s finished", timeStr)
 	// TODO: Implement reporting on too long processing time.
 }
 
-func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, chats []*database.Chat) error {
+func (b *Bot) sendPairNotificationToGroup(
+	groupName string,
+	pairTime time.Time,
+	chats []*database.Chat,
+) ([]error, bool) {
 	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chats))
 
 	group, err := b.repo.GetGroupByName(groupName)
 	if err != nil {
-		return fmt.Errorf("failed to get group by name %s: %w", groupName, err)
+		return []error{fmt.Errorf("failed to get group by name %s: %w", groupName, err)}, true
 	}
 
 	rawSchedule, err := b.scheduleManager.Get(b.repo, b.browser, b.cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
-		return fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)
+		return []error{fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)}, true
 	}
 
 	firstPairTime := time.Date(pairTime.Year(), pairTime.Month(), pairTime.Day(), 8, 0, 0, 0, pairTime.Location())
@@ -162,7 +202,7 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 			pair = &scheduleDay.Pairs[0]
 		}
 		log.Trace().Err(err).Msg("There is no pair in 15 minutes")
-		return nil
+		return nil, false
 	}
 
 	text := ""
@@ -171,13 +211,12 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		scraper.PairKindPractice:
 
 		log.Trace().Str("kind", string(pair.Kind)).Msg("Pair is empty")
-		return nil
+		return nil, false
 	default:
 		text = fmt.Sprintf("Следующая пара в кабинете %s:\n    *%s*\n    %s",
 			tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, pair.Classroom),
 			tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, pair.Discipline),
 			tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, *pair.Teacher))
-		// TODO: Use tgbotapi.EscapeText() instead of my own implementation.
 	}
 
 	messagesToDelete := make([]tgbotapi.Message, 0)
@@ -189,9 +228,7 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		if sentMsg, err := b.api.Send(msg); err != nil {
 			var tgErr *tgbotapi.Error
 			if errors.As(err, &tgErr) {
-				if strings.Contains(strings.ToLower(tgErr.Message), "forbidden") {
-					log.Error().Int64("tgChatID", chat.TgChatID).Msg("Forbidden")
-					b.repo.DeleteChat(chat.ID)
+				if b.handleTelegramAPIError(tgErr, chat) {
 					continue
 				}
 			}
@@ -216,8 +253,5 @@ func (b *Bot) sendPairNotificationToGroup(groupName string, pairTime time.Time, 
 		}()
 	}
 
-	if len(errs) == 0 {
-		return nil
-	}
-	return errors.Join(errs...)
+	return errs, false
 }
