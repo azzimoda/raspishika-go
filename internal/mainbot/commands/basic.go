@@ -7,7 +7,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 )
 
-// TODO: Rewrite start message.
 const StartMessage = `Привет! Я предостовляю удобный способ получения расписания МПК ТИУ.
 
 Для начала нужно задать свою группу для использования комманд /week, /tomorrow, /left и получения рассылки. Други комманды и функции перечислены в /help.

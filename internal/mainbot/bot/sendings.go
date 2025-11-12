@@ -126,8 +126,8 @@ func (b *Bot) SchedulePairSending(c *cron.Cron) error {
 	return nil
 }
 
-func (b *Bot) processPairSending(startTime time.Time) {
-	pairTime := startTime.Add(15 * time.Minute)
+func (b *Bot) processPairSending(t time.Time) {
+	pairTime := t.Add(15 * time.Minute)
 	timeStr := pairTime.Format("15:04")
 	log.Trace().Msgf("Processing pair sending for time %s", timeStr)
 
@@ -171,9 +171,15 @@ func (b *Bot) processPairSending(startTime time.Time) {
 		b.Report().Err(err).Send("Errors while sending pair notification")
 	}
 
-	log.Debug().Int("okCount", len(chats)-errCount).Int("errCount", errCount).Dur("timeTaken", time.Since(startTime)).
+	takenTime := time.Since(t)
+	log.Debug().Int("okCount", len(chats)-errCount).Int("errCount", errCount).Dur("timeTaken", takenTime).
 		Msgf("Pair sending for time %s finished", timeStr)
-	// TODO: Implement reporting on too long processing time.
+
+	takenTimeFloat := float64(takenTime)
+	takenTimePerChat := takenTimeFloat / float64(len(chats))
+	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
+		b.Report().Sendf("Daily sending for time %s took too long (%s)", t, takenTime)
+	}
 }
 
 func (b *Bot) sendPairNotificationToGroup(

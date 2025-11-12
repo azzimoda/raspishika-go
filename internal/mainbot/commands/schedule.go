@@ -49,7 +49,7 @@ func (ch *CommandHandler) SendWeekSchedule(chat *database.Chat, scheduleCfg scra
 		return fmt.Errorf("failed to fetch schedule: %w", err)
 	}
 
-	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
+	html := schedule.HTML(ch.Bot.Config().ScheduleTemplate)
 	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, botutils.ScheduleScreenshotFileName(scheduleCfg))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		// TODO: Try to send old photo on error.

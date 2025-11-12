@@ -42,8 +42,9 @@ type MainConfig struct {
 	Cache  CacheConfig  `yaml:"cache"`
 	Logger LoggerConfig `yaml:"logger"`
 
-	ScheduleTemplate string `yaml:"schedule_template"`
-	AdminConfigFile  string `yaml:"admin_config_file"`
+	ScheduleTemplateFile string `yaml:"schedule_template_file"`
+	ScheduleTemplate     string `yaml:"schedule_template"`
+	AdminConfigFile      string `yaml:"admin_config_file"`
 }
 
 func (c *MainConfig) EnsureDirs() error {
@@ -114,6 +115,13 @@ func LoadMainConfig(filename string) (*MainConfig, error) {
 	if err := loadConfig(filename, &config); err != nil {
 		return nil, err
 	}
+
+	data, err := os.ReadFile(config.ScheduleTemplateFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load schedule template: %w", err)
+	}
+	config.ScheduleTemplate = string(data)
+
 	return &config, nil
 }
 

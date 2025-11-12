@@ -25,5 +25,5 @@ features:
 sendings:
   pair_notification_ttl: 90
 
-schedule_template: storage/schedule_template.html
+schedule_template_file: storage/schedule_template.html
 admin_config_file: configs/admin.json

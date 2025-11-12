@@ -32,7 +32,7 @@ func (ch *CallbackHandler) OnUpdateGroup(query *tgbotapi.CallbackQuery, args []s
 		return fmt.Errorf("failed to fetch schedule of group %s: %w", group.GroupName, err)
 	}
 
-	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
+	html := schedule.HTML(ch.Bot.Config().ScheduleTemplate)
 
 	imagePath := path.Join(
 		ch.Bot.Config().Browser.ScreenshotDir,
@@ -72,7 +72,7 @@ func (ch *CallbackHandler) OnUpdateTeacher(query *tgbotapi.CallbackQuery, args [
 		return fmt.Errorf("failed to fetch schedule of teacher (%s): %w", teacherID, err)
 	}
 
-	html := schedule.HTML(ch.Bot.Cache(), ch.Bot.Config().ScheduleTemplate)
+	html := schedule.HTML(ch.Bot.Config().ScheduleTemplate)
 	imagePath := path.Join(ch.Bot.Config().Browser.ScreenshotDir, utils.ScheduleScreenshotFileName(scheduleConfig))
 	if err := ch.Bot.Browser().TakeScreenshotHTML(html, imagePath); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)

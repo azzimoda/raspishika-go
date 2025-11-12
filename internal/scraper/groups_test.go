@@ -33,9 +33,8 @@ func Test_httpGetRequest(t *testing.T) {
 			if tt.wantErr {
 				t.Fatal("httpGetRequest() succeeded unexpectedly")
 			}
-			// TODO: update the condition below to compare got with tt.want.
 			if got == nil || got.StatusCode != 200 {
-				t.Errorf("httpGetRequest() = %v, want %v", got, tt.want)
+				t.Errorf("httpGetRequest() = %v", got)
 			}
 		})
 	}

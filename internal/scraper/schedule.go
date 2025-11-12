@@ -127,11 +127,7 @@ func (s *RawSchedule) Transform() Schedule {
 }
 
 // HTML returns HTML representation of the schedule.
-//
-// TODO: Provide tamplate as a parameter instead of fetching it in this function.
-func (s *RawSchedule) HTML(cache *cache.Cache, templateFile string) string {
-	template := loadTemplate(cache, templateFile)
-
+func (s *RawSchedule) HTML(template string) string {
 	var header string
 	if s.Config.Group != nil {
 		header = "Расписание группы " + s.Config.Group.GroupName + " — " + s.Config.Group.DepartmentName
