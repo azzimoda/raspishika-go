@@ -70,7 +70,7 @@ func (*ScheduleManager) scrapeSchedule(
 		return nil, fmt.Errorf("failed to get department IDs: %w", err)
 	}
 
-	url := scheduleURL(config, departmentIDs)
+	url := ScheduleURL(config, departmentIDs)
 	if config.Group != nil {
 		return ScrapeSchedule(cache.Config.Dir, url, config)
 	} else if config.Teacher != nil {

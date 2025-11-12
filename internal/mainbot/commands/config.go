@@ -8,7 +8,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -20,84 +19,13 @@ func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
 		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
 	}
 
-	return SendSettingsMenu(ch.Bot.API(), chat, msg.Chat.ID)
-}
-
-func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat, tgChatID int64) error {
-	dailyTime := "выключено"
-	if chat.DailySendingTime != nil {
-		dailyTime = *chat.DailySendingTime
-	}
-	pairNotification := "выключено"
-	if chat.PairSending {
-		pairNotification = "включено"
-	}
-
-	text := fmt.Sprintf(`Меню настроек
-
-Группа: %s
-Ежедневная рассылка: %s
-Напоминания перед парами: %s`,
-		utils.DerefOrTypeDefault(chat.GroupName),
-		dailyTime,
-		pairNotification,
-	)
-	if !chat.IsPrivate() {
-		text += fmt.Sprintf("\nУровень доступа: %d", chat.Access)
-	}
-
-	newMsg := tgbotapi.NewMessage(tgChatID, text)
-	newMsg.ReplyMarkup = settingsInlineMarkup(chat)
-	_, err := api.Send(newMsg)
+	_, err = ch.Bot.API().Send(botutils.SettingsMenuMessage(chat))
 	return err
 }
 
-func settingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
-	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
-
-	rows = append(rows, []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Изменить группу", "config_group"),
-	})
-
-	if chat.DailySendingTime == nil {
-		rows = append(rows, []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Включить ежедневную рассылку", "config_daily_time"),
-		})
-	} else {
-		rows = append(rows, []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Изменить время рассылки", "config_daily_time"),
-			tgbotapi.NewInlineKeyboardButtonData("Выключить ежедневную рассылку", "daily_off"),
-		})
-	}
-
-	if chat.PairSending {
-		rows = append(rows, []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Выключить напоминания", "config_reminder\nfalse"),
-		})
-	} else {
-		rows = append(rows, []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("Включить напоминания", "config_reminder\ntrue"),
-		})
-	}
-
-	if !chat.IsPrivate() {
-		rows = append(rows, []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("0", "config_access\n0"),
-			tgbotapi.NewInlineKeyboardButtonData("1", "config_access\n1"),
-			tgbotapi.NewInlineKeyboardButtonData("2", "config_access\n2"),
-		})
-		for i := range 3 {
-			if i == chat.Access {
-				rows[len(rows)-1][i].Text = fmt.Sprintf("[%d]", i)
-			}
-		}
-	}
-
-	rows = append(rows, []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Закрыть", "delete"),
-	})
-
-	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat) error {
+	_, err := api.Send(botutils.SettingsMenuMessage(chat))
+	return err
 }
 
 // OnGroup sends department selection menu.

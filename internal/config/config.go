@@ -31,16 +31,10 @@ type MainConfig struct {
 		File string `yaml:"file"`
 	} `yaml:"database"`
 
-	Browser struct {
-		Headless      bool   `yaml:"headless"`
-		Timeout       int64  `yaml:"timeout"`
-		ScreenshotDir string `yaml:"screenshot_dir"`
-	} `yaml:"browser"`
-
+	Browser  BrowserConfig `yaml:"browser"`
 	Sendings SendingConfig `yaml:"sendings"`
-
-	Cache  CacheConfig  `yaml:"cache"`
-	Logger LoggerConfig `yaml:"logger"`
+	Cache    CacheConfig   `yaml:"cache"`
+	Logger   LoggerConfig  `yaml:"logger"`
 
 	ScheduleTemplateFile string `yaml:"schedule_template_file"`
 	ScheduleTemplate     string `yaml:"schedule_template"`
@@ -63,6 +57,21 @@ func (c *MainConfig) EnsureDirs() error {
 		}
 	}
 	return nil
+}
+
+func (c *MainConfig) LoadTemplate() error {
+	data, err := os.ReadFile(c.ScheduleTemplateFile)
+	if err != nil {
+		return fmt.Errorf("failed to load schedule template: %w", err)
+	}
+	c.ScheduleTemplate = string(data)
+	return nil
+}
+
+type BrowserConfig struct {
+	Headless      bool   `yaml:"headless"`
+	Timeout       int64  `yaml:"timeout"`
+	ScreenshotDir string `yaml:"screenshot_dir"`
 }
 
 type SendingConfig struct {
@@ -115,12 +124,6 @@ func LoadMainConfig(filename string) (*MainConfig, error) {
 	if err := loadConfig(filename, &config); err != nil {
 		return nil, err
 	}
-
-	data, err := os.ReadFile(config.ScheduleTemplateFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load schedule template: %w", err)
-	}
-	config.ScheduleTemplate = string(data)
 
 	return &config, nil
 }

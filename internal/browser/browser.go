@@ -16,8 +16,10 @@ type BrowserServiceProvider interface {
 }
 
 type BrowserService struct {
-	pw      *playwright.Playwright
-	browser playwright.Browser
+	pw          *playwright.Playwright
+	browser     playwright.Browser
+	Config      *config.BrowserConfig
+	CacheConfig *config.CacheConfig
 }
 
 func (b *BrowserService) Close() error {
@@ -83,5 +85,5 @@ func New(cfg *config.MainConfig) (*BrowserService, error) {
 		return nil, err
 	}
 
-	return &BrowserService{pw: pw, browser: browser}, nil
+	return &BrowserService{pw: pw, browser: browser, Config: &cfg.Browser, CacheConfig: &cfg.Cache}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -63,33 +64,49 @@ func ScrapeScheduleWithBrowser(
 	url string,
 	config ScheduleConfig,
 ) (*RawSchedule, error) {
-	log.Trace().Msg("Scraping schedule with browser")
+	log.Trace().Str("URL", url).Any("scheduleConfig", config).Msg("Scraping schedule with browser")
 
 	var html string
 	err := browser.WithPage(func(p playwright.Page) (err error) {
-		if err := p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
-			return fmt.Errorf("failed to set extra HTTP headers: %w", err)
-		}
-		if _, err := p.Goto(url); err != nil {
-			return fmt.Errorf("failed to goto URL: %w", err)
-		}
+		retries := 0
+		const maxRetries = 3 // TODO: make configurable
+		for retries < maxRetries {
+			retries++
 
-		tableLocator := p.Locator("#main_table")
-		if err := tableLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
-			return fmt.Errorf("failed to wait for table: %w", err) // TODO: Implement retrying.
-		}
+			if err = p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
+				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying... (%d/%d)", retries, maxRetries)
+				err = fmt.Errorf("failed to set extra HTTP headers: %w", err)
+				continue
+			}
+			if _, err = p.Goto(url); err != nil {
+				log.Error().Err(err).Msgf("Failed to goto URL; retrying... (%d/%d)", retries, maxRetries)
+				err = fmt.Errorf("failed to goto URL: %w", err)
+				continue
+			}
 
-		time.Sleep(1 * time.Second)
+			tableLocator := p.Locator("#main_table")
+			if err = tableLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
+				log.Error().Err(err).Msgf("Failed to wait for table; retrying... (%d/%d)", retries, maxRetries)
+				err = fmt.Errorf("failed to wait for table: %w", err)
+				continue
+			}
 
-		html, err = p.Content()
-		if err != nil {
-			return fmt.Errorf("failed to get HTML content: %w", err)
+			time.Sleep(1 * time.Second)
+
+			html, err = p.Content()
+			if err != nil {
+				log.Error().Err(err).Msgf("Failed to get HTML content; retrying... (%d/%d)", retries, maxRetries)
+				err = fmt.Errorf("failed to get HTML content: %w", err)
+				continue
+			}
+
+			return nil
 		}
-		return nil
+		return fmt.Errorf("failed to get HTML content after %d retries", maxRetries)
 	})
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
-		filename := fmt.Sprintf("storage/cache/schedule_%s.html", time.Now().Format("20060102"))
+		filename := fmt.Sprintf(filepath.Join(browser.CacheConfig.Dir, "schedule_%s.html"), time.Now().Format("20060102"))
 		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {
@@ -261,9 +278,9 @@ func detectPairKind(daySelection *goquery.Selection) PairKind {
 	}
 }
 
-// scheduleURL returns formatted URL for group or teacher schedule page depending on the given schedule config.
+// ScheduleURL returns formatted URL for group or teacher schedule page depending on the given schedule config.
 // Parameter departmentIDs is used for teacher schedule page only and may be empty or nil for group.
-func scheduleURL(config ScheduleConfig, departmentIDs []string) string {
+func ScheduleURL(config ScheduleConfig, departmentIDs []string) string {
 	switch {
 	case config.Group != nil:
 		zaochnoeFlag := ""

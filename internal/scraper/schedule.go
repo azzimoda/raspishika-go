@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -356,20 +355,4 @@ func GroupScheduleConfig(group *database.Group) ScheduleConfig {
 
 func TeacherScheduleConfig(teacher *database.Teacher) ScheduleConfig {
 	return ScheduleConfig{Teacher: teacher}
-}
-
-// loadTemplate loads schedule HTML template from file and caches it in memory.
-func loadTemplate(cache *cache.Cache, templateFile string) string {
-	if data, found := cache.C.Get("template"); found {
-		return data.(string)
-	}
-
-	data, err := os.ReadFile(templateFile)
-	if err != nil {
-		log.Panic().Err(err).Str("filename", templateFile).Msg("Failed to load template file")
-	}
-
-	str := string(data)
-	cache.C.Set("template", str, -1)
-	return str
 }

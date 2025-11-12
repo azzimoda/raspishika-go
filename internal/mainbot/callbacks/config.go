@@ -73,8 +73,6 @@ func (ch *CallbackHandler) OnConfigDailyTime(
 }
 
 func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []string) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
@@ -87,7 +85,7 @@ func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []stri
 		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
 	}
 
-	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
+	return ch.editSettingsMenuMessage(chat, query)
 }
 
 func (ch *CallbackHandler) OnConfigReminder(
@@ -95,8 +93,6 @@ func (ch *CallbackHandler) OnConfigReminder(
 	query *tgbotapi.CallbackQuery,
 	args []string,
 ) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
@@ -108,7 +104,7 @@ func (ch *CallbackHandler) OnConfigReminder(
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 	}
 
-	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
+	return ch.editSettingsMenuMessage(chat, query)
 }
 
 func (ch *CallbackHandler) OnConfigAccess(
@@ -116,8 +112,6 @@ func (ch *CallbackHandler) OnConfigAccess(
 	query *tgbotapi.CallbackQuery,
 	args []string,
 ) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
 	if err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
@@ -136,7 +130,19 @@ func (ch *CallbackHandler) OnConfigAccess(
 		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
 	}
 
-	return commands.SendSettingsMenu(ch.Bot.API(), chat, query.Message.Chat.ID) // TODO: Implement editing.
+	return ch.editSettingsMenuMessage(chat, query)
+}
+
+func (ch *CallbackHandler) editSettingsMenuMessage(chat *database.Chat, query *tgbotapi.CallbackQuery) error {
+	settingsMsg := utils.SettingsMenuMessage(chat)
+	editMsg := tgbotapi.NewEditMessageTextAndMarkup(
+		query.Message.Chat.ID,
+		query.Message.MessageID,
+		settingsMsg.Text,
+		settingsMsg.ReplyMarkup.(tgbotapi.InlineKeyboardMarkup),
+	)
+	_, err := ch.Bot.API().Send(editMsg)
+	return err
 }
 
 func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []string) error {

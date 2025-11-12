@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
+	"github.com/rs/zerolog/log"
+
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
-	"github.com/rs/zerolog/log"
 )
 
 var debugConfigFile string
@@ -39,7 +39,7 @@ func init() {
 
 func TestBot_processDailySending(t *testing.T) {
 	// Initialize services.
-	cfg, repo, browser, cache := initServices(t)
+	cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile, testsDir)
 	b, err := New(cfg, nil, repo, browser, cache)
 	if err != nil {
 		t.Fatalf("could not construct receiver type: %v", err)
@@ -73,14 +73,14 @@ func TestBot_processDailySending(t *testing.T) {
 		})
 	}
 
-	cleanup(t)
+	utils.Cleanup(t, testsDir)
 }
 
 func TestBot_processPairSending(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
 	// Initialize services.
-	cfg, repo, browser, cache := initServices(t)
+	cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile, testsDir)
 	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 
 	b, err := New(cfg, nil, repo, browser, cache)
@@ -131,52 +131,6 @@ func TestBot_processPairSending(t *testing.T) {
 
 	// Wait for deleting the messages.
 	time.Sleep(10 * time.Second)
-}
 
-func initServices(t *testing.T) (
-	*config.MainConfig,
-	*database.Repository,
-	*browser.BrowserService,
-	*cache.Cache,
-) {
-	cfg, err := config.LoadMainConfig(debugConfigFile)
-	if err != nil {
-		t.Fatalf("could not load config: %v", err)
-	}
-	cfg.Database.File = filepath.Join(testsDir, "database/test.sqlite3")
-	cfg.Browser.ScreenshotDir = filepath.Join(testsDir, "storage/screenshots")
-	cfg.Cache.Dir = filepath.Join(testsDir, "storage/cache")
-	cfg.Logger.Dir = filepath.Join(testsDir, "storage/logs")
-	cfg.ScheduleTemplate = templateFile
-	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
-
-	if err := cfg.EnsureDirs(); err != nil {
-		t.Fatalf("could not ensure dirs: %v", err)
-	}
-
-	// commandsCfg, err := config.LoadCommandsConfig(commandsConfigFile)
-	// if err != nil {
-	// 	t.Fatalf("could not load config: %v", err)
-	// }
-
-	repo, err := database.New(cfg)
-	if err != nil {
-		t.Fatalf("could not construct repository: %v", err)
-	}
-
-	browserService, err := browser.New(cfg)
-	if err != nil {
-		t.Fatalf("could not construct browser: %v", err)
-	}
-
-	cacheService := cache.New(&cfg.Cache)
-
-	return cfg, repo, browserService, cacheService
-}
-
-// cleanup removes all files and directories created during testing.
-func cleanup(t *testing.T) {
-	if err := os.RemoveAll(testsDir); err != nil {
-		t.Logf("could not delete tests dir: %v", err)
-	}
+	utils.Cleanup(t, testsDir)
 }
