@@ -281,13 +281,35 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) (bool, error) {
 	return handled, err
 }
 
-func (b *Bot) handleTelegramAPIError(tgErr *tgbotapi.Error, chat *database.Chat) bool {
+func (b *Bot) handleTelegramAPIError(tgErr *tgbotapi.Error, chat *database.Chat) error {
 	if strings.Contains(strings.ToLower(tgErr.Message), "forbidden") {
-		log.Warn().Int64("tgChatID", chat.TgChatID).Msg("Forbidden, deleting chat")
+		log.Warn().Int64("tgChatID", chat.TgChatID).Msg("Forbidden, deleting chat...")
 		b.repo.DeleteChat(chat.ID)
-		return true
+		return nil
 	}
-	return false
+
+	if tgErr.MigrateToChatID != 0 {
+		log.Warn().Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+			Msg("Chat migrated, updating chat ID...")
+
+		if c, err := b.repo.GetChatByTgChatID(tgErr.MigrateToChatID); err == nil {
+			log.Warn().Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+				Msg("Chat already exists, deleting old chat...")
+			if err := b.repo.DeleteChat(c.ID); err != nil {
+				return fmt.Errorf("failed to delete old chat: %w", err)
+			}
+		} else {
+			if err := b.repo.UpdateChatTgChatID(chat.ID, tgErr.MigrateToChatID); err != nil {
+				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+					Msg("Failed to update chat ID")
+				return fmt.Errorf("failed to update chat ID: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("Telegram API error: %w", tgErr)
 }
 
 func shortenText(text string, maxLength int) string {

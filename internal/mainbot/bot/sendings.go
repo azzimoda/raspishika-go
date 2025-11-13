@@ -93,7 +93,7 @@ func (b *Bot) sendWeekScheduleToGroup(groupName string, chats []*database.Chat) 
 			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
 			var tgErr *tgbotapi.Error
 			if errors.As(err, &tgErr) {
-				if b.handleTelegramAPIError(tgErr, chat) {
+				if err = b.handleTelegramAPIError(tgErr, chat); err == nil {
 					continue
 				}
 			}
@@ -234,7 +234,7 @@ func (b *Bot) sendPairNotificationToGroup(
 		if sentMsg, err := b.api.Send(msg); err != nil {
 			var tgErr *tgbotapi.Error
 			if errors.As(err, &tgErr) {
-				if b.handleTelegramAPIError(tgErr, chat) {
+				if err = b.handleTelegramAPIError(tgErr, chat); err == nil {
 					continue
 				}
 			}

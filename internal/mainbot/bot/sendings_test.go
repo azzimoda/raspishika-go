@@ -45,6 +45,11 @@ func TestBot_processDailySending(t *testing.T) {
 		t.Fatalf("could not construct receiver type: %v", err)
 	}
 
+	// Prepare database.
+	if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
+		t.Fatalf("could not fetch groups: %v", err)
+	}
+
 	// Test
 	groupName := "ИСПт-22-(9)-2"
 	now := time.Now()

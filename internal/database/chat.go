@@ -140,6 +140,11 @@ func (r *Repository) UpdateChatState(tgChatID int64, state ChatState) error {
 	return err
 }
 
+func (r *Repository) UpdateChatTgChatID(id int, tgChatID int64) error {
+	_, err := r.db.Exec(`UPDATE chats SET tg_chat_id = ?, updated_at = ? WHERE id = ?`, tgChatID, time.Now(), id)
+	return err
+}
+
 func (r *Repository) GetChat(id int64) (*Chat, error) {
 	var chat Chat
 	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE id = ?`, id); err != nil {
