@@ -34,6 +34,7 @@ func InitPaths() (string, string, string) {
 	return debugConfigFile, templateFile, testsDir
 }
 
+// TODO: Use t.TempDir() instead of my manual implementation.
 func InitServices(t *testing.T, debugConfigFile, templateFile, testsDir string) (
 	*config.MainConfig,
 	*database.Repository,
@@ -50,7 +51,6 @@ func InitServices(t *testing.T, debugConfigFile, templateFile, testsDir string) 
 		t.Fatalf("could not construct repository: %v", err)
 	}
 
-	cfg.Browser.Headless = false
 	browserService, err := browser.New(cfg)
 	if err != nil {
 		t.Fatalf("could not construct browser: %v", err)
@@ -69,7 +69,7 @@ func InitConfig(t *testing.T, debugConfigFile, templateFile, testsDir string) *c
 	cfg.Database.File = filepath.Join(testsDir, "database/test.sqlite3")
 	cfg.Browser.ScreenshotDir = filepath.Join(testsDir, "storage/screenshots")
 	cfg.Cache.Dir = filepath.Join(testsDir, "storage/cache")
-	cfg.Logger.Dir = filepath.Join(testsDir, "storage/logs")
+	cfg.Logger.Dir = "" // Disable logging to file for tests.
 	cfg.ScheduleTemplateFile = templateFile
 	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 

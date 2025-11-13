@@ -89,7 +89,7 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) t
 func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	group, err := botutils.FetchGroupByNameWithVadiation(
+	group, err := botutils.FetchGroupByNameWithValidation(
 		ch.Bot.Repo(),
 		ch.Bot.Browser(),
 		ch.Bot.Cache(),

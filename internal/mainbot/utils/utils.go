@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/rs/zerolog/log"
+
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
@@ -13,9 +16,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -189,13 +189,13 @@ func SettingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(rows...)
 }
 
-// FetchGroupByNameWithVadiation tries to validate given group name and fetch group from the database.
+// FetchGroupByNameWithValidation tries to validate given group name and fetch group from the database.
 //
 // When the group name format cannot be validated, it returns ErrWrongGroupNameFormat.
 // When given group name is not found in database, it fetches group from the website and
 // updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
 // When any other error occurs, it returns the error.
-func FetchGroupByNameWithVadiation(
+func FetchGroupByNameWithValidation(
 	repo *database.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,

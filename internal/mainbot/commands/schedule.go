@@ -177,7 +177,7 @@ func (ch *CommandHandler) OnLeft(msg *tgbotapi.Message) error {
 
 // TODO: Move this function somewhere else and use everywhere,
 func (ch *CommandHandler) tryGetGroup(chat *database.Chat, msg *tgbotapi.Message) (*database.Group, bool, error) {
-	group, err := botutils.FetchGroupByNameWithVadiation(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), *chat.GroupName)
+	group, err := botutils.FetchGroupByNameWithValidation(ch.Bot.Repo(), ch.Bot.Browser(), ch.Bot.Cache(), *chat.GroupName)
 	if err == nil {
 		return group, false, nil
 	}
