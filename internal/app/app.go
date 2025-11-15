@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot/bot"
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
@@ -28,7 +29,12 @@ type App struct {
 }
 
 func (a *App) Run() error {
-	log.Info().Msg("Starting application...")
+	startTime := time.Now()
+	log.Info().Time("start", startTime).Msg("Starting application...")
+	defer func() {
+		endTime := time.Now()
+		log.Info().Time("end", endTime).TimeDiff("duration", startTime, endTime).Msg("Application stopped")
+	}()
 
 	go a.MainBot.Start()
 
@@ -62,7 +68,6 @@ func (a *App) Run() error {
 
 	<-sigChan
 	a.Shutdown()
-	os.Exit(0)
 
 	return nil
 }

@@ -54,6 +54,7 @@ func main() {
 	if options.Config != "" {
 		configFile = options.Config
 	}
+	log.Debug().Str("filename", configFile).Msg("Using configuration file")
 
 	mainConfig, err := config.LoadMainConfig(configFile)
 	if err != nil {
@@ -62,7 +63,7 @@ func main() {
 	if err := mainConfig.LoadTemplate(); err != nil {
 		log.Panic().Err(err).Msg("Failed to load schedule template")
 	}
-	log.Debug().Str("filename", configFile).Msg("Loaded configuration")
+	log.Debug().Msg("Loaded configuration")
 
 	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
 	if err != nil {
