@@ -47,7 +47,7 @@ func SendErrorMessage(api *tgbotapi.BotAPI, tgChatID int64, text string) error {
 		10*time.Second,
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to send error message")
+		log.Error().Err(err).Int64("tgChatID", tgChatID).Msg("Failed to send error message")
 	}
 	return err
 }

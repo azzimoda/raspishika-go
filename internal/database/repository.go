@@ -23,6 +23,7 @@ func (r *Repository) Close() error {
 }
 
 func New(cfg *config.MainConfig) (*Repository, error) {
+	log.Debug().Str("file", cfg.Database.File).Msg("Creating database repository")
 	db, err := sqlx.Open("sqlite3", cfg.Database.File)
 	if err != nil {
 		return nil, err

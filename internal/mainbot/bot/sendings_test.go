@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
@@ -96,44 +94,45 @@ func TestBot_processPairSending(t *testing.T) {
 	}
 
 	// Prepare database.
-	groupName := "ИСПт-22-(9)-2"
-	chats := []database.Chat{{TgChatID: cfg.Telegram.AdminID, GroupName: &groupName, PairSending: true}}
-	if err := repo.InsertChats(chats); err != nil {
-		t.Fatalf("could not insert chats: %v", err)
-	}
-
-	if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
+	groups, err := scraper.FetchGroups(repo, browser, cache)
+	if err != nil {
 		t.Fatalf("could not fetch groups: %v", err)
 	}
 
+	groupName := groups[1].GroupName
+	fakeGroupName := "КИПр-23-(9)-1"
+
 	// Test.
-	type testCase struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		startTime time.Time
+	tests := []struct {
+		name  string // description of this test case
+		chats []database.Chat
+	}{
+		{"send pair schedule to exiting chat for exiting group", []database.Chat{
+			{TgChatID: cfg.Telegram.AdminID, GroupName: &groupName, PairSending: true},
+		}},
+		{"send pair schedule to exiting chat for fake group", []database.Chat{
+			{TgChatID: cfg.Telegram.AdminID, GroupName: &fakeGroupName, PairSending: true},
+		}},
 	}
-	tests := []testCase{}
-	for _, timeStr := range Times {
-		startTime, err := time.Parse("15:04", timeStr)
-		if err != nil {
-			t.Fatalf("could not parse time: %v", err)
-		}
 
-		tests = append(tests, testCase{
-			name:      "must send notification for the at " + timeStr,
-			startTime: startTime,
-		})
-	}
 	for _, tt := range tests {
-		if chats, err := repo.GetChats(); err == nil {
-			log.Debug().Any("chats", chats).Send()
-		} else {
-			t.Fatalf("could not get chats: %v", err)
+		if err := repo.DeleteAllChats(); err != nil {
+			t.Fatalf("failed to delete all chats: %v", err)
+		}
+		if err := repo.InsertChats(tt.chats); err != nil {
+			t.Fatalf("failed to insert chats: %v", err)
 		}
 
-		t.Run(tt.name, func(t *testing.T) {
-			b.processPairSending(tt.startTime)
-		})
+		for _, timeStr := range Times {
+			startTime, err := time.Parse("15:04", timeStr)
+			if err != nil {
+				t.Fatalf("could not parse time: %v", err)
+			}
+
+			t.Run(tt.name+" for time "+timeStr, func(t *testing.T) {
+				b.processPairSending(startTime)
+			})
+		}
 	}
 
 	// Wait for deleting the messages.

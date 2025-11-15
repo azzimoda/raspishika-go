@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/tgbot"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/robfig/cron/v3"
@@ -180,7 +182,7 @@ func (b *Bot) processPairSending(t time.Time) {
 		log.Trace().Msg("No chats with pair sending enabled")
 		return
 	}
-	log.Debug().Msgf("Processing daily sending for time %s to %d chats", timeStr, len(chats))
+	log.Debug().Msgf("Processing pair sending for time %s to %d chats", timeStr, len(chats))
 
 	groupedChats := make(map[string][]*database.Chat)
 	for _, chat := range chats {
@@ -227,8 +229,22 @@ func (b *Bot) sendPairNotificationToGroup(
 ) ([]error, bool) {
 	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chats))
 
-	group, err := b.repo.GetGroupByName(groupName)
-	if err != nil {
+	group, err := utils.FetchGroupByNameWithValidation(b.repo, b.browser, b.cache, groupName)
+	if errors.Is(err, utils.ErrGroupNotFound) || errors.Is(err, utils.ErrWrongGroupNameFormat) {
+		log.Error().Err(err).Str("groupName", groupName).Msg("Failed to get group by name")
+
+		// Clear users' configured group.
+		for _, chat := range chats {
+			chat.GroupName = nil
+			chat.DepartmentName = nil
+			if err := b.repo.UpdateChat(chat); err != nil {
+				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msg("Failed to update chat")
+			} else {
+				tgbot.SendTempMessage(b.api, chat.TgChatID,
+					"Не удалось получить расписание группы. Задайте группу заново: /group", 5*time.Minute)
+			}
+		}
+
 		return []error{fmt.Errorf("failed to get group by name %s: %w", groupName, err)}, true
 	}
 
@@ -237,14 +253,10 @@ func (b *Bot) sendPairNotificationToGroup(
 		return []error{fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)}, true
 	}
 
-	firstPairTime := time.Date(pairTime.Year(), pairTime.Month(), pairTime.Day(), 8, 0, 0, 0, pairTime.Location())
 	scheduleDay := rawSchedule.Transform().Days[0]
 	log.Trace().Msgf("Current day: %s", scheduleDay.Date)
 	pair, err := scheduleDay.CurrentPair(pairTime)
 	if err != nil {
-		if pairTime.Before(firstPairTime) {
-			pair = &scheduleDay.Pairs[0]
-		}
 		log.Trace().Err(err).Msg("There is no pair in 15 minutes")
 		return nil, false
 	}
