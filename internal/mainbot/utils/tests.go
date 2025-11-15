@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -15,32 +16,28 @@ import (
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
-func InitPaths() (string, string, string) {
+func InitPaths() (string, string) {
 	_, filename, _, _ := runtime.Caller(0)
 	rootDir := filepath.Join(filepath.Dir(filename), "..", "..", "..")
 
 	debugConfigFile := filepath.Join(rootDir, "configs/.debug-config.yml")
 	templateFile := filepath.Join(rootDir, "storage/schedule_template.html")
 
-	testsDir := filepath.Join(rootDir, ".tests")
-	// Delete and recreate tests dir.
-	if err := os.RemoveAll(testsDir); err != nil {
-		log.Fatal().Err(err).Msg("could not delete tests dir")
-	}
-	if err := os.MkdirAll(testsDir, 0755); err != nil {
-		log.Fatal().Err(err).Msg("could not create tests dir")
-	}
-
-	return debugConfigFile, templateFile, testsDir
+	return debugConfigFile, templateFile
 }
 
-// TODO: Use t.TempDir() instead of my manual implementation.
-func InitServices(t *testing.T, debugConfigFile, templateFile, testsDir string) (
+func InitServices(t *testing.T, debugConfigFile, templateFile string) (
+	string,
 	*config.MainConfig,
 	*database.Repository,
 	*browser.BrowserService,
 	*cache.Cache,
 ) {
+	testsDir := filepath.Join(os.TempDir(), time.Now().Format("20060102150405"))
+	if err := os.MkdirAll(testsDir, 0755); err != nil {
+		t.Fatalf("could not create tests directory: %v", err)
+	}
+
 	log.Trace().Str("debugConfigFile", debugConfigFile).Str("templateFile", templateFile).Str("testsDir", testsDir).
 		Msg("InitServices")
 
@@ -58,7 +55,7 @@ func InitServices(t *testing.T, debugConfigFile, templateFile, testsDir string) 
 
 	cacheService := cache.New(&cfg.Cache)
 
-	return cfg, repo, browserService, cacheService
+	return testsDir, cfg, repo, browserService, cacheService
 }
 
 func InitConfig(t *testing.T, debugConfigFile, templateFile, testsDir string) *config.MainConfig {

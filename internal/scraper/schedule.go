@@ -2,7 +2,6 @@ package scraper
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -148,25 +146,7 @@ func (s *RawSchedule) HTML(template string) string {
 		"TIMESTAMP", time.Now().Format(time.RFC3339),
 	).Replace(template)
 
-	if log.Logger.GetLevel() <= zerolog.DebugLevel {
-		filename := scheduleCacheFileName(s.Config)
-		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
-			log.Error().Err(err).Msg("Failed to save schedule HTML")
-		}
-		log.Debug().Msgf("Saved schedule HTML to %s", filename)
-	}
-
 	return html
-}
-
-func scheduleCacheFileName(cfg ScheduleConfig) string {
-	if cfg.Group != nil {
-		return "storage/cache/schedule_" + cfg.Group.GroupName + ".html"
-	} else if cfg.Teacher != nil {
-		return "storage/cache/schedule_" + cfg.Teacher.Name + ".html"
-	} else {
-		panic("unreachable")
-	}
 }
 
 func (s *RawSchedule) generateTableBody(rows []RawScheduleRow) string {

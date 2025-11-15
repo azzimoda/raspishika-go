@@ -9,16 +9,15 @@ import (
 
 var debugConfigFile string
 var templateFile string
-var testsDir string
 
 func init() {
-	debugConfigFile, templateFile, testsDir = utils.InitPaths()
-	println(debugConfigFile, templateFile, testsDir)
+	debugConfigFile, templateFile = utils.InitPaths()
+	println(debugConfigFile, templateFile)
 }
 
 func TestScrapeScheduleWithBrowser(t *testing.T) {
 	// Initialize configuration.
-	_, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile, testsDir)
+	testsDir, _, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
 
 	// Prepare test data.
 	if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
@@ -69,4 +68,6 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 			}
 		})
 	}
+
+	utils.Cleanup(t, testsDir)
 }

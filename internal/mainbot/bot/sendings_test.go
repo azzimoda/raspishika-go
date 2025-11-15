@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -18,7 +17,6 @@ import (
 
 var debugConfigFile string
 var templateFile string
-var testsDir string
 
 func init() {
 	_, filename, _, _ := runtime.Caller(0)
@@ -26,20 +24,11 @@ func init() {
 
 	debugConfigFile = filepath.Join(rootDir, "configs/.debug-config.yml")
 	templateFile = filepath.Join(rootDir, "storage/schedule_template.html")
-
-	testsDir = filepath.Join(rootDir, ".tests")
-	// Delete and recreate tests dir.
-	if err := os.RemoveAll(testsDir); err != nil {
-		log.Fatal().Err(err).Msg("could not delete tests dir")
-	}
-	if err := os.MkdirAll(testsDir, 0755); err != nil {
-		log.Fatal().Err(err).Msg("could not create tests dir")
-	}
 }
 
 func TestBot_processDailySending(t *testing.T) {
 	// Initialize services.
-	cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile, testsDir)
+	testsDir, cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
 	b, err := New(cfg, nil, repo, browser, cache)
 	if err != nil {
 		t.Fatalf("could not construct receiver type: %v", err)
@@ -98,7 +87,7 @@ func TestBot_processPairSending(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
 	// Initialize services.
-	cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile, testsDir)
+	testsDir, cfg, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
 	logger.SetupLogger(config.LoggerConfig{Level: "trace", Dir: ""})
 
 	b, err := New(cfg, nil, repo, browser, cache)
