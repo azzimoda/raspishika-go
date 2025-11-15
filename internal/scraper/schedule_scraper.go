@@ -66,43 +66,51 @@ func ScrapeScheduleWithBrowser(
 ) (*RawSchedule, error) {
 	log.Trace().Str("URL", url).Any("scheduleConfig", config).Msg("Scraping schedule with browser")
 
+	html, err := fetchSchedulePageWithBrowser(browser, url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch schedule page with browser: %w", err)
+	}
+	return parseSchedule(html, config)
+}
+
+func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (string, error) {
 	var html string
 	err := browser.WithPage(func(p playwright.Page) (err error) {
 		retries := 0
-		const maxRetries = 3 // TODO: make configurable
-		for retries < maxRetries {
+
+		for retries < browser.Config.MaxRetries {
 			retries++
+			log.Debug().Msgf("Fetching schedule page (attempt %d/%d)", retries, browser.Config.MaxRetries)
 
 			if err = p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
-				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying... (%d/%d)", retries, maxRetries)
+				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying...")
 				err = fmt.Errorf("failed to set extra HTTP headers: %w", err)
 				continue
 			}
 			if _, err = p.Goto(url); err != nil {
-				log.Error().Err(err).Msgf("Failed to goto URL; retrying... (%d/%d)", retries, maxRetries)
+				log.Error().Err(err).Msgf("Failed to goto URL; retrying...")
 				err = fmt.Errorf("failed to goto URL: %w", err)
 				continue
 			}
-
 			tableLocator := p.Locator("#main_table")
 			if err = tableLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
-				log.Error().Err(err).Msgf("Failed to wait for table; retrying... (%d/%d)", retries, maxRetries)
+				log.Error().Err(err).Msgf("Failed to wait for table; retrying...")
 				err = fmt.Errorf("failed to wait for table: %w", err)
 				continue
 			}
-
 			time.Sleep(1 * time.Second)
 
 			html, err = p.Content()
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get HTML content; retrying... (%d/%d)", retries, maxRetries)
+				log.Error().Err(err).Msgf("Failed to get HTML content; retrying...")
 				err = fmt.Errorf("failed to get HTML content: %w", err)
 				continue
 			}
 
 			return nil
 		}
-		return fmt.Errorf("failed to get HTML content after %d retries", maxRetries)
+		log.Error().Err(err).Msgf("Failed to fetch schedule page after %d retries", browser.Config.MaxRetries)
+		return fmt.Errorf("out of retries (%d): %w", browser.Config.MaxRetries, err)
 	})
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
@@ -114,10 +122,7 @@ func ScrapeScheduleWithBrowser(
 		}
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to run browser: %w", err)
-	}
-	return parseSchedule(html, config)
+	return html, err
 }
 
 func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSchedule, err error) {

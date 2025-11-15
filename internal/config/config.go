@@ -75,6 +75,7 @@ func (c *MainConfig) LoadTemplate() error {
 type BrowserConfig struct {
 	Headless      bool   `yaml:"headless"`
 	Timeout       int64  `yaml:"timeout"`
+	MaxRetries    int    `yaml:"max_retries"`
 	ScreenshotDir string `yaml:"screenshot_dir"`
 }
 

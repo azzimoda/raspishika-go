@@ -8,6 +8,7 @@ database:
 browser:
   headless: true
   timeout: 30 # seconds
+  max_retries: 3
   screenshot_dir: storage/screenshots
 cache:
   dir: storage/cache
