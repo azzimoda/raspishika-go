@@ -1,6 +1,6 @@
 module github.com/azzimoda/raspishika-go
 
-go 1.25.2
+go 1.25
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.3

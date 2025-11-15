@@ -51,7 +51,13 @@ func TestBot_processDailySending(t *testing.T) {
 	}
 
 	// Test
-	groupName := "ИСПт-22-(9)-2"
+	groupNames := []string{
+		"ИСПт-22-(9)-1",
+		"ИСПт-22-(9)-2",
+		"ИСПт-23-(9)-1",
+		"ИСПт-24-(9)-1",
+		"ИСПт-25-(9)-1",
+	}
 	now := time.Now()
 	timeStr := now.Format("15:04")
 	tests := []struct {
@@ -60,7 +66,14 @@ func TestBot_processDailySending(t *testing.T) {
 		chats []database.Chat
 	}{
 		{"send daily schedule", []database.Chat{
-			{TgChatID: cfg.Telegram.AdminID, GroupName: &groupName, DailySendingTime: &timeStr},
+			{TgChatID: cfg.Telegram.AdminID, GroupName: &groupNames[1], DailySendingTime: &timeStr},
+		}},
+		{"send daily schedule to groups", []database.Chat{
+			{TgChatID: cfg.Telegram.AdminID, GroupName: &groupNames[0], DailySendingTime: &timeStr},
+			{TgChatID: 0, GroupName: &groupNames[1], DailySendingTime: &timeStr}, // Fake chat IDs just to test fetching.
+			{TgChatID: 1, GroupName: &groupNames[2], DailySendingTime: &timeStr},
+			{TgChatID: 2, GroupName: &groupNames[3], DailySendingTime: &timeStr},
+			{TgChatID: 3, GroupName: &groupNames[4], DailySendingTime: &timeStr},
 		}},
 	}
 
