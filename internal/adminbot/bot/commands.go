@@ -1,7 +1,9 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -147,6 +149,7 @@ func (b *AdminBot) onChats(msg *tgbotapi.Message) error {
 
 	totalCount := len(chats)
 	inactiveCount := 0
+	privateChatCount := 0
 	for _, chat := range chats {
 		// Chat is inactive if it didn't use any commands for 48 hours and have disabled all sendings.
 		recentCommandUsages, err := b.repo.GetRecentChatUpdateLogs(chat.ID, 48*time.Hour)
@@ -157,9 +160,58 @@ func (b *AdminBot) onChats(msg *tgbotapi.Message) error {
 		if len(recentCommandUsages) == 0 {
 			inactiveCount += 1
 		}
+		if chat.IsPrivate() {
+			privateChatCount += 1
+		}
 	}
 
-	text := fmt.Sprintf("Total chats: %d\nActive chats: %d\nInactive chats: %d", totalCount, totalCount-inactiveCount, inactiveCount)
+	// General info.
+	text := fmt.Sprintf(`Total chats: %d
+Private chats: %d
+Group chats: %d
+Active chats: %d
+Inactive chats: %d`,
+		totalCount, privateChatCount, totalCount-privateChatCount, totalCount-inactiveCount, inactiveCount)
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
+	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err1 := b.api.Send(newMsg)
+
+	err2 := b.sendConfigReport(msg)
+
+	return errors.Join(err1, err2)
+}
+
+func (b *AdminBot) sendConfigReport(msg *tgbotapi.Message) error {
+	chats, err := b.repo.GetChats()
+	if err != nil {
+		return fmt.Errorf("failed to get chats: %w", err)
+	}
+
+	dailyTimes := make(map[string]int)
+	dailyEnabledCount := 0
+	pairEnabledCount := 0
+	for _, chat := range chats {
+		if chat.DailySendingTime != nil && *chat.DailySendingTime != "" {
+			dailyTimes[*chat.DailySendingTime] += 1
+			dailyEnabledCount += 1
+		}
+		if chat.PairSending {
+			pairEnabledCount += 1
+		}
+	}
+
+	timeKeys := make([]string, 0, len(dailyTimes))
+	for k := range dailyTimes {
+		timeKeys = append(timeKeys, k)
+	}
+	sort.Strings(timeKeys)
+
+	text := fmt.Sprintf("Pair enabled: %d\nDaily enabled: %d\nTimes:\n```\n", pairEnabledCount, dailyEnabledCount)
+	for _, t := range timeKeys {
+		text += fmt.Sprintf("\\- %s: %3d\n", t, dailyTimes[t])
+	}
+	text += "```\n"
+
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err = b.api.Send(newMsg)
