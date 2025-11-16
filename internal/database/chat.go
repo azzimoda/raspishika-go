@@ -145,6 +145,88 @@ func (r *Repository) UpdateChatTgChatID(id int, tgChatID int64) error {
 	return err
 }
 
+func (r *Repository) GetChatCount() (int, error) {
+	var count int
+	if err := r.db.Get(&count, `SELECT COUNT(*) FROM chats`); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// GetPrivateChatCount returns the number of private chats.
+//
+// Private chat is a chat with Telegram chat ID greater than 0.
+func (r *Repository) GetPrivateChatCount() (int, error) {
+	var count int
+	if err := r.db.Get(&count, `SELECT COUNT(*) FROM chats WHERE tg_chat_id > 0`); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// GetInactiveChatCount returns the number of inactive chats.
+//
+// Chat is inactive if it didn't use any commands for 48 hours,
+// and have disabled all sendings or don't have group configured.
+func (r *Repository) GetInactiveChatCount(dur time.Duration) (int, error) {
+	var count int
+	period := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
+	if err := r.db.Get(&count,
+		`SELECT count(*) FROM (
+			SELECT c.id, c.tg_chat_id, c.username, c."group", c.daily_sending_time, c.pair_sending, c.updated_at,
+				count(ul.id) as count FROM chats c
+			LEFT JOIN (
+				SELECT * FROM update_logs WHERE created_at > datetime('now', ?)
+			) ul ON c.id = ul.chat_id
+			WHERE ("group" IS NULL OR "group" = '' OR daily_sending_time IS NULL AND pair_sending = 0)
+				AND c.updated_at < datetime('now', ?)
+			GROUP BY c.id HAVING count = 0
+		);`,
+		period, period,
+	); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *Repository) GetChatGroupedByDailySendingTime() (map[string]int, error) {
+	var counts []struct {
+		Time  string `db:"daily_sending_time"`
+		Count int    `db:"count"`
+	}
+	if err := r.db.Select(&counts,
+		`SELECT daily_sending_time, COUNT(*) as count FROM chats
+		WHERE daily_sending_time IS NOT NULL
+		GROUP BY daily_sending_time
+		ORDER BY daily_sending_time ASC`,
+	); err != nil {
+		return nil, err
+	}
+	result := make(map[string]int)
+	for _, count := range counts {
+		result[count.Time] = count.Count
+	}
+	return result, nil
+}
+
+func (r *Repository) GetChatCountWithDailySendingEnabled() (int, error) {
+	var count int
+	if err := r.db.Get(&count,
+		`SELECT COUNT(*) FROM chats WHERE daily_sending_time IS NOT NULL AND daily_sending_time != ''`,
+	); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *Repository) GetChatCountWithPairSendingEnabled() (int, error) {
+	var count int
+	if err := r.db.Get(&count, `SELECT COUNT(*) FROM chats WHERE pair_sending = 1`); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *Repository) GetChat(id int64) (*Chat, error) {
 	var chat Chat
 	if err := r.db.Get(&chat, `SELECT * FROM chats WHERE id = ?`, id); err != nil {

@@ -142,27 +142,32 @@ func (b *AdminBot) sendGroupReport(group string, msg *tgbotapi.Message) error {
 }
 
 func (b *AdminBot) onChats(msg *tgbotapi.Message) error {
-	chats, err := b.repo.GetChats()
+	log.Debug().Msg("AdminBot.onChats()")
+
+	log.Trace().Msg("Counting...")
+	totalChats, err := b.repo.GetChatCount()
 	if err != nil {
-		return fmt.Errorf("failed to get chats: %w", err)
+		log.Error().Err(err).Msg("Failed to get total chat count")
+		totalChats = 0
+	}
+	log.Trace().Int("totalChats", totalChats).Send()
+
+	log.Trace().Msg("Counting private and group chats...")
+	privateChatCount, err := b.repo.GetPrivateChatCount()
+	groupChatCount := totalChats - privateChatCount
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get private chat count")
+		privateChatCount = 0
+		groupChatCount = 0
 	}
 
-	totalCount := len(chats)
-	inactiveCount := 0
-	privateChatCount := 0
-	for _, chat := range chats {
-		// Chat is inactive if it didn't use any commands for 48 hours and have disabled all sendings.
-		recentCommandUsages, err := b.repo.GetRecentChatUpdateLogs(chat.ID, 48*time.Hour)
-		if err != nil {
-			b.Report().Err(err).Sendf("Failed to get recent command usages for chat %d", chat.ID)
-			continue
-		}
-		if len(recentCommandUsages) == 0 {
-			inactiveCount += 1
-		}
-		if chat.IsPrivate() {
-			privateChatCount += 1
-		}
+	log.Trace().Msg("Counting active and inactive chats...")
+	inactiveCount, err := b.repo.GetInactiveChatCount(48 * time.Hour) // TODO: Make duration configurable.
+	activeChatCount := totalChats - inactiveCount
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get inactive chat count")
+		inactiveCount = 0
+		activeChatCount = 0
 	}
 
 	// General info.
@@ -171,7 +176,7 @@ Private chats: %d
 Group chats: %d
 Active chats: %d
 Inactive chats: %d`,
-		totalCount, privateChatCount, totalCount-privateChatCount, totalCount-inactiveCount, inactiveCount)
+		totalChats, privateChatCount, groupChatCount, activeChatCount, inactiveCount)
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err1 := b.api.Send(newMsg)
@@ -182,22 +187,24 @@ Inactive chats: %d`,
 }
 
 func (b *AdminBot) sendConfigReport(msg *tgbotapi.Message) error {
-	chats, err := b.repo.GetChats()
+	log.Trace().Msg("AdminBot.sendConfigReport()")
+
+	log.Trace().Msg("Getting daily sending time counts...")
+	dailyTimes, err := b.repo.GetChatGroupedByDailySendingTime()
 	if err != nil {
-		return fmt.Errorf("failed to get chats: %w", err)
+		return fmt.Errorf("failed to get chats grouped by daily sending time: %w", err)
 	}
 
-	dailyTimes := make(map[string]int)
-	dailyEnabledCount := 0
-	pairEnabledCount := 0
-	for _, chat := range chats {
-		if chat.DailySendingTime != nil && *chat.DailySendingTime != "" {
-			dailyTimes[*chat.DailySendingTime] += 1
-			dailyEnabledCount += 1
-		}
-		if chat.PairSending {
-			pairEnabledCount += 1
-		}
+	log.Trace().Msg("Getting daily sending time enabled counts...")
+	dailyEnabledCount, err := b.repo.GetChatCountWithDailySendingEnabled()
+	if err != nil {
+		return fmt.Errorf("failed to get chats with daily sending time enabled: %w", err)
+	}
+
+	log.Trace().Msg("Getting pair sending enabled counts...")
+	pairEnabledCount, err := b.repo.GetChatCountWithPairSendingEnabled()
+	if err != nil {
+		return fmt.Errorf("failed to get chats with pair sending enabled: %w", err)
 	}
 
 	timeKeys := make([]string, 0, len(dailyTimes))
