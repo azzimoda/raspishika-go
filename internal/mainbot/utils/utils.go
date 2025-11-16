@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -229,4 +230,35 @@ func FetchGroupByNameWithValidation(
 		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
 	}
 	return group, nil
+}
+
+func HandleTelegramAPIError(repo *database.Repository, tgErr *tgbotapi.Error, chat *database.Chat) error {
+	if strings.Contains(strings.ToLower(tgErr.Message), "forbidden") {
+		log.Warn().Int64("tgChatID", chat.TgChatID).Msg("Forbidden, deleting chat...")
+		repo.DeleteChat(chat.ID)
+		return nil
+	}
+
+	if tgErr.MigrateToChatID != 0 {
+		log.Warn().Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+			Msg("Chat migrated, updating chat ID...")
+
+		if c, err := repo.GetChatByTgChatID(tgErr.MigrateToChatID); err == nil {
+			log.Warn().Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+				Msg("Chat already exists, deleting old chat...")
+			if err := repo.DeleteChat(c.ID); err != nil {
+				return fmt.Errorf("failed to delete old chat: %w", err)
+			}
+		} else {
+			if err := repo.UpdateChatTgChatID(chat.ID, tgErr.MigrateToChatID); err != nil {
+				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Int64("migrateToChatID", tgErr.MigrateToChatID).
+					Msg("Failed to update chat ID")
+				return fmt.Errorf("failed to update chat ID: %w", err)
+			}
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("telegram API error: %w", tgErr)
 }

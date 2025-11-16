@@ -14,8 +14,8 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	mainbot "github.com/azzimoda/raspishika-go/internal/mainbot/bot"
+	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
 
-	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -43,10 +43,10 @@ func (a *App) Run() error {
 		a.Report().Send("Starting application...")
 	}
 
-	c := cron.New()
+	sendingManager := sendings.NewSendingManager(a.MainBot.CommandHandler)
 
 	if a.Config.Features.DailySending {
-		if err := a.MainBot.ScheduleDailySending(c); err != nil {
+		if err := sendingManager.ScheduleDailySending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
 		} else {
 			log.Info().Msg("Daily sending scheduled")
@@ -54,14 +54,14 @@ func (a *App) Run() error {
 	}
 
 	if a.Config.Features.PairSending {
-		if err := a.MainBot.SchedulePairSending(c); err != nil {
+		if err := sendingManager.SchedulePairSending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
 		} else {
 			log.Info().Msg("Pair sending scheduled")
 		}
 	}
 
-	c.Start()
+	sendingManager.Start()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
