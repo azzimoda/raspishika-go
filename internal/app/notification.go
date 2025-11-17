@@ -9,7 +9,7 @@ import (
 )
 
 func (a *App) SendNotification(s string) {
-	chats, err := a.Repo.GetChats()
+	chats, err := a.Services.Repo.GetChats()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to get chats")
 	}

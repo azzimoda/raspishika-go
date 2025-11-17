@@ -11,7 +11,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/mainbot/callbacks"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/commands"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/tgbot"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
@@ -55,8 +55,8 @@ func (b *Bot) ScheduleManager() *scraper.ScheduleManager {
 }
 
 func (b *Bot) Start() {
-	tgbot.SetMyCommands(b.api, b.myCommands)
-	tgbot.StartPolling(b)
+	tgbothelpers.SetMyCommandsOld(b.api, b.myCommands)
+	tgbothelpers.StartPolling(b)
 	log.Info().Msg("Main bot started")
 }
 

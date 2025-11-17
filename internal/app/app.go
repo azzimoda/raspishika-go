@@ -1,13 +1,14 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot/bot"
+	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot"
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
@@ -15,6 +16,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	mainbot "github.com/azzimoda/raspishika-go/internal/mainbot/bot"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
+	"github.com/azzimoda/raspishika-go/internal/services"
 
 	"github.com/rs/zerolog/log"
 )
@@ -23,9 +25,7 @@ type App struct {
 	Config   *config.MainConfig
 	MainBot  *mainbot.Bot
 	AdminBot *adminbot.AdminBot
-	Repo     *database.Repository
-	Browser  *browser.BrowserService
-	Cache    *cache.Cache
+	Services *services.Services
 }
 
 func (a *App) Run() error {
@@ -84,13 +84,13 @@ func (a *App) Shutdown() {
 		log.Info().Msg("Admin bot stopped")
 	}
 
-	if err := a.Repo.Close(); err != nil {
+	if err := a.Services.Repo.Close(); err != nil {
 		log.Error().Err(err).Msg("Database repository closed with error")
 	} else {
 		log.Info().Msg("Repository closed")
 	}
 
-	a.Browser.Close()
+	a.Services.Browser.Close()
 }
 
 func (a *App) Report() reporter.ReportConfig {
@@ -98,29 +98,39 @@ func (a *App) Report() reporter.ReportConfig {
 		log.Warn().Msg("Admin bot is not initialized")
 		return reporter.ReportConfig{}
 	}
-
-	return reporter.NewReportConfig(a.AdminBot.API(), a.Config.Telegram.AdminID)
+	return a.AdminBot.Report()
 }
 
 func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, error) {
-	app := App{Config: cfg, Cache: cache.New(&cfg.Cache)}
+	app := App{Config: cfg, Services: &services.Services{}}
 	var err error
 
-	app.Repo, err = database.New(cfg)
+	app.Services.Cache = cache.New(&cfg.Cache)
+
+	app.Services.Repo, err = database.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {
 		log.Debug().Msg("Created repository")
 	}
 
-	app.Browser, err = browser.New(cfg)
+	app.Services.Browser, err = browser.New(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create browser service: %w", err)
 	} else {
 		log.Debug().Msg("Created browser service")
 	}
 
-	app.MainBot, err = mainbot.New(cfg, commandsCfg.MainBot, app.Repo, app.Browser, app.Cache)
+	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	// defer cancel()
+
+	app.MainBot, err = mainbot.New(
+		cfg,
+		commandsCfg.MainBot,
+		app.Services.Repo,
+		app.Services.Browser,
+		app.Services.Cache,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize main bot")
 	} else {
@@ -129,13 +139,16 @@ func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, erro
 	app.MainBot.Reporter = &app
 
 	if cfg.Features.AdminBot {
-		app.AdminBot, err = adminbot.New(cfg, commandsCfg.AdminBot, app.Repo)
+		adminCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancel()
+
+		app.AdminBot, err = adminbot.New(adminCtx, cfg, commandsCfg.AdminBot, app.Services)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		} else {
 			log.Info().Msg("Initialized admin bot")
 		}
-		app.AdminBot.Reporter = &app
+		app.Services.Reporter = &app
 	}
 
 	return &app, nil

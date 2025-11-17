@@ -1,13 +1,16 @@
 package reporter
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 type Reporter interface {
@@ -15,7 +18,7 @@ type Reporter interface {
 }
 
 type ReportConfig struct {
-	api               *tgbotapi.BotAPI
+	bot               *bot.Bot
 	admin             bool
 	recipientTgChatID int64 // RecipientChatID is the ID of the chat, where the report should be sent.
 	tgChatID          int64 // tgChatID is the ID of the chat, whose message caused the error. Optional.
@@ -45,26 +48,28 @@ func (r ReportConfig) Err(err error) ReportConfig {
 	return r
 }
 
-func (r ReportConfig) Send(text string) {
-	if r.api == nil {
-		if log.Logger.GetLevel() <= zerolog.DebugLevel {
+func (rc ReportConfig) Send(text string) {
+	if rc.bot == nil {
+		if log.Logger.GetLevel() == zerolog.TraceLevel {
 			log.Warn().Msg("ReportConfig.Send: bot is nil")
 		}
 		return
 	}
 
 	msgText := ""
-	if r.tgChatID != 0 {
-		msgText += fmt.Sprintf("\n`/chat %d` @%s", r.tgChatID, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.username))
+	if rc.tgChatID != 0 {
+		msgText += fmt.Sprintf("\n`/chat %d` @%s", rc.tgChatID, bot.EscapeMarkdown(rc.username))
 	}
-	if r.err != nil {
-		msgText += fmt.Sprintf("\nError: _%s_", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, r.err.Error()))
+	if rc.err != nil {
+		msgText += fmt.Sprintf("\nError: _%s_", bot.EscapeMarkdown(rc.err.Error()))
 	}
-	msgText += fmt.Sprintf("\n\n%s", tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, text))
+	msgText += fmt.Sprintf("\n\n%s", bot.EscapeMarkdown(text))
 
-	msg := tgbotapi.NewMessage(r.recipientTgChatID, msgText)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err := r.api.Send(msg)
+	_, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
+		ChatID:    rc.recipientTgChatID,
+		Text:      msgText,
+		ParseMode: models.ParseModeMarkdown,
+	})
 	if err != nil {
 		log.Error().Err(err).Str("text", msgText).Msg("Failed to send report message")
 	}
@@ -74,6 +79,6 @@ func (r ReportConfig) Sendf(format string, a ...any) {
 	r.Send(fmt.Sprintf(format, a...))
 }
 
-func NewReportConfig(api *tgbotapi.BotAPI, recipientChatID int64) ReportConfig {
-	return ReportConfig{api: api, recipientTgChatID: recipientChatID}
+func NewReportConfig(bot *bot.Bot, recipientChatID int64) ReportConfig {
+	return ReportConfig{bot: bot, recipientTgChatID: recipientChatID}
 }

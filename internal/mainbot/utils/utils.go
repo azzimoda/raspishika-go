@@ -15,7 +15,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/tgbot"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -32,7 +32,7 @@ var (
 
 type BotManager interface {
 	config.ConfigProvider
-	tgbot.BotAPIProvider
+	tgbothelpers.BotAPIProvider
 	database.RepositoryProvider
 	browser.BrowserServiceProvider
 	cache.CacheProvider
@@ -41,7 +41,7 @@ type BotManager interface {
 }
 
 func SendErrorMessage(api *tgbotapi.BotAPI, tgChatID int64, text string) error {
-	err := tgbot.SendTempMessage(
+	err := tgbothelpers.SendTempMessageOld(
 		api,
 		tgChatID,
 		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, text),

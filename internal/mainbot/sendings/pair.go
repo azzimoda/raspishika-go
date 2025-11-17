@@ -11,7 +11,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/tgbot"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
 func (sm *SendingManager) processPairSending(t time.Time) {
@@ -92,7 +92,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 			if err := sm.ch.Bot.Repo().UpdateChat(chat); err != nil {
 				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
-				tgbot.SendTempMessage(sm.ch.Bot.API(), chat.TgChatID,
+				tgbothelpers.SendTempMessageOld(sm.ch.Bot.API(), chat.TgChatID,
 					"Не удалось получить расписание группы. Задайте группу заново: /group", 5*time.Minute)
 			}
 		}
