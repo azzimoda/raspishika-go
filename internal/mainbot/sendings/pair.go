@@ -22,7 +22,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	chats, err := sm.ch.Bot.Repo().GetChatsWithPairSendingEnabled()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
-		sm.ch.Bot.Report().Err(err).Send("Failed to get chats with pair sending enabled")
+		sm.ch.Bot.Report().Err(err).Msg("Failed to get chats with pair sending enabled")
 		return
 	}
 
@@ -56,7 +56,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	if len(errs) != 0 {
 		err := errors.Join(errs...)
 		log.Error().Err(err).Msg("Errors while sending pair notification")
-		sm.ch.Bot.Report().Err(err).Send("Errors while sending pair notification")
+		sm.ch.Bot.Report().Err(err).Msg("Errors while sending pair notification")
 	}
 
 	takenTime := time.Since(t)
@@ -69,7 +69,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	takenTimeFloat := float64(takenTime)
 	takenTimePerChat := takenTimeFloat / float64(len(chats))
 	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
-		sm.ch.Bot.Report().Sendf("Daily sending for time %s took too long (%s)", t, takenTime)
+		sm.ch.Bot.Report().Msgf("Daily sending for time %s took too long (%s)", t, takenTime)
 	}
 }
 

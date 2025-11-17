@@ -45,9 +45,8 @@ func SetMyCommandsOld(api *tgbotapi.BotAPI, commandsData []map[string]string) {
 	api.Send(tgbotapi.NewSetMyCommands(commands...))
 }
 
-func SetMyCommands(ctx context.Context, b *bot.Bot, commandsData []map[string]string) {
+func SetMyCommands(ctx context.Context, b *bot.Bot, commandsData []map[string]string) (bool, error) {
 	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
-
 	commands := []models.BotCommand{}
 	for _, cmd := range commandsData {
 		for name, desc := range cmd {
@@ -57,8 +56,7 @@ func SetMyCommands(ctx context.Context, b *bot.Bot, commandsData []map[string]st
 			})
 		}
 	}
-
-	b.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: commands})
+	return b.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: commands})
 }
 
 // Deprecated, use SendTempMessage instead

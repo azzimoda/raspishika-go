@@ -49,7 +49,7 @@ func (ch *CallbackHandler) OnSelectTeacher(commandHandler *commands.CommandHandl
 
 	if err := ch.Bot.Repo().AddChatRecentTeacher(chat.ID, teacher.ID); err != nil {
 		log.Error().Err(err).Any("chat", chat).Any("teacher", teacher).Msg("Failed to add recent teacher")
-		ch.Bot.Report().Chat(chat).Err(err).Sendf("Failed to add recent teacher %s", teacher.Name)
+		ch.Bot.Report().Chat(chat).Err(err).Msgf("Failed to add recent teacher %s", teacher.Name)
 	}
 
 	if err := ch.Bot.Repo().UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {

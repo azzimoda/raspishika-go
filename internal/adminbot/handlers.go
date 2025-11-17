@@ -79,7 +79,7 @@ func (ab *AdminBot) sendChatReport(chat *database.Chat, b *bot.Bot, ctx context.
 	recentTeachers, err := ab.services.Repo.GetTeacherByChatID(chat.ID)
 	if err != nil {
 		recentTeachers = []database.Teacher{}
-		ab.services.Reporter.Report().Err(err).Sendf("Failed to get recent teachers for chat %d", chat.ID)
+		ab.services.Reporter.Report().Err(err).Msgf("Failed to get recent teachers for chat %d", chat.ID)
 	}
 	recentTeachersNames := make([]string, len(recentTeachers))
 	for i, t := range recentTeachers {

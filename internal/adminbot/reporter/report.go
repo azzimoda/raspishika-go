@@ -48,7 +48,8 @@ func (r ReportConfig) Err(err error) ReportConfig {
 	return r
 }
 
-func (rc ReportConfig) Send(text string) {
+// Msg sends a message to the recipient chat with the report information and the given text.
+func (rc ReportConfig) Msg(text string) {
 	if rc.bot == nil {
 		if log.Logger.GetLevel() == zerolog.TraceLevel {
 			log.Warn().Msg("ReportConfig.Send: bot is nil")
@@ -75,8 +76,15 @@ func (rc ReportConfig) Send(text string) {
 	}
 }
 
-func (r ReportConfig) Sendf(format string, a ...any) {
-	r.Send(fmt.Sprintf(format, a...))
+// Msgf sends a message to the recipient chat with the report information and the given text.
+func (r ReportConfig) Msgf(format string, a ...any) {
+	r.Msg(fmt.Sprintf(format, a...))
+}
+
+// Send sends a message to the recipient chat with the report information and an empty text.
+// It is a shorthand for Msg("").
+func (r ReportConfig) Send() {
+	r.Msg("")
 }
 
 func NewReportConfig(bot *bot.Bot, recipientChatID int64) ReportConfig {

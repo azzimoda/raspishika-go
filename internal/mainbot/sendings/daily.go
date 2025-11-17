@@ -22,7 +22,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	chats, err := sm.ch.Bot.Repo().GetChatsByDailySendingTime(timeStr)
 	if err != nil {
 		log.Error().Err(err).Time("sendingTime", t).Msg("Failed to get chats by daily sending time")
-		sm.ch.Bot.Report().Err(err).Send("Failed to get chats by daily sending time")
+		sm.ch.Bot.Report().Err(err).Msg("Failed to get chats by daily sending time")
 		return
 	}
 
@@ -45,7 +45,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	errs, errCount := sm.sendDailyNotificationToGroups(groupedChats)
 	if err := errors.Join(errs...); err != nil {
 		log.Error().Err(err).Msg("Errors while daily sending")
-		sm.ch.Bot.Report().Err(err).Send("Errors while daily sending")
+		sm.ch.Bot.Report().Err(err).Msg("Errors while daily sending")
 	}
 
 	takenTime := time.Since(startTime)
@@ -59,7 +59,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	takenTimeFloat := float64(takenTime)
 	takenTimePerChat := takenTimeFloat / float64(len(chats))
 	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
-		sm.ch.Bot.Report().Sendf("Daily sending for time %s took too long (%s)", t, takenTime)
+		sm.ch.Bot.Report().Msgf("Daily sending for time %s took too long (%s)", t, takenTime)
 	}
 }
 

@@ -12,11 +12,11 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/services"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 type AdminBot struct {
-	ctx         context.Context
 	config      *config.MainConfig
 	myCommands  []map[string]string
 	adminConfig *config.AdminConfig
@@ -28,17 +28,18 @@ func (b *AdminBot) API() *bot.Bot {
 	return b.bot
 }
 
-func (b *AdminBot) Start() {
+func (b *AdminBot) Start(ctx context.Context) {
 	log.Info().Msg("Starting admin bot...")
-	// tgbot.SetMyCommands(b.bot, b.myCommands)
-	b.bot.SetMyCommands(b.ctx, &bot.SetMyCommandsParams{
-		Commands: []models.BotCommand{},
-	})
-	b.bot.Start(b.ctx)
-}
-
-func (b *AdminBot) Stop() {
-	// TODO
+	success, err := tgbothelpers.SetMyCommands(context.Background(), b.bot, b.myCommands)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to set my commands")
+	}
+	if !success {
+		log.Error().Msg("Failed to set my commands")
+	}
+	log.Trace().Msg("Calling bot.Start()...")
+	b.bot.Start(ctx)
+	log.Trace().Msg("bot.Start() returned")
 }
 
 func (b *AdminBot) Report() reporter.ReportConfig {
@@ -52,23 +53,19 @@ func (b *AdminBot) ReportNewChat(chat *database.Chat) {
 		return
 	}
 	b.Report().Chat(chat.TgChatID).
-		Sendf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
+		Msgf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
 }
 
 func New(
-	ctx context.Context,
 	cfg *config.MainConfig,
 	myCommands []map[string]string,
 	services *services.Services,
 ) (*AdminBot, error) {
-
 	adminCfg, err := config.LoadAdminConfig(cfg.AdminConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load admin config: %w", err)
 	}
-
 	ab := AdminBot{
-		ctx:         ctx,
 		config:      cfg,
 		myCommands:  myCommands,
 		adminConfig: adminCfg,
@@ -79,11 +76,10 @@ func New(
 		bot.WithMiddlewares(ab.filterNotAdminMiddleware),
 		bot.WithDefaultHandler(ab.defaultHandler),
 	}
-	b, err := bot.New(cfg.Telegram.AdminToken, opts...)
+	ab.bot, err = bot.New(cfg.Telegram.AdminToken, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new bot: %w", err)
 	}
-	ab.bot = b
 
 	ab.registerHandlers()
 
@@ -94,9 +90,11 @@ func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFu
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		if update.Message != nil {
 			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != ab.config.Telegram.AdminID {
+				log.Trace().Msgf("Ignoring update from chat %d", update.Message.Chat.ID)
 				return
 			}
 		}
+		log.Trace().Msgf("Processing update from admin chat %d", update.Message.Chat.ID)
 		next(ctx, b, update)
 	}
 }

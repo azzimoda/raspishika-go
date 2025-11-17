@@ -8,12 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	adminbot "github.com/azzimoda/raspishika-go/internal/adminbot"
+	"github.com/azzimoda/raspishika-go/internal/adminbot"
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/database"
 	mainbot "github.com/azzimoda/raspishika-go/internal/mainbot/bot"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
 	"github.com/azzimoda/raspishika-go/internal/services"
@@ -36,11 +33,17 @@ func (a *App) Run() error {
 		log.Info().Time("end", endTime).TimeDiff("duration", startTime, endTime).Msg("Application stopped")
 	}()
 
+	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	// defer cancel()
+
 	go a.MainBot.Start()
 
 	if a.AdminBot != nil {
-		go a.AdminBot.Start()
-		a.Report().Send("Starting application...")
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer cancel()
+
+		go a.AdminBot.Start(ctx)
+		a.Report().Msg("Starting application...")
 	}
 
 	sendingManager := sendings.NewSendingManager(a.MainBot.CommandHandler)
@@ -74,13 +77,12 @@ func (a *App) Run() error {
 
 func (a *App) Shutdown() {
 	log.Info().Msg("Shutting down application...")
-	a.Report().Send("Shutting down application...")
+	a.Report().Msg("Shutting down application...")
 
 	a.MainBot.Stop()
 	log.Info().Msg("Main bot stopped")
 
 	if a.AdminBot != nil {
-		a.AdminBot.Stop()
 		log.Info().Msg("Admin bot stopped")
 	}
 
@@ -102,53 +104,29 @@ func (a *App) Report() reporter.ReportConfig {
 }
 
 func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, error) {
-	app := App{Config: cfg, Services: &services.Services{}}
-	var err error
-
-	app.Services.Cache = cache.New(&cfg.Cache)
-
-	app.Services.Repo, err = database.New(cfg)
+	s, err := services.NewServices(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create repository: %w", err)
-	} else {
-		log.Debug().Msg("Created repository")
+		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
+	app := App{Config: cfg, Services: s}
+	app.Services.Reporter = &app
 
-	app.Services.Browser, err = browser.New(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create browser service: %w", err)
-	} else {
-		log.Debug().Msg("Created browser service")
-	}
-
-	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	// defer cancel()
-
-	app.MainBot, err = mainbot.New(
-		cfg,
-		commandsCfg.MainBot,
-		app.Services.Repo,
-		app.Services.Browser,
-		app.Services.Cache,
-	)
+	app.MainBot, err = mainbot.New(cfg, commandsCfg.MainBot, app.Services)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize main bot")
 	} else {
 		log.Info().Msg("Initialized main bot")
 	}
-	app.MainBot.Reporter = &app
 
 	if cfg.Features.AdminBot {
-		adminCtx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-		defer cancel()
-
-		app.AdminBot, err = adminbot.New(adminCtx, cfg, commandsCfg.AdminBot, app.Services)
+		app.AdminBot, err = adminbot.New(cfg, commandsCfg.AdminBot, app.Services)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		} else {
 			log.Info().Msg("Initialized admin bot")
 		}
-		app.Services.Reporter = &app
+	} else {
+		log.Info().Msg("Admin bot is disabled")
 	}
 
 	return &app, nil

@@ -14,7 +14,7 @@ import (
 )
 
 func (b *Bot) OnUpdate(update tgbotapi.Update) {
-	if !b.ApplyMiddleware(update, b.repo) {
+	if !b.ApplyMiddleware(update, b.services.Repo) {
 		return
 	}
 
@@ -26,7 +26,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 	var err error
 	switch {
 	case update.Message != nil:
-		chat, err = b.repo.GetChatByTgChatID(update.Message.Chat.ID)
+		chat, err = b.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
 		if err != nil {
 			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
@@ -40,7 +40,7 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 
 		handled, err = b.onMessage(update.Message)
 	case update.CallbackQuery != nil:
-		chat, err = b.repo.GetChatByTgChatID(update.CallbackQuery.Message.Chat.ID)
+		chat, err = b.services.Repo.GetChatByTgChatID(update.CallbackQuery.Message.Chat.ID)
 		if err != nil || chat == nil {
 			log.Error().Err(err).Int64("tgChatID", update.CallbackQuery.Message.Chat.ID).
 				Msg("failed to get chat by chat ID")
@@ -85,9 +85,9 @@ func (b *Bot) OnUpdate(update tgbotapi.Update) {
 		errStr := err.Error()
 		updateLog.Error = &errStr
 		log.Error().Err(err).Msg("Error while handling update")
-		b.Report().Err(err).Chat(chat).Send("Error while handling update") // TODO: .Debug("update", update)
+		b.Report().Err(err).Chat(chat).Msg("Error while handling update") // TODO: .Debug("update", update)
 	}
-	b.repo.InsertUpdateLog(updateLog)
+	b.services.Repo.InsertUpdateLog(updateLog)
 }
 
 func (b *Bot) onMessage(msg *tgbotapi.Message) (bool, error) {
@@ -105,7 +105,7 @@ func (b *Bot) onMessage(msg *tgbotapi.Message) (bool, error) {
 }
 
 func (b *Bot) onCommand(msg *tgbotapi.Message) (handled bool, err error) {
-	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+	b.bot.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
 	handled = true
 	switch msg.Command() {
@@ -150,9 +150,9 @@ func (b *Bot) onCommand(msg *tgbotapi.Message) (handled bool, err error) {
 }
 
 func (b *Bot) onText(msg *tgbotapi.Message) (handled bool, err error) {
-	chat, err := b.repo.GetChatByTgChatID(msg.Chat.ID)
+	chat, err := b.services.Repo.GetChatByTgChatID(msg.Chat.ID)
 	if err != nil {
-		botutils.SendErrorMessage(b.api, msg.Chat.ID, botutils.ErrMsgTryLater)
+		botutils.SendErrorMessage(b.bot, msg.Chat.ID, botutils.ErrMsgTryLater)
 		return false, fmt.Errorf("failed to get chat state: %w", err)
 	}
 
@@ -194,7 +194,7 @@ func (b *Bot) onText(msg *tgbotapi.Message) (handled bool, err error) {
 
 	default:
 		log.Warn().Str("state", string(chat.State)).Msg("Unknown state")
-		if err := b.repo.UpdateChatState(chat.TgChatID, database.ChatStateDefault); err != nil {
+		if err := b.services.Repo.UpdateChatState(chat.TgChatID, database.ChatStateDefault); err != nil {
 			log.Error().Err(err).Msg("Failed to update chat state")
 			err = fmt.Errorf("failed to update chat state: %w", err)
 		}
@@ -203,19 +203,19 @@ func (b *Bot) onText(msg *tgbotapi.Message) (handled bool, err error) {
 }
 
 func (b *Bot) onTextCancel(msg *tgbotapi.Message) error {
-	b.api.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
+	b.bot.Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	if err := b.repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
+	if err := b.services.Repo.UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Действие отменено")
 	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
 	newMsg.ReplyMarkup = botutils.MainMenuReplyMarkup(msg.Chat.IsPrivate())
-	sentMsg, err := b.api.Send(newMsg)
+	sentMsg, err := b.bot.Send(newMsg)
 	go func() {
 		time.Sleep(3 * time.Second)
-		b.api.Send(tgbotapi.NewDeleteMessage(sentMsg.Chat.ID, sentMsg.MessageID))
+		b.bot.Send(tgbotapi.NewDeleteMessage(sentMsg.Chat.ID, sentMsg.MessageID))
 	}()
 	return err
 }
@@ -234,8 +234,8 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) (bool, error) {
 	var err error
 	switch callbackCommand.Command {
 	case "delete":
-		b.api.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-		if err := b.repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
+		b.bot.Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
+		if err := b.services.Repo.UpdateChatState(query.Message.Chat.ID, database.ChatStateDefault); err != nil {
 			return false, fmt.Errorf("failed to update chat state: %w", err)
 		}
 	// TODO: Add "delete_config"
@@ -271,12 +271,12 @@ func (b *Bot) onCallbackQuery(query *tgbotapi.CallbackQuery) (bool, error) {
 		err = b.CallbackHandler.OnUpdateLeft(query, callbackCommand.Args)
 
 	default:
-		b.api.Send(tgbotapi.NewCallback(query.ID, "?"))
+		b.bot.Send(tgbotapi.NewCallback(query.ID, "?"))
 		handled = false
 	}
 
 	if err != nil {
-		b.api.Send(tgbotapi.NewCallback(query.ID, botutils.ErrMsgTryLater))
+		b.bot.Send(tgbotapi.NewCallback(query.ID, botutils.ErrMsgTryLater))
 	}
 	return handled, err
 }

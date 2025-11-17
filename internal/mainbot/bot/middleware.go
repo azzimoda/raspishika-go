@@ -27,11 +27,11 @@ func (b *Bot) ApplyMiddleware(update tgbotapi.Update, repo *database.Repository)
 
 		if created {
 			log.Trace().Int64("tgChatID", tgChatID).Str("username", username).Msg("New chat registered")
-			b.Reporter.Report().Chat(chat).Send("New chat registered")
+			b.services.Reporter.Report().Chat(chat).Msg("New chat registered")
 			go func() {
 				time.Sleep(20 * time.Second)
 				if chat, err := repo.GetChatByTgChatID(tgChatID); err == nil && chat.GroupName != nil {
-					b.Reporter.Report().Chat(tgChatID).Sendf("Chat configured group %s", *chat.GroupName)
+					b.services.Reporter.Report().Chat(tgChatID).Msgf("Chat configured group %s", *chat.GroupName)
 				}
 			}()
 		}
@@ -78,7 +78,7 @@ func (b *Bot) checkAccess(tgChatID, tgUserID int64, accessLevel int, command str
 }
 
 func (b *Bot) IsAdmin(tgChatID, tgUserID int64) bool {
-	chatMember, err := b.api.GetChatMember(tgbotapi.GetChatMemberConfig{
+	chatMember, err := b.bot.GetChatMember(tgbotapi.GetChatMemberConfig{
 		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatID: tgChatID, UserID: tgUserID},
 	})
 	if err != nil {
