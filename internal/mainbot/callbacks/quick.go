@@ -57,6 +57,7 @@ func (ch *CallbackHandler) OnSelectTeacher(commandHandler *commands.CommandHandl
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
-	scheduleCfg := scraper.TeacherScheduleConfig(teacher)
-	return commandHandler.SendWeekSchedule(chat, scheduleCfg)
+	// scheduleCfg := scraper.TeacherScheduleConfig(teacher)
+	// return commandHandler.SendWeekSchedule(chat, scheduleCfg)
+	return nil
 }

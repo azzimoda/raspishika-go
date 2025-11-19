@@ -68,7 +68,7 @@ func ScheduleScreenshotFileName(config scraper.ScheduleConfig) string {
 	}
 }
 
-func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
+func AccessMenuInlineMarkup(accessLevel database.ChatAccessLevel) tgbotapi.InlineKeyboardMarkup {
 	rows := [][]tgbotapi.InlineKeyboardButton{
 		{
 			tgbotapi.NewInlineKeyboardButtonData("0", "set_access\n0"),
@@ -78,7 +78,7 @@ func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
 		{tgbotapi.NewInlineKeyboardButtonData("Закрыть", "delete")},
 	}
 	for i := range 3 {
-		if i == accessLevel {
+		if i == int(accessLevel) {
 			rows[0][i].Text = fmt.Sprintf("[%d]", i)
 		}
 	}
@@ -86,7 +86,7 @@ func AccessMenuInlineMarkup(accessLevel int) tgbotapi.InlineKeyboardMarkup {
 	return markup
 }
 
-// MainMenuReplyMarkup returns a ReplyKeyboardMarkup or a ReplyKeyboardRemove object
+// Deprecated. MainMenuReplyMarkup returns a ReplyKeyboardMarkup or a ReplyKeyboardRemove object
 // depending on the isPrivate parameter.
 // If isPrivate is true, a ReplyKeyboardMarkup is returned, else a ReplyKeyboardRemove is returned.
 func MainMenuReplyMarkup(isPrivate bool) any {
@@ -177,7 +177,7 @@ func SettingsInlineMarkup(chat *database.Chat) tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData("2", "config_access\n2"),
 		})
 		for i := range 3 {
-			if i == chat.Access {
+			if i == int(chat.Access) {
 				rows[len(rows)-1][i].Text = fmt.Sprintf("[%d]", i)
 			}
 		}

@@ -22,18 +22,30 @@ const (
 	ChatStateSelectingTime            ChatState = "selecting_time"
 )
 
+type ChatAccessLevel int
+
+// ChatAccess constants define the access level of a group chat.
+const (
+	// All commands are available for all users.
+	ChatAccessAll ChatAccessLevel = 0
+	// Configuration commands are available only for administrators.
+	ChatAccessConfigAdmin ChatAccessLevel = 1
+	// All commands are available only for administrators.
+	ChatAccessAdminOnly ChatAccessLevel = 2
+)
+
 type Chat struct {
-	ID               int       `db:"id" json:"id"`
-	TgChatID         int64     `db:"tg_chat_id" json:"tg_chat_id"`
-	UserName         *string   `db:"username" json:"username"`
-	State            ChatState `db:"state" json:"state"`
-	DepartmentName   *string   `db:"department" json:"department"`
-	GroupName        *string   `db:"group" json:"group"`
-	DailySendingTime *string   `db:"daily_sending_time" json:"daily_sending_time"`
-	PairSending      bool      `db:"pair_sending" json:"pair_sending"`
-	Access           int       `db:"access" json:"access"`
-	CreatedAt        time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt        time.Time `db:"updated_at" json:"updated_at"`
+	ID               int             `db:"id" json:"id"`
+	TgChatID         int64           `db:"tg_chat_id" json:"tg_chat_id"`
+	UserName         *string         `db:"username" json:"username"`
+	State            ChatState       `db:"state" json:"state"`
+	DepartmentName   *string         `db:"department" json:"department"`
+	GroupName        *string         `db:"group" json:"group"`
+	DailySendingTime *string         `db:"daily_sending_time" json:"daily_sending_time"`
+	PairSending      bool            `db:"pair_sending" json:"pair_sending"`
+	Access           ChatAccessLevel `db:"access" json:"access"`
+	CreatedAt        time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 func (c *Chat) IsPrivate() bool {

@@ -2,16 +2,12 @@ package sendings
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
-	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
-	"github.com/azzimoda/raspishika-go/internal/scraper"
 )
 
 func (sm *SendingManager) processDailySending(t time.Time) {
@@ -108,25 +104,25 @@ func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string]
 func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*database.Chat) ([]error, bool) {
 	log.Trace().Msgf("Sending daily notification to group %s", groupName)
 
-	group, err := sm.ch.Bot.Repo().GetGroupByName(groupName)
-	if err != nil {
-		return []error{fmt.Errorf("failed to get group by name %s", groupName)}, true
-	}
-	scheduleCfg := scraper.GroupScheduleConfig(group)
+	// group, err := sm.ch.Bot.Repo().GetGroupByName(groupName)
+	// if err != nil {
+	// 	return []error{fmt.Errorf("failed to get group by name %s", groupName)}, true
+	// }
+	// scheduleCfg := scraper.GroupScheduleConfig(group)
 
 	var errs []error
-	for _, chat := range chats {
-		if err := sm.ch.SendWeekSchedule(chat, scheduleCfg); err != nil {
-			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
-			var tgErr *tgbotapi.Error
-			if errors.As(err, &tgErr) {
-				if err = botutils.HandleTelegramAPIError(sm.ch.Bot.Repo(), tgErr, chat); err == nil {
-					continue
-				}
-			}
+	// for _, chat := range chats {
+	// 	if err := sm.ch.SendWeekSchedule(chat, scheduleCfg); err != nil {
+	// 		log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
+	// 		var tgErr *tgbotapi.Error
+	// 		if errors.As(err, &tgErr) {
+	// 			if err = botutils.HandleTelegramAPIError(sm.ch.Bot.Repo(), tgErr, chat); err == nil {
+	// 				continue
+	// 			}
+	// 		}
 
-			errs = append(errs, err)
-		}
-	}
+	// 		errs = append(errs, err)
+	// 	}
+	// }
 	return errs, false
 }

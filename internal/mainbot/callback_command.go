@@ -1,4 +1,4 @@
-package bot
+package mainbot
 
 import "strings"
 

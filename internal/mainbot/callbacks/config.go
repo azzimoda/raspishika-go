@@ -20,7 +20,8 @@ func (ch *CallbackHandler) OnConfigGroup(
 	args []string,
 ) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-	return commandHandler.OnGroup(query.Message) // Выглядит как костыль, но работает
+	// return commandHandler.OnGroup(query.Message) // Выглядит как костыль, но работает
+	return nil
 }
 
 func (ch *CallbackHandler) OnSelectDepartment(query *tgbotapi.CallbackQuery, args []string) error {
@@ -118,11 +119,13 @@ func (ch *CallbackHandler) OnConfigAccess(
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
 	}
 
-	chat.Access, err = strconv.Atoi(args[0])
+	accessLevel, err := strconv.Atoi(args[0])
 	if err != nil {
 		chat.Access = 0
 		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
 		log.Error().Err(err).Msg("failed to parse access level; fallback to 0")
+	} else {
+		chat.Access = database.ChatAccessLevel(accessLevel)
 	}
 
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
@@ -152,10 +155,12 @@ func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []str
 		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
 	}
 
-	chat.Access, err = strconv.Atoi(args[0])
+	accessLevel, err := strconv.Atoi(args[0])
 	if err != nil {
 		chat.Access = 0
 		log.Error().Err(err).Msg("failed to parse access level; fallback to 0")
+	} else {
+		chat.Access = database.ChatAccessLevel(accessLevel)
 	}
 	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
 		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)

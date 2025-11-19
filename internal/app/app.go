@@ -8,19 +8,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/azzimoda/raspishika-go/internal/adminbot"
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	mainbot "github.com/azzimoda/raspishika-go/internal/mainbot/bot"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
+	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/services"
-
-	"github.com/rs/zerolog/log"
 )
 
 type App struct {
 	Config   *config.MainConfig
-	MainBot  *mainbot.Bot
+	MainBot  *mainbot.MainBot
 	AdminBot *adminbot.AdminBot
 	Services *services.Services
 }
@@ -30,7 +29,7 @@ func (a *App) Run() error {
 	log.Info().Time("start", startTime).Msg("Starting application...")
 	defer func() {
 		endTime := time.Now()
-		log.Info().Time("end", endTime).TimeDiff("duration", startTime, endTime).Msg("Application stopped")
+		log.Info().Time("end", endTime).TimeDiff("duration", endTime, startTime).Msg("Application stopped")
 	}()
 
 	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -46,25 +45,25 @@ func (a *App) Run() error {
 		a.Report().Msg("Starting application...")
 	}
 
-	sendingManager := sendings.NewSendingManager(a.MainBot.CommandHandler)
+	// sendingManager := sendings.NewSendingManager(a.MainBot.CommandHandler)
 
-	if a.Config.Features.DailySending {
-		if err := sendingManager.ScheduleDailySending(); err != nil {
-			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
-		} else {
-			log.Info().Msg("Daily sending scheduled")
-		}
-	}
+	// if a.Config.Features.DailySending {
+	// 	if err := sendingManager.ScheduleDailySending(); err != nil {
+	// 		log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
+	// 	} else {
+	// 		log.Info().Msg("Daily sending scheduled")
+	// 	}
+	// }
 
-	if a.Config.Features.PairSending {
-		if err := sendingManager.SchedulePairSending(); err != nil {
-			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
-		} else {
-			log.Info().Msg("Pair sending scheduled")
-		}
-	}
+	// if a.Config.Features.PairSending {
+	// 	if err := sendingManager.SchedulePairSending(); err != nil {
+	// 		log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
+	// 	} else {
+	// 		log.Info().Msg("Pair sending scheduled")
+	// 	}
+	// }
 
-	sendingManager.Start()
+	// sendingManager.Start()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -78,13 +77,6 @@ func (a *App) Run() error {
 func (a *App) Shutdown() {
 	log.Info().Msg("Shutting down application...")
 	a.Report().Msg("Shutting down application...")
-
-	a.MainBot.Stop()
-	log.Info().Msg("Main bot stopped")
-
-	if a.AdminBot != nil {
-		log.Info().Msg("Admin bot stopped")
-	}
 
 	if err := a.Services.Repo.Close(); err != nil {
 		log.Error().Err(err).Msg("Database repository closed with error")
@@ -113,7 +105,7 @@ func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, erro
 
 	app.MainBot, err = mainbot.New(cfg, commandsCfg.MainBot, app.Services)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize main bot")
+		return nil, fmt.Errorf("failed to initialize main bot: %w", err)
 	} else {
 		log.Info().Msg("Initialized main bot")
 	}

@@ -15,11 +15,11 @@ import (
 
 // OnQuick sends department selection menu.
 func (ch *CommandHandler) OnQuick(msg *tgbotapi.Message) error {
-	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to fetch departments: %w", err)
-	}
+	// departments, err := scraper.FetchDepartments(ch.Bot.Cache())
+	// if err != nil {
+	// 	utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+	// 	return fmt.Errorf("failed to fetch departments: %w", err)
+	// }
 
 	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateQuickSelectingDepartment); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
@@ -27,32 +27,33 @@ func (ch *CommandHandler) OnQuick(msg *tgbotapi.Message) error {
 	}
 
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Выберите отделение")
-	newMsg.ReplyMarkup = departmentSelectionMarkup(departments, true)
-	_, err = ch.Bot.API().Send(newMsg)
+	// newMsg.ReplyMarkup = departmentSelectionMarkup(departments, true)
+	_, err := ch.Bot.API().Send(newMsg)
 	return err
 }
 
 func (ch *CommandHandler) OnTextQuickGroup(msg *tgbotapi.Message) error {
 	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
 
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
-	}
+	// chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
+	// if err != nil {
+	// 	utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+	// 	return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
+	// }
 
 	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateDefault); err != nil {
 		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
 		return fmt.Errorf("failed to update chat state: %w", err)
 	}
 
-	group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get group by name %s: %w", msg.Text, err)
-	}
-	scheduleCfg := scraper.GroupScheduleConfig(group)
-	return ch.SendWeekSchedule(chat, scheduleCfg)
+	// group, err := ch.Bot.Repo().GetGroupByName(msg.Text)
+	// if err != nil {
+	// 	utils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, utils.ErrMsgTryLater)
+	// 	return fmt.Errorf("failed to get group by name %s: %w", msg.Text, err)
+	// }
+	// scheduleCfg := scraper.GroupScheduleConfig(group)
+	// return ch.SendWeekSchedule(chat, scheduleCfg)
+	return nil
 }
 
 func (ch *CommandHandler) OnTeacher(msg *tgbotapi.Message) error {

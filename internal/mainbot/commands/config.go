@@ -1,13 +1,11 @@
 package commands
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
-	"github.com/azzimoda/raspishika-go/internal/scraper"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -25,97 +23,6 @@ func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
 
 func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat) error {
 	_, err := api.Send(botutils.SettingsMenuMessage(chat))
-	return err
-}
-
-// OnGroup sends department selection menu.
-func (ch *CommandHandler) OnGroup(
-	msg *tgbotapi.Message,
-) error {
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
-	if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat by TG chat ID (%d): %w", msg.Chat.ID, err)
-	}
-
-	departments, err := scraper.FetchDepartments(ch.Bot.Cache())
-	if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to fetch departments: %w", err)
-	}
-
-	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingDepartment); err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to update chat state: %w", err)
-	}
-
-	currentGroup := "Группа не выбрана"
-	if chat.GroupName != nil && *chat.GroupName != "" {
-		currentGroup = fmt.Sprintf("Текущая группа: %s", *chat.GroupName)
-	}
-
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("%s\n\nВыберите отделение", currentGroup))
-	newMsg.ReplyMarkup = departmentSelectionMarkup(departments, false)
-	_, err = ch.Bot.API().Send(newMsg)
-	return err
-}
-
-func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) tgbotapi.InlineKeyboardMarkup {
-	command := "select_department"
-	if isQuick {
-		command = "quick_select_department"
-	}
-
-	rows := make([][]tgbotapi.InlineKeyboardButton, 0)
-
-	for i := 0; i < len(departments); i += 2 {
-		row := make([]tgbotapi.InlineKeyboardButton, 0)
-		for j := i; j < len(departments) && j < i+2; j++ {
-			row = append(row,
-				tgbotapi.NewInlineKeyboardButtonData(
-					departments[j].Name, fmt.Sprintf("%s\n%s", command, departments[j].Name),
-				),
-			)
-		}
-		rows = append(rows, row)
-	}
-	rows = append(rows, []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete"),
-	})
-
-	return tgbotapi.NewInlineKeyboardMarkup(rows...)
-}
-
-func (ch *CommandHandler) OnTextGroup(msg *tgbotapi.Message, chat *database.Chat) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
-
-	group, err := botutils.FetchGroupByNameWithValidation(
-		ch.Bot.Repo(),
-		ch.Bot.Browser(),
-		ch.Bot.Cache(),
-		msg.Text,
-	)
-	if errors.Is(err, botutils.ErrWrongGroupNameFormat) {
-		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, "Неправильный формат группы, попробуйте ещё раз")
-		return nil
-	} else if errors.Is(err, botutils.ErrGroupNotFound) {
-		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, fmt.Sprintf(`Группа "%s" не найдена, попробуйте ещё раз`, msg.Text))
-		return nil
-	} else if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), chat.TgChatID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to try get group: %w", err)
-	}
-
-	chat.State = database.ChatStateDefault
-	chat.GroupName = &group.GroupName
-	chat.DepartmentName = &group.DepartmentName
-	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		return fmt.Errorf("failed to update chat: %w", err)
-	}
-
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, fmt.Sprintf("Теперь вы в группе %s", group.GroupName))
-	newMsg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
-	_, err = ch.Bot.API().Send(newMsg)
 	return err
 }
 

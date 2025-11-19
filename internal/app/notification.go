@@ -1,7 +1,9 @@
 package app
 
 import (
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"context"
+
+	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
@@ -18,7 +20,7 @@ func (a *App) SendNotification(s string) {
 
 	okCount := 0
 	for _, chat := range chats {
-		err := sendNotification(a.MainBot.API(), &chat, s)
+		err := sendNotification(a.MainBot.Bot, &chat, s)
 		if err != nil {
 			log.Error().Err(err).
 				Int64("tgChatID", chat.TgChatID).
@@ -37,7 +39,7 @@ func (a *App) SendNotification(s string) {
 	log.Info().Int("okCount", okCount).Int("errCount", len(chats)-okCount).Msg("Notification sent")
 }
 
-func sendNotification(api *tgbotapi.BotAPI, chat *database.Chat, s string) error {
-	_, err := api.Send(tgbotapi.NewMessage(chat.TgChatID, s))
+func sendNotification(b *bot.Bot, chat *database.Chat, text string) error {
+	_, err := b.SendMessage(context.Background(), &bot.SendMessageParams{ChatID: chat.TgChatID, Text: text})
 	return err
 }
