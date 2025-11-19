@@ -37,9 +37,7 @@ func (b *AdminBot) Start(ctx context.Context) {
 	if !success {
 		log.Error().Msg("Failed to set my commands")
 	}
-	log.Trace().Msg("Calling bot.Start()...")
 	b.bot.Start(ctx)
-	log.Trace().Msg("bot.Start() returned")
 }
 
 func (b *AdminBot) Report() reporter.ReportConfig {

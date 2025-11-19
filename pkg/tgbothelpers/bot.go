@@ -2,6 +2,7 @@ package tgbothelpers
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -31,7 +32,6 @@ func StartPolling(bot interface {
 		go bot.OnUpdate(update)
 	}
 }
-
 
 // Deprecated, use SetMyCommands instead
 func SetMyCommandsOld(api *tgbotapi.BotAPI, commandsData []map[string]string) {
@@ -73,11 +73,11 @@ func SendTempMessageOld(api *tgbotapi.BotAPI, tgChatID int64, text string, dur t
 	return err
 }
 
-func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params *bot.SendMessageParams) {
+func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params *bot.SendMessageParams) error {
 	msg, err := b.SendMessage(ctx, params)
 	if err != nil {
 		log.Error().Err(err).Msg("Error sending temporary message")
-		return
+		return fmt.Errorf("error sending temporary message: %w", err)
 	}
 
 	go func() {
@@ -93,6 +93,8 @@ func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params 
 			log.Error().Msg("Failed to delete temporary message")
 		}
 	}()
+
+	return nil
 }
 
 func ParseCommand(text string) (command string, args string) {

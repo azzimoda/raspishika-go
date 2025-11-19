@@ -63,17 +63,19 @@ func main() {
 	if err := mainConfig.LoadTemplate(); err != nil {
 		log.Panic().Err(err).Msg("Failed to load schedule template")
 	}
-	log.Debug().Msg("Loaded configuration")
-
-	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
-	if err != nil {
-		log.Panic().Err(err).Msg("Failed to load commands configuration")
-	}
 
 	if options.LogLevel != "" {
 		mainConfig.Logger.Level = options.LogLevel
 	}
 	logger.SetupLogger(mainConfig.Logger)
+
+	log.Debug().Msg("Loaded configuration")
+	log.Trace().Any("config", mainConfig).Send()
+
+	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
+	if err != nil {
+		log.Panic().Err(err).Msg("Failed to load commands configuration")
+	}
 
 	if err := mainConfig.EnsureDirs(); err != nil {
 		log.Fatal().Err(err).Msg("Failed to create directories")
