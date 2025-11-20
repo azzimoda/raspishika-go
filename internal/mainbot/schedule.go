@@ -67,7 +67,7 @@ func (mb *MainBot) sendWeekSchedule(
 	}
 
 	html := schedule.HTML(mb.config.ScheduleTemplate)
-	imageFilename := path.Join(mb.config.Browser.ScreenshotDir, mb.scheduleScreenshotFileName(scheduleCfg))
+	imageFilename := path.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
 	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		// TODO: Try to send old screenshot.
 		addContextHandlerError(ctx, err)
@@ -124,7 +124,7 @@ func updateInlineButton(kind, value string) models.InlineKeyboardButton {
 	}
 }
 
-func (mb *MainBot) scheduleScreenshotFileName(config scraper.ScheduleConfig) string {
+func scheduleScreenshotFileName(config scraper.ScheduleConfig) string {
 	if config.Group != nil {
 		return fmt.Sprintf("schedule_%s.png", config.Group.GroupName)
 	} else if config.Teacher != nil {
@@ -239,9 +239,9 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.U
 	addContextHandlerError(ctx, err)
 }
 
-func updateInlineMarkup(kind, groupName string) models.InlineKeyboardMarkup {
+func updateInlineMarkup(kind, value string) models.InlineKeyboardMarkup {
 	return models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{{updateInlineButton(kind, groupName)}},
+		InlineKeyboard: [][]models.InlineKeyboardButton{{updateInlineButton(kind, value)}},
 	}
 }
 

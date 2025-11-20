@@ -3,12 +3,12 @@ package mainbot
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 )
@@ -92,24 +92,37 @@ func (mb *MainBot) ignoreOldMessagesMiddleware(next bot.HandlerFunc) bot.Handler
 	}
 }
 
+// TODO: Maybe I should not define callbackSF in global scope.
+
+// callbackSF is a single flight group for handling callback queries
+// and preventing them from being handled multiple times simultaneously for one message.
+var callbackSF = singleflight.Group{}
+
 // callbackQuerySingleFlightMiddleware ensures that a callback query is handled only once for one message.
 //
 // Use it as global middleware.
 func (mb *MainBot) callbackQuerySingleFlightMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	sf := sync.Map{}
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		log.Trace().Msg("Middleware: callbackQuerySingleFlightMiddleware")
 
-		if update.CallbackQuery != nil {
-			key := update.CallbackQuery.Message.Message.ID
-			if _, loaded := sf.LoadOrStore(key, struct{}{}); loaded {
-				return
-			}
-			defer sf.Delete(key)
+		if update.CallbackQuery == nil {
+			next(ctx, b, update)
+			return
 		}
-		next(ctx, b, update)
-	}
 
+		key := fmt.Sprint(update.CallbackQuery.Message.Message.ID)
+		_, err, shared := callbackSF.Do(key, func() (any, error) {
+			log.Trace().Str("message_id", key).Msg("Handling a callback query")
+			next(ctx, b, update)
+			return nil, nil
+		})
+		if err != nil {
+			log.Error().Err(err).Str("message_id", key).Msg("Failed to handle a callback query in single flight")
+		}
+		if shared {
+			log.Trace().Str("message_id", key).Msg("Prevented a callback query from being handled multiple times")
+		}
+	}
 }
 
 // logMiddleware logs incoming updates.

@@ -128,25 +128,25 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 
 	// Chat
 	if chatID != 0 {
-		msgText += fmt.Sprintf("\n`/chat %d` @%s", chatID, bot.EscapeMarkdown(username))
+		msgText += fmt.Sprintf("`/chat %d` @%s\n", chatID, bot.EscapeMarkdown(username))
 	}
 
 	// Error
 	if reportErr != nil {
-		msgText += fmt.Sprintf("\nError: _%s_", bot.EscapeMarkdown(reportErr.Error()))
+		msgText += fmt.Sprintf("Error: _%s_\n", bot.EscapeMarkdown(reportErr.Error()))
 	}
 
 	// Debug objects
 	if len(debugObjects) > 0 {
-		msgText += "\n\nDebug objects:\n```\n"
+		msgText += "Debug objects:\n```\n"
 		for name, value := range debugObjects {
-			msgText += fmt.Sprintf("%s=%v\n", name, value)
+			msgText += fmt.Sprintf("%s=%+v\n", name, value)
 		}
 		msgText += "```\n"
 	}
 
 	// Message text
-	msgText += fmt.Sprintf("\n\n%s", bot.EscapeMarkdown(text))
+	msgText += fmt.Sprintf("\n%s", bot.EscapeMarkdown(text))
 
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID:    rc.recipientChatID,
