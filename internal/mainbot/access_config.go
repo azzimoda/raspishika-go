@@ -13,11 +13,6 @@ func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *models
 	// TODO: Implement.
 }
 
-func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Config access handler")
-	// TODO: Implement.
-}
-
 func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Set access handler")
 	// TODO: Implement.

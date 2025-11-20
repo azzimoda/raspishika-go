@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
 // addContextHandlerError adds an error to the handler error context.

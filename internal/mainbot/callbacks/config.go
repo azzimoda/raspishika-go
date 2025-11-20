@@ -64,31 +64,6 @@ func groupsReplyMarkup(groups []database.Group) tgbotapi.ReplyKeyboardMarkup {
 	}
 }
 
-func (ch *CallbackHandler) OnConfigDailyTime(
-	commandHandler *commands.CommandHandler,
-	query *tgbotapi.CallbackQuery,
-	args []string,
-) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(query.Message.Chat.ID, query.Message.MessageID))
-	return commandHandler.OnDailyTime(query.Message) // Выглядит как костыль, но работает
-}
-
-func (ch *CallbackHandler) OnDailyOff(query *tgbotapi.CallbackQuery, args []string) error {
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(query.Message.Chat.ID)
-	if err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat by chat id (%d): %w", query.Message.Chat.ID, err)
-	}
-
-	chat.DailySendingTime = nil
-	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		utils.SendErrorMessage(ch.Bot.API(), query.Message.Chat.ID, utils.ErrMsgTryLater)
-		return fmt.Errorf("failed to update chat (%d): %w", query.Message.Chat.ID, err)
-	}
-
-	return ch.editSettingsMenuMessage(chat, query)
-}
-
 func (ch *CallbackHandler) OnConfigReminder(
 	commandHandler *commands.CommandHandler,
 	query *tgbotapi.CallbackQuery,
@@ -137,15 +112,15 @@ func (ch *CallbackHandler) OnConfigAccess(
 }
 
 func (ch *CallbackHandler) editSettingsMenuMessage(chat *database.Chat, query *tgbotapi.CallbackQuery) error {
-	settingsMsg := utils.SettingsMenuMessage(chat)
-	editMsg := tgbotapi.NewEditMessageTextAndMarkup(
-		query.Message.Chat.ID,
-		query.Message.MessageID,
-		settingsMsg.Text,
-		settingsMsg.ReplyMarkup.(tgbotapi.InlineKeyboardMarkup),
-	)
-	_, err := ch.Bot.API().Send(editMsg)
-	return err
+	// settingsMsg := utils.SettingsMenuMessage(chat)
+	// editMsg := tgbotapi.NewEditMessageTextAndMarkup(
+	// 	query.Message.Chat.ID,
+	// 	query.Message.MessageID,
+	// 	settingsMsg.Text,
+	// 	settingsMsg.ReplyMarkup.(tgbotapi.InlineKeyboardMarkup),
+	// )
+	// _, err := ch.Bot.API().Send(editMsg)
+	return nil
 }
 
 func (ch *CallbackHandler) OnSetAccess(query *tgbotapi.CallbackQuery, args []string) error {

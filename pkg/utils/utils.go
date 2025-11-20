@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/schollz/closestmatch"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 )
@@ -59,4 +60,14 @@ func DerefOrTypeDefault[T any](s *T) T {
 	} else {
 		return *s
 	}
+}
+
+// MatchStrings returns the closest matches to the target string in the given list of strings.
+func MatchStrings(strs []string, target string, n int) []string {
+	for _, s := range strs {
+		if strings.EqualFold(s, target) {
+			return []string{s}
+		}
+	}
+	return closestmatch.New(strs, []int{2, 3, 4}).ClosestN(target, n)
 }

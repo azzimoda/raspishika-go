@@ -78,11 +78,6 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) m
 	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
-func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Config group handler")
-	// TODO: Implement.
-}
-
 func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Select department handler")
 

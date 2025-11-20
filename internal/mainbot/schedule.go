@@ -43,19 +43,18 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.U
 	}
 
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	mb.sendWeekSchedule(ctx, b, update, chat, scheduleCfg)
+	mb.sendWeekSchedule(ctx, b, &update.Message.Chat, scheduleCfg)
 }
 
 func (mb *MainBot) sendWeekSchedule(
 	ctx context.Context,
 	b *bot.Bot,
-	update *models.Update,
-	chat *database.Chat,
+	chat *models.Chat,
 	scheduleCfg scraper.ScheduleConfig,
 ) {
 	log.Trace().Msg("Sending week schedule")
 
-	chatID := update.Message.Chat.ID
+	chatID := chat.ID
 	_, err := b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
 	addContextHandlerError(ctx, err)
 
@@ -87,7 +86,7 @@ func (mb *MainBot) sendWeekSchedule(
 		ChatID:      chatID,
 		Text:        scheduleCfg.FormatMarkdown() + ":",
 		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: mainMenuReplyMarkup(chat.IsPrivate()),
+		ReplyMarkup: mainMenuReplyMarkup(chat.Type == models.ChatTypePrivate),
 	})
 	addContextHandlerError(ctx, err)
 
@@ -107,13 +106,15 @@ func weekScheduleMarkup(config scraper.ScheduleConfig) models.ReplyMarkup {
 	if config.Group != nil {
 		button = updateInlineButton("group", config.Group.GroupName)
 	} else if config.Teacher != nil {
-		button = updateInlineButton("teacher", config.Teacher.Name)
+		button = updateInlineButton("teacher", config.Teacher.TeacherID)
 	} else {
 		return nil
 	}
-	return models.InlineKeyboardMarkup{
+	markup := models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{{button}},
 	}
+	log.Trace().Any("config", config).Any("markup", markup).Msg("Week schedule markup")
+	return markup
 }
 
 func updateInlineButton(kind, value string) models.InlineKeyboardButton {

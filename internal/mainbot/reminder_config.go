@@ -17,8 +17,3 @@ func (mb *MainBot) reminderOffHandler(ctx context.Context, b *bot.Bot, update *m
 	log.Trace().Msg("Reminder off handler")
 	// TODO: Implement.
 }
-
-func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Config reminder handler")
-	// TODO: Implement.
-}

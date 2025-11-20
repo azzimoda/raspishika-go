@@ -314,8 +314,3 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *mo
 	})
 	addContextHandlerError(ctx, err)
 }
-
-func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Settings handler")
-	// TODO: Implement.
-}

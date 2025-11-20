@@ -2,24 +2,174 @@ package mainbot
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Teacher handler")
-	// TODO: Implement.
-}
 
-// TODO: Split original logic into two smaller functions.
-func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Select teacher handler")
-	// TODO: Implement.
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		return
+	}
+
+	teachers, err := mb.services.Repo.GetTeacherByChatID(chat.ID)
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		teachers = []database.Teacher{}
+	}
+
+	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, database.ChatStateSelectingTeacher); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		return
+	}
+
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        "Пришлите полное имя преподавателя или его часть",
+		ReplyMarkup: teacherInlineMarkup(teachers),
+	})
+	addContextHandlerError(ctx, err)
 }
 
 func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Text teacher name handler")
-	// TODO: Implement.
+
+	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: update.Message.ID,
+	})
+	addContextHandlerError(ctx, err)
+
+	// Search for the teacher in the database.
+	teachers, err := scraper.FetchTeachers(mb.services.Repo, mb.services.Browser)
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   ErrMsgCouldNotLoadSchedule,
+		})
+		return
+	}
+
+	names := make([]string, len(teachers))
+	for i, t := range teachers {
+		names[i] = t.Name
+	}
+	matchedNames := utils.MatchStrings(names, update.Message.Text, 5)
+	matchedTeachers := make([]database.Teacher, len(matchedNames))
+	for i, name := range matchedNames {
+		for _, t := range teachers {
+			if t.Name == name {
+				matchedTeachers[i] = t
+				break
+			}
+		}
+	}
+
+	if len(matchedTeachers) == 1 {
+		// Try to send schedule for the selected teacher.
+		chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+		if !ok {
+			addContextHandlerError(ctx, fmt.Errorf("could not send teacher schedule: %w", ErrNoChatContext))
+			// If failed, reask user to select teacher manually.
+		} else {
+			mb.sendTeacherSchedule(ctx, b, &update.Message.Chat, chat, &matchedTeachers[0])
+			return
+		}
+	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        "Выберите проподавателя из списка или попробуйте снова",
+		ReplyMarkup: teachersInlineMarkup(matchedTeachers),
+	})
+}
+
+func teachersInlineMarkup(teachers []database.Teacher) models.InlineKeyboardMarkup {
+	keyboard := make([][]models.InlineKeyboardButton, 0)
+	for _, teacher := range teachers {
+		keyboard = append(keyboard, []models.InlineKeyboardButton{{
+			Text:         teacher.Name,
+			CallbackData: "select_teacher\n" + teacher.TeacherID,
+		}})
+	}
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete"}})
+	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+}
+
+func teacherInlineMarkup(teachers []database.Teacher) models.InlineKeyboardMarkup {
+	keyboard := make([][]models.InlineKeyboardButton, 0)
+	for _, teacher := range teachers {
+		keyboard = append(keyboard, []models.InlineKeyboardButton{{
+			Text:         teacher.Name,
+			CallbackData: "select_teacher\n" + teacher.TeacherID,
+		}})
+	}
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
+	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+}
+
+func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	log.Trace().Msg("Select teacher handler")
+	message := update.CallbackQuery.Message.Message
+
+	command := ParseCallbackData(update.CallbackQuery.Data)
+
+	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	addContextHandlerError(ctx, err)
+
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   ErrMsgTryLater,
+		})
+		return
+	}
+
+	teacher, err := mb.services.Repo.GetTeacherByTeacherID(command.Args[0])
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: message.Chat.ID,
+			Text:   ErrMsgCouldNotLoadSchedule,
+		})
+		return
+	}
+
+	mb.sendTeacherSchedule(ctx, b, &message.Chat, chat, teacher)
+}
+
+func (mb *MainBot) sendTeacherSchedule(
+	ctx context.Context,
+	b *bot.Bot,
+	tgChat *models.Chat,
+	localChat *database.Chat,
+	teacher *database.Teacher,
+) {
+	err := mb.services.Repo.AddChatRecentTeacher(localChat.ID, teacher.ID)
+	if err != nil {
+		addContextHandlerError(ctx, fmt.Errorf("failed to add recent teacher: %w", err))
+	}
+
+	if err := mb.services.Repo.UpdateChatState(localChat.TgChatID, database.ChatStateDefault); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
+	}
+
+	schedueCfg := scraper.TeacherScheduleConfig(teacher)
+	mb.sendWeekSchedule(ctx, b, tgChat, schedueCfg)
 }

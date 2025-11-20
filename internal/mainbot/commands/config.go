@@ -2,94 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/azzimoda/raspishika-go/internal/database"
-	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
+	botutils "github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 )
-
-func (ch *CommandHandler) OnSettings(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
-	if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
-	}
-
-	_, err = ch.Bot.API().Send(botutils.SettingsMenuMessage(chat))
-	return err
-}
-
-func SendSettingsMenu(api *tgbotapi.BotAPI, chat *database.Chat) error {
-	_, err := api.Send(botutils.SettingsMenuMessage(chat))
-	return err
-}
-
-func (ch *CommandHandler) OnDailyTime(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get chat by chat ID (%d): %w", msg.Chat.ID, err)
-	}
-
-	if err := ch.Bot.Repo().UpdateChatState(msg.Chat.ID, database.ChatStateSelectingTime); err != nil {
-		return fmt.Errorf("failed to update chat state: %w", err)
-	}
-
-	time := ""
-	if chat.DailySendingTime == nil {
-		time = "Время не установлено"
-	} else {
-		time = "Установленное время: " + *chat.DailySendingTime
-	}
-	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
-
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, text)
-	newMsg.ParseMode = tgbotapi.ModeMarkdownV2
-	newMsg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Отмена", "delete")))
-
-	_, err = ch.Bot.API().Send(newMsg)
-	return err
-}
-
-func (ch *CommandHandler) OnTextTime(msg *tgbotapi.Message, chat *database.Chat) error {
-	ch.Bot.API().Send(tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID))
-
-	t, err := time.Parse("15:04", msg.Text)
-	if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, "Неправильный вормат времени, попробуйте ещё раз: `19:00`")
-		return nil
-	}
-	timeStr := t.Format("15:04")
-
-	chat.State = database.ChatStateDefault
-	chat.DailySendingTime = &timeStr
-	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		return fmt.Errorf("failed to update chat: %w", err)
-	}
-
-	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "Время рассылки установлено на "+timeStr)
-	_, err = ch.Bot.API().Send(newMsg)
-	return err
-}
-
-func (ch *CommandHandler) OnDailyOff(msg *tgbotapi.Message) error {
-	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
-	if err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to get chat by chat id (%d): %w", msg.Chat.ID, err)
-	}
-
-	chat.DailySendingTime = nil
-	if err := ch.Bot.Repo().UpdateChat(chat); err != nil {
-		botutils.SendErrorMessage(ch.Bot.API(), msg.Chat.ID, botutils.ErrMsgTryLater)
-		return fmt.Errorf("failed to update chat data: %w", err)
-	}
-
-	_, err = ch.Bot.API().Send(tgbotapi.NewMessage(msg.Chat.ID, "Ежедневная рассылка выключена"))
-	return err
-}
 
 func (ch *CommandHandler) OnReminder(msg *tgbotapi.Message, isOn bool) error {
 	chat, err := ch.Bot.Repo().GetChatByTgChatID(msg.Chat.ID)
