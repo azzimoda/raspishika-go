@@ -224,7 +224,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *mo
 
 	text := ""
 	if time.Now().Weekday() == time.Sunday {
-		text = "Сегодня воскресенье, отдыхайте!"
+		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
 		scheduleCfg := scraper.GroupScheduleConfig(group)
 		rawSchedule, err := mb.services.ScheduleManager.Get(

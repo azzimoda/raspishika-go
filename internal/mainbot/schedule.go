@@ -198,44 +198,50 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.U
 	chatID := update.Message.Chat.ID
 
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
-	if !ok {
-		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
-		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).Msg("Error in groupHandler")
-		return
-	}
 
-	if chat.GroupName == nil {
-		// Offer to set group.
-		log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
-		mb.groupHandler(ctx, b, update)
-		return
-	}
-
-	group, shouldReturn, err := mb.tryGetGroup(ctx, b, update, chat)
-	if shouldReturn {
-		addContextHandlerError(ctx, err)
-		return
-	}
-
-	rawSchedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo, mb.services.Browser, mb.services.Cache, scraper.GroupScheduleConfig(group))
-	if err != nil {
-		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		return
-	}
-
-	schedule := rawSchedule.Transform()
-	left := schedule.Days[0].Left()
 	text := ""
-	if left.IsEmpty() {
-		text = "Сегодня больше нет пар"
+	if time.Now().Weekday() == time.Sunday {
+		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
-		text = left.String()
+		if !ok {
+			addContextHandlerError(ctx, ErrNoChatContext)
+			sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
+			mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).Msg("Error in groupHandler")
+			return
+		}
+
+		if chat.GroupName == nil {
+			// Offer to set group.
+			log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
+			mb.groupHandler(ctx, b, update)
+			return
+		}
+
+		group, shouldReturn, err := mb.tryGetGroup(ctx, b, update, chat)
+		if shouldReturn {
+			addContextHandlerError(ctx, err)
+			return
+		}
+
+		rawSchedule, err := mb.services.ScheduleManager.Get(
+			mb.services.Repo, mb.services.Browser, mb.services.Cache, scraper.GroupScheduleConfig(group))
+		if err != nil {
+			addContextHandlerError(ctx, err)
+			sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
+			return
+		}
+
+		schedule := rawSchedule.Transform()
+		left := schedule.Days[0].Left()
+
+		if left.IsEmpty() {
+			text = "Сегодня больше нет пар"
+		} else {
+			text = left.String()
+		}
 	}
 
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      chatID,
 		Text:        text,
 		ParseMode:   models.ParseModeMarkdown,
