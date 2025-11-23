@@ -12,7 +12,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 const (
@@ -151,7 +150,7 @@ func groupsReplyMarkup(groups []database.Group) models.ReplyKeyboardMarkup {
 func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Text group handler")
 
-	group, err := mb.fetchGroupByNameWithValidation(update.Message.Text)
+	group, err := mb.FetchGroupByNameWithValidation(update.Message.Text)
 	if errors.Is(err, ErrWrongGroupNameFormat) {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -199,40 +198,3 @@ var (
 	ErrWrongGroupNameFormat = errors.New("wrong group name format")
 	ErrGroupNotFound        = errors.New("group not found")
 )
-
-// fetchGroupByNameWithValidation tries to validate given group name and fetch group from the database.
-//
-// When the group name format cannot be validated, it returns ErrWrongGroupNameFormat.
-// When given group name is not found in database, it fetches group from the website and
-// updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
-// When any other error occurs, it returns the error.
-func (mb *MainBot) fetchGroupByNameWithValidation(name string) (*database.Group, error) {
-	groupName, err := utils.ValidateGroupNameFormat(name)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrWrongGroupNameFormat, err)
-	}
-
-	if groupName, err = mb.services.Repo.ValidateGroupNameCase(groupName); err != nil {
-		log.Warn().Err(err).Msg("Updating groups")
-		// Try to update groups.
-		if _, err := scraper.FetchGroups(mb.services.Repo, mb.services.Browser, mb.services.Cache); err != nil {
-			return nil, fmt.Errorf("failed to fetch groups: %w", err)
-		}
-
-		// Try again.
-		if groupName, err = mb.services.Repo.ValidateGroupNameCase(groupName); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
-		}
-	} else {
-		log.Trace().Str("given", name).Str("groupName", groupName).
-			Bool("give == validated", name == groupName).
-			Msg("Group name case is validated")
-	}
-
-	// Group found.
-	group, err := mb.services.Repo.GetGroupByName(groupName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
-	}
-	return group, nil
-}

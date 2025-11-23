@@ -157,7 +157,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 func (mb *MainBot) sendTeacherSchedule(
 	ctx context.Context,
 	b *bot.Bot,
-	tgChat *models.Chat,
+	chat *models.Chat,
 	localChat *database.Chat,
 	teacher *database.Teacher,
 ) {
@@ -168,9 +168,10 @@ func (mb *MainBot) sendTeacherSchedule(
 
 	if err := mb.services.Repo.UpdateChatState(localChat.TgChatID, database.ChatStateDefault); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotUpdateData})
 	}
 
 	schedueCfg := scraper.TeacherScheduleConfig(teacher)
-	mb.sendWeekSchedule(ctx, b, tgChat, schedueCfg)
+	err = mb.SendWeekSchedule(ctx, b, chat.ID, chat.Type == models.ChatTypePrivate, schedueCfg)
+	addContextHandlerError(ctx, err)
 }

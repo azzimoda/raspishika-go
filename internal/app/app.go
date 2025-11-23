@@ -14,6 +14,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
+	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
@@ -32,9 +33,6 @@ func (a *App) Run() error {
 		log.Info().Time("end", endTime).TimeDiff("duration", endTime, startTime).Msg("Application stopped")
 	}()
 
-	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	// defer cancel()
-
 	go a.MainBot.Start()
 
 	if a.AdminBot != nil {
@@ -45,25 +43,25 @@ func (a *App) Run() error {
 		a.Report().Msg("Starting application...")
 	}
 
-	// sendingManager := sendings.NewSendingManager(a.MainBot.CommandHandler)
+	sendingManager := sendings.NewSendingManager(a.Config, a.MainBot, a.Services)
 
-	// if a.Config.Features.DailySending {
-	// 	if err := sendingManager.ScheduleDailySending(); err != nil {
-	// 		log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
-	// 	} else {
-	// 		log.Info().Msg("Daily sending scheduled")
-	// 	}
-	// }
+	if a.Config.Features.DailySending {
+		if err := sendingManager.ScheduleDailySending(); err != nil {
+			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
+		} else {
+			log.Info().Msg("Daily sending scheduled")
+		}
+	}
 
-	// if a.Config.Features.PairSending {
-	// 	if err := sendingManager.SchedulePairSending(); err != nil {
-	// 		log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
-	// 	} else {
-	// 		log.Info().Msg("Pair sending scheduled")
-	// 	}
-	// }
+	if a.Config.Features.PairSending {
+		if err := sendingManager.SchedulePairSending(); err != nil {
+			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
+		} else {
+			log.Info().Msg("Pair sending scheduled")
+		}
+	}
 
-	// sendingManager.Start()
+	sendingManager.Start()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

@@ -107,5 +107,6 @@ func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Группа не найдена"})
 	}
 
-	mb.sendWeekSchedule(ctx, b, &update.Message.Chat, scraper.GroupScheduleConfig(group))
+	err = mb.SendWeekSchedule(ctx, b, update.Message.Chat.ID, update.Message.Chat.Type == models.ChatTypePrivate, scraper.GroupScheduleConfig(group))
+	addContextHandlerError(ctx, err)
 }

@@ -1,13 +1,16 @@
 package sendings
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/scraper"
 )
 
 func (sm *SendingManager) processDailySending(t time.Time) {
@@ -15,10 +18,10 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	startTime := time.Now()
 	timeStr := t.Format("15:04")
 
-	chats, err := sm.ch.Bot.Repo().GetChatsByDailySendingTime(timeStr)
+	chats, err := sm.services.Repo.GetChatsByDailySendingTime(timeStr)
 	if err != nil {
 		log.Error().Err(err).Time("sendingTime", t).Msg("Failed to get chats by daily sending time")
-		sm.ch.Bot.Report().Err(err).Msg("Failed to get chats by daily sending time")
+		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats by daily sending time")
 		return
 	}
 
@@ -41,7 +44,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	errs, errCount := sm.sendDailyNotificationToGroups(groupedChats)
 	if err := errors.Join(errs...); err != nil {
 		log.Error().Err(err).Msg("Errors while daily sending")
-		sm.ch.Bot.Report().Err(err).Msg("Errors while daily sending")
+		sm.services.Reporter.Report().Err(err).Msg("Errors while daily sending")
 	}
 
 	takenTime := time.Since(startTime)
@@ -55,7 +58,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	takenTimeFloat := float64(takenTime)
 	takenTimePerChat := takenTimeFloat / float64(len(chats))
 	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
-		sm.ch.Bot.Report().Msgf("Daily sending for time %s took too long (%s)", t, takenTime)
+		sm.services.Reporter.Report().Msgf("Daily sending for time %s took too long (%s)", t, takenTime)
 	}
 }
 
@@ -104,25 +107,22 @@ func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string]
 func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*database.Chat) ([]error, bool) {
 	log.Trace().Msgf("Sending daily notification to group %s", groupName)
 
-	// group, err := sm.ch.Bot.Repo().GetGroupByName(groupName)
-	// if err != nil {
-	// 	return []error{fmt.Errorf("failed to get group by name %s", groupName)}, true
-	// }
-	// scheduleCfg := scraper.GroupScheduleConfig(group)
+	group, err := sm.services.Repo.GetGroupByName(groupName)
+	if err != nil {
+		return []error{fmt.Errorf("failed to get group by name %s", groupName)}, true
+	}
+	scheduleCfg := scraper.GroupScheduleConfig(group)
 
 	var errs []error
-	// for _, chat := range chats {
-	// 	if err := sm.ch.SendWeekSchedule(chat, scheduleCfg); err != nil {
-	// 		log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
-	// 		var tgErr *tgbotapi.Error
-	// 		if errors.As(err, &tgErr) {
-	// 			if err = botutils.HandleTelegramAPIError(sm.ch.Bot.Repo(), tgErr, chat); err == nil {
-	// 				continue
-	// 			}
-	// 		}
+	for _, chat := range chats {
+		if err := sm.bot.SendWeekSchedule(context.Background(), sm.bot.Bot, chat.TgChatID, chat.IsPrivate(), scheduleCfg); err != nil {
+			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
+			if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
+				continue
+			}
 
-	// 		errs = append(errs, err)
-	// 	}
-	// }
+			errs = append(errs, err)
+		}
+	}
 	return errs, false
 }

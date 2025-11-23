@@ -43,62 +43,67 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.U
 	}
 
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	mb.sendWeekSchedule(ctx, b, &update.Message.Chat, scheduleCfg)
+	err = mb.SendWeekSchedule(ctx, b, update.Message.Chat.ID, update.Message.Chat.Type == models.ChatTypePrivate, scheduleCfg)
+	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) sendWeekSchedule(
+func (mb *MainBot) SendWeekSchedule(
 	ctx context.Context,
 	b *bot.Bot,
-	chat *models.Chat,
+	chatID int64,
+	isPrivate bool,
 	scheduleCfg scraper.ScheduleConfig,
-) {
+) error {
 	log.Trace().Msg("Sending week schedule")
 
-	chatID := chat.ID
+	var errs []error
+
 	_, err := b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
-	addContextHandlerError(ctx, err)
+	errs = append(errs, err)
 
 	schedule, err := mb.services.ScheduleManager.Get(
 		mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
 	if err != nil {
-		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		return
+		errs = append(errs, fmt.Errorf("failed loading schedule: %w", err))
+		return errors.Join(errs...)
 	}
 
 	html := schedule.HTML(mb.config.ScheduleTemplate)
 	imageFilename := path.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
 	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		// TODO: Try to send old screenshot.
-		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		return
+		errs = append(errs, fmt.Errorf("failed taking screenshot: %w", err))
+		return errors.Join(errs...)
 	}
 
 	imageData, err := os.ReadFile(imageFilename)
 	if err != nil {
-		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		return
+		errs = append(errs, fmt.Errorf("failed reading screenshot: %w", err))
+		return errors.Join(errs...)
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      chatID,
 		Text:        scheduleCfg.FormatMarkdown() + ":",
 		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: mainMenuReplyMarkup(chat.Type == models.ChatTypePrivate),
+		ReplyMarkup: mainMenuReplyMarkup(isPrivate),
 	})
-	addContextHandlerError(ctx, err)
+	errs = append(errs, err)
 
 	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionUploadPhoto})
-	addContextHandlerError(ctx, err)
+	errs = append(errs, err)
 
 	_, err = b.SendPhoto(ctx, &bot.SendPhotoParams{
 		ChatID:      chatID,
 		Photo:       &models.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
 		ReplyMarkup: weekScheduleMarkup(scheduleCfg),
 	})
-	addContextHandlerError(ctx, err)
+	errs = append(errs, err)
+
+	return errors.Join(errs...)
 }
 
 func weekScheduleMarkup(config scraper.ScheduleConfig) models.ReplyMarkup {
@@ -251,7 +256,7 @@ func (mb *MainBot) tryGetGroup(
 	update *models.Update,
 	chat *database.Chat,
 ) (*database.Group, bool, error) {
-	group, err := mb.fetchGroupByNameWithValidation(*chat.GroupName)
+	group, err := mb.FetchGroupByNameWithValidation(*chat.GroupName)
 	if err == nil {
 		return group, false, nil
 	}
