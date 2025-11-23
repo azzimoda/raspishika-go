@@ -51,12 +51,11 @@ func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params 
 }
 
 func ParseCommand(text string) (command string, args string) {
-	// FIXME: Rewrite the regexp to support commands with username.
-	re := regexp.MustCompile(`^/([a-zA-Z0-9_]+)\s+(.+)$`)
-	matches := re.FindStringSubmatch(text)
-	if len(matches) == 3 {
-		command = matches[1]
-		args = matches[2]
+	re := regexp.MustCompile(`^/(\w+)(@\w+)?(\s([\s\S]+))?$`)
+	submatches := re.FindStringSubmatch(text)
+	if submatches != nil {
+		command = submatches[1]
+		args = submatches[4]
 	} else {
 		command = text
 	}

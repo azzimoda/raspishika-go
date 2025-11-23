@@ -58,7 +58,6 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 
 			t.Run(tt.name+" "+timeStr, func(t *testing.T) {
 				gotErrs, failedAll := sm.sendPairNotificationToGroup(tt.groupName, sendingTime, tt.chats)
-				// TODO: update the condition below to compare gotErrs with tt.want.
 				if tt.wantErrs != (len(gotErrs) > 0) {
 					t.Errorf("sendPairNotificationToGroup() = %v, want %v", gotErrs, tt.wantErrs)
 				}
