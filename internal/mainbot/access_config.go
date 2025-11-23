@@ -62,8 +62,8 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 		return
 	}
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
-	accessLevel, err := strconv.Atoi(command.Args[0])
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	accessLevel, err := strconv.Atoi(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{

@@ -11,6 +11,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -24,25 +25,37 @@ const (
 func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Group handler")
 
+	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: update.Message.ID,
+	})
+	addContextHandlerError(ctx, err)
+
+	mb.sendGroupMenu(ctx, b)
+}
+
+func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot) {
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	chatID := chat.TgChatID
+
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
-		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(update.Message.Chat.ID).
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
+		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).
 			Msg("Error in groupHandler")
 		return
 	}
 
 	departments, err := scraper.FetchDepartments(mb.services.Cache)
 	if err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
 		addContextHandlerError(ctx, err)
 		return
 	}
 
 	chat.State = database.ChatStateSelectingDepartment
 	if err := mb.services.Repo.UpdateChat(chat); err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
 		addContextHandlerError(ctx, err)
 		return
 	}
@@ -53,7 +66,7 @@ func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
+		ChatID:      chatID,
 		Text:        fmt.Sprintf("%s\n\nВыберите отделение", currentGroup),
 		ReplyMarkup: departmentSelectionMarkup(departments, false),
 	})
@@ -75,13 +88,14 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) m
 		}
 		keyboard = append(keyboard, row)
 	}
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
 	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
 func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Select department handler")
 
-	callbackCommand := ParseCallbackData(update.CallbackQuery.Data)
+	callbackCommand := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
 	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
@@ -91,7 +105,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 		mb.services.Repo,
 		mb.services.Browser,
 		mb.services.Cache,
-		callbackCommand.Args[0],
+		callbackCommand.Arg(0),
 	)
 	if err != nil {
 		addContextHandlerError(ctx, err)

@@ -145,38 +145,3 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 	})
 	addContextHandlerError(ctx, err)
 }
-
-func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	log.Trace().Msg("Daily off callback handler")
-	message := update.CallbackQuery.Message.Message
-
-	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
-	if !ok {
-		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgTryLater})
-		return
-	}
-
-	chat.DailySendingTime = nil
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
-		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
-		return
-	}
-
-	updateSettingsMenu(ctx, b, update, chat)
-}
-
-func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *models.Update, chat *database.Chat) {
-	log.Trace().Msg("Update settings menu")
-
-	text, markup := settingsMessageParams(chat)
-	_, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
-		MessageID:   update.CallbackQuery.Message.Message.ID,
-		Text:        text,
-		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: markup,
-	})
-	addContextHandlerError(ctx, err)
-}

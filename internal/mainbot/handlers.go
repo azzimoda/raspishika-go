@@ -114,7 +114,7 @@ func (mb *MainBot) registerHandlers() {
 			mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_reminder"),
 			mb.configReminderHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_access"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_set_access"),
 			mb.configAccessHandler, mb.checkConfigAccessMiddleware)
 
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_department"),

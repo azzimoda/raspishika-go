@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -107,4 +108,29 @@ func ParseCommand(text string) (command string, args string) {
 		command = text
 	}
 	return command, args
+}
+
+func ParseCallbackData(data string) CallbackCommand {
+	lines := strings.Split(data, "\n")
+	command := ""
+	if len(lines) >= 1 {
+		command = lines[0]
+	}
+	args := []string{}
+	if len(lines) >= 2 {
+		args = lines[1:]
+	}
+	return CallbackCommand{Command: command, Args: args}
+}
+
+type CallbackCommand struct {
+	Command string
+	Args    []string
+}
+
+func (cc CallbackCommand) Arg(i int) string {
+	if i < len(cc.Args) {
+		return cc.Args[i]
+	}
+	return ""
 }

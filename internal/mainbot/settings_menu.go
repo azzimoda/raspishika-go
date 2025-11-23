@@ -3,12 +3,14 @@ package mainbot
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -22,10 +24,17 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *mode
 		return
 	}
 
+	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: update.Message.ID,
+	})
+	addContextHandlerError(ctx, err)
+
 	text, replyMarkup := settingsMessageParams(chat)
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		Text:        text,
+		ParseMode:   models.ParseModeHTML,
 		ReplyMarkup: replyMarkup,
 	})
 	addContextHandlerError(ctx, err)
@@ -33,17 +42,105 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *mode
 
 func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Config group handler")
-	// TODO: Implement.
+
+	message := update.CallbackQuery.Message.Message
+	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	addContextHandlerError(ctx, err)
+
+	mb.sendGroupMenu(ctx, b)
+}
+
+func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	log.Trace().Msg("Daily off callback handler")
+	message := update.CallbackQuery.Message.Message
+
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgTryLater})
+		return
+	}
+
+	chat.DailySendingTime = nil
+	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		return
+	}
+
+	updateSettingsMenu(ctx, b, update, chat)
 }
 
 func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Config reminder handler")
-	// TODO: Implement.
+
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	message := update.CallbackQuery.Message.Message
+
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgTryLater})
+		return
+	}
+
+	chat.PairSending = command.Arg(0) == "true"
+	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		return
+	}
+
+	updateSettingsMenu(ctx, b, update, chat)
 }
 
 func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Config access handler")
-	// TODO: Implement.
+
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	message := update.CallbackQuery.Message.Message
+
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgTryLater})
+		return
+	}
+
+	accessLevel, err := strconv.Atoi(command.Arg(0))
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Произошла ошибка, установлено значение по умолчанию — 0",
+		})
+		log.Error().Err(err).Msg("Failed to parse access level; fallback to 0")
+		chat.Access = 0
+	} else {
+		chat.Access = database.ChatAccessLevel(accessLevel)
+	}
+
+	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		return
+	}
+
+	updateSettingsMenu(ctx, b, update, chat)
+}
+
+func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *models.Update, chat *database.Chat) {
+	log.Trace().Msg("Update settings menu")
+
+	text, markup := settingsMessageParams(chat)
+	_, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
+		MessageID:   update.CallbackQuery.Message.Message.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeHTML,
+		ReplyMarkup: markup,
+	})
+	addContextHandlerError(ctx, err)
 }
 
 func settingsMessageParams(chat *database.Chat) (string, *models.InlineKeyboardMarkup) {
@@ -57,14 +154,14 @@ func settingsMessageParams(chat *database.Chat) (string, *models.InlineKeyboardM
 		pairNotification = "включено"
 	}
 
-	text := fmt.Sprintf(`Меню настроек
+	text := fmt.Sprintf(`<b>Меню настроек</b>
 
-Группа: %s
-Ежедневная рассылка: %s
-Напоминания перед парами: %s`,
+Группа: <u>%s</u>
+Ежедневная рассылка: <u>%s</u>
+Напоминания перед парами: <u>%s</u>`,
 		utils.DerefOrTypeDefault(chat.GroupName), dailyTime, pairNotification)
 	if !chat.IsPrivate() {
-		text += fmt.Sprintf("\nУровень доступа: %d", chat.Access)
+		text += fmt.Sprintf("\nУровень доступа: <u>%d</u>", chat.Access)
 	}
 
 	// Keyboard
@@ -76,17 +173,17 @@ func settingsMessageParams(chat *database.Chat) (string, *models.InlineKeyboardM
 		})
 	} else {
 		keyboard = append(keyboard, []models.InlineKeyboardButton{
-			{Text: "Изменить время", CallbackData: "daily_time_config"},
+			{Text: "Изменить время", CallbackData: "config_daily_time"},
 			{Text: "Выключить рассылку", CallbackData: "daily_off"},
 		})
 	}
 	if chat.PairSending {
 		keyboard = append(keyboard, []models.InlineKeyboardButton{
-			{Text: "Выключить напоминания", CallbackData: "config_reminder"},
+			{Text: "Выключить напоминания", CallbackData: "config_reminder\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []models.InlineKeyboardButton{
-			{Text: "Включить напоминания", CallbackData: "config_reminder"},
+			{Text: "Включить напоминания", CallbackData: "config_reminder\ntrue"},
 		})
 	}
 	if !chat.IsPrivate() {

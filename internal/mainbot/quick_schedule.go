@@ -9,6 +9,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
 func (mb *MainBot) quickHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -44,7 +45,7 @@ func (mb *MainBot) quickHandler(ctx context.Context, b *bot.Bot, update *models.
 func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Quick select department handler")
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
 
 	chatID := update.CallbackQuery.Message.Message.Chat.ID
 	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
@@ -57,7 +58,7 @@ func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot,
 		mb.services.Repo,
 		mb.services.Browser,
 		mb.services.Cache,
-		command.Args[0],
+		command.Arg(0),
 	)
 	if err != nil {
 		addContextHandlerError(ctx, err)

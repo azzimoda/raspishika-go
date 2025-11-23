@@ -10,6 +10,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -125,7 +126,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	log.Trace().Msg("Select teacher handler")
 	message := update.CallbackQuery.Message.Message
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
 
 	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
 	addContextHandlerError(ctx, err)
@@ -140,7 +141,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	teacher, err := mb.services.Repo.GetTeacherByTeacherID(command.Args[0])
+	teacher, err := mb.services.Repo.GetTeacherByTeacherID(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{

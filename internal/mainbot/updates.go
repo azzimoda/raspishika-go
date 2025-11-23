@@ -14,14 +14,15 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
 func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Update group handler")
 
 	message := update.CallbackQuery.Message.Message
-	command := ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Args[0]
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	groupName := command.Arg(0)
 
 	group, err := mb.services.Repo.GetGroupByName(groupName)
 	if err != nil {
@@ -82,8 +83,8 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *m
 func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Update teacher handler")
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
-	teacherID := command.Args[0]
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	teacherID := command.Arg(0)
 
 	teacher, err := mb.services.Repo.GetTeacherByTeacherID(teacherID)
 	if err != nil {
@@ -146,8 +147,8 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Update tomorrow handler")
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Args[0]
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	groupName := command.Arg(0)
 
 	group, err := mb.services.Repo.GetGroupByName(groupName)
 	if err != nil {
@@ -207,8 +208,8 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Update left handler")
 
-	command := ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Args[0]
+	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	groupName := command.Arg(0)
 
 	group, err := mb.services.Repo.GetGroupByName(groupName)
 	if err != nil {
