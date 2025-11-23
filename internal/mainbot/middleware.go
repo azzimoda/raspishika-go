@@ -2,6 +2,7 @@ package mainbot
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +22,10 @@ const (
 	defaultHandlerContextKey contextKey = "default_handler"
 )
 
+var (
+	ErrUnknownUpdateType = fmt.Errorf("unknown update type")
+)
+
 // ensureChatMiddleware creates or updates chat in database before handling message.
 //
 // Use it as global middleware.
@@ -28,34 +33,45 @@ func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		log.Trace().Msg("Middleware: ensureChatMiddleware")
 
-		var chatID int64
-		var username string
-		if update.Message != nil {
-			chatID = update.Message.Chat.ID
-			username = update.Message.Chat.Username
-		} else if update.CallbackQuery != nil {
-			chatID = update.CallbackQuery.Message.Message.Chat.ID
-			username = update.CallbackQuery.Message.Message.Chat.Username
-		} else {
+		chat, err := mb.ensureChat(b, update)
+		if errors.Is(err, ErrUnknownUpdateType) {
 			log.Warn().Msg("Unknown update type")
 			next(ctx, b, update)
 			return
-		}
-
-		chat, created, err := mb.services.Repo.CreateOrUpdateChat(chatID, username)
-		if err != nil {
-			mb.services.Reporter.Report().Log().Err(err).Chat(database.Chat{TgChatID: chatID, UserName: &username}).
-				Msg("Failed to create or update chat")
+		} else if err != nil {
+			mb.services.Reporter.Report().Log().Err(err).Msg("Failed to create or update chat")
 			return
-		}
-
-		if created {
-			go mb.sendNewChatReport(chat, err, chatID, b)
 		}
 
 		ctx = context.WithValue(ctx, chatContextKey, chat)
 		next(ctx, b, update)
 	}
+}
+
+func (mb *MainBot) ensureChat(b *bot.Bot, update *models.Update) (*database.Chat, error) {
+	var chatID int64
+	var username string
+	if update.Message != nil {
+		chatID = update.Message.Chat.ID
+		username = update.Message.Chat.Username
+	} else if update.CallbackQuery != nil {
+		chatID = update.CallbackQuery.Message.Message.Chat.ID
+		username = update.CallbackQuery.Message.Message.Chat.Username
+	} else {
+		return nil, ErrUnknownUpdateType
+	}
+
+	chat, created, err := mb.services.Repo.CreateOrUpdateChat(chatID, username)
+	if err != nil {
+		mb.services.Reporter.Report().Log().Err(err).Chat(database.Chat{TgChatID: chatID, UserName: &username}).
+			Msg("Failed to create or update chat")
+		return nil, fmt.Errorf("failed to create or update chat: %w", err)
+	}
+	if created {
+		go mb.sendNewChatReport(chat, err, chatID, b)
+	}
+
+	return chat, nil
 }
 
 // sendNewChatReport sends a report to the admin chat when a new user chat is registered.

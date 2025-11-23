@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
@@ -41,6 +42,12 @@ func New(
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
 
+	me, err := mb.Bot.GetMe(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bot info: %w", err)
+	}
+	mb.Me = me
+
 	mb.registerHandlers()
 
 	return mb, nil
@@ -50,6 +57,7 @@ type MainBot struct {
 	config     *config.MainConfig
 	myCommands []map[string]string
 	Bot        *bot.Bot
+	Me         *models.User
 	services   *services.Services
 }
 

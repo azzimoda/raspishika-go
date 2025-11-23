@@ -55,144 +55,167 @@ const HelpMessage = `Доступные команды:
 
 func (mb *MainBot) registerHandlers() {
 	// Commands
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly,
-		mb.startHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "help", bot.MatchTypeCommandStartOnly,
-		mb.helpHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "stop", bot.MatchTypeCommandStartOnly,
-		mb.stopHandler, mb.checkRegularAccessMiddleware)
+	{
+		mb.registerCommandHandler("start", mb.startHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("help", mb.helpHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("stop", mb.stopHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "settings", bot.MatchTypeCommandStartOnly,
-		mb.settingsHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommandStartOnly,
-		mb.groupHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "daily_time", bot.MatchTypeCommandStartOnly,
-		mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "daily_off", bot.MatchTypeCommandStartOnly,
-		mb.dailyOffHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "reminder_on", bot.MatchTypeCommandStartOnly,
-		mb.reminderOnHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "reminder_off", bot.MatchTypeCommandStartOnly,
-		mb.reminderOffHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "access", bot.MatchTypeCommandStartOnly,
-		mb.accessHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("settings", mb.settingsHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("group", mb.groupHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("daily_time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("daily_off", mb.dailyOffHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("reminder_on", mb.reminderOnHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("reminder_off", mb.reminderOffHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("access", mb.accessHandler, mb.checkConfigAccessMiddleware)
 
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "week", bot.MatchTypeCommandStartOnly,
-		mb.weekHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "tomorrow", bot.MatchTypeCommandStartOnly,
-		mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "left", bot.MatchTypeCommandStartOnly,
-		mb.leftHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("week", mb.weekHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("tomorrow", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("left", mb.leftHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "quick", bot.MatchTypeCommandStartOnly,
-		mb.quickHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandler(bot.HandlerTypeMessageText, "teacher", bot.MatchTypeCommandStartOnly,
-
-		mb.teacherHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("quick", mb.quickHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("teacher", mb.teacherHandler, mb.checkRegularAccessMiddleware)
+	}
 
 	// Text messages
-	// TODO: Check whether case-insensitive matching works for Cyrrilic letters.
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile("(?i)^неделя$"),
-		mb.weekHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile("(?i)^завтра$"),
-		mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile("(?i)^сегодня$"),
-		mb.leftHandler, mb.checkRegularAccessMiddleware)
+	{
+		mb.registerTextMessageHandler("неделя", mb.weekHandler, mb.checkRegularAccessMiddleware)
+		mb.registerTextMessageHandler("завтра", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
+		mb.registerTextMessageHandler("сегодня", mb.leftHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile("(?i)^другая группа$"),
-		mb.quickHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile("(?i)^преподаватель$"),
-		mb.teacherHandler, mb.checkRegularAccessMiddleware)
+		mb.registerTextMessageHandler("другая группа", mb.quickHandler, mb.checkRegularAccessMiddleware)
+		mb.registerTextMessageHandler("преподаватель", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-		return update.Message != nil && update.Message.Text == "отмена"
-	}, mb.textCancelHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
+			return update.Message != nil && update.Message.Text == "отмена"
+		}, mb.textCancelHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-		if update.Message == nil {
-			return false
-		}
-
-		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
-		if err != nil || chat == nil {
-			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).Msg("failed to get chat by chat ID")
-			return false
-		}
-		return chat.State == database.ChatStateSelectingGroup && update.Message.Text != "отмена"
-	}, mb.textGroupHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-		if update.Message == nil {
-			return false
-		}
-
-		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
-		if err != nil || chat == nil {
-			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).Msg("failed to get chat by chat ID")
-			return false
-		}
-		return chat.State == database.ChatStateQuickSelectingGroup && update.Message.Text != "отмена"
-	}, mb.textQuickGroupHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-		if update.Message == nil {
-			return false
-		}
-
-		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
-		if err != nil || chat == nil {
-			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).Msg("failed to get chat by chat ID")
-			return false
-		}
-		return chat.State == database.ChatStateSelectingTime && update.Message.Text != "отмена"
-	}, mb.textTimeHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-		if update.Message == nil {
-			return false
-		}
-
-		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
-		if err != nil || chat == nil {
-			log.Error().Err(err).Int64("tgChatID", update.Message.Chat.ID).Msg("failed to get chat by chat ID")
-			return false
-		}
-		return chat.State == database.ChatStateSelectingTeacher && update.Message.Text != "отмена"
-	}, mb.textTeacherNameHandler, mb.checkRegularAccessMiddleware)
+		mb.registerChatStateHandler(database.ChatStateSelectingGroup, mb.textGroupHandler,
+			mb.checkConfigAccessMiddleware)
+		mb.registerChatStateHandler(database.ChatStateQuickSelectingGroup, mb.textQuickGroupHandler,
+			mb.checkRegularAccessMiddleware)
+		mb.registerChatStateHandler(database.ChatStateSelectingTime, mb.textTimeHandler,
+			mb.checkConfigAccessMiddleware)
+		mb.registerChatStateHandler(database.ChatStateSelectingTeacher, mb.textTeacherNameHandler,
+			mb.checkRegularAccessMiddleware)
+	}
 
 	// Callback queries
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete"),
-		mb.deleteHandler, mb.checkRegularAccessMiddleware)
-	// mb.bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
-	// 	mb.deleteHandler, mb.checkConfigAccessMiddleware)
+	{
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete"),
+			mb.deleteHandler, mb.checkRegularAccessMiddleware)
+		// mb.bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
+		// 	mb.deleteHandler, mb.checkConfigAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_group"),
-		mb.configGroupHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_daily_time"),
-		mb.configDailyTimeHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("daily_off"),
-		mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_reminder"),
-		mb.configReminderHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_access"),
-		mb.configAccessHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_group"),
+			mb.configGroupHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_daily_time"),
+			mb.configDailyTimeHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("daily_off"),
+			mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_reminder"),
+			mb.configReminderHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_access"),
+			mb.configAccessHandler, mb.checkConfigAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_department"),
-		mb.selectDepartmentHandler, mb.checkConfigAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("quick_select_department"),
-		mb.quickSelectDepartmentHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_department"),
+			mb.selectDepartmentHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("quick_select_department"),
+			mb.quickSelectDepartmentHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_teacher"),
-		mb.selectTeacherHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_teacher"),
+			mb.selectTeacherHandler, mb.checkRegularAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("set_access"),
-		mb.setAccessHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("set_access"),
+			mb.setAccessHandler, mb.checkConfigAccessMiddleware)
 
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_group"),
-		mb.updateGroupHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_teacher"),
-		mb.updateTeacherHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_tomorrow"),
-		mb.updateTomorrowHandler, mb.checkRegularAccessMiddleware)
-	mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_left"),
-		mb.updateLeftHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_group"),
+			mb.updateGroupHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_teacher"),
+			mb.updateTeacherHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_tomorrow"),
+			mb.updateTomorrowHandler, mb.checkRegularAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_left"),
+			mb.updateLeftHandler, mb.checkRegularAccessMiddleware)
+	}
+}
+
+func (mb *MainBot) registerCommandHandler(pattern string, f bot.HandlerFunc, m ...bot.Middleware) string {
+	matchFunc := commandMatchFunction(pattern, mb.Me.Username)
+	return mb.Bot.RegisterHandlerMatchFunc(matchFunc, f, m...)
+}
+
+func commandMatchFunction(pattern string, username string) bot.MatchFunc {
+	log.Trace().Str("pattern", pattern).Str("username", username).Msg("Generating command match function...")
+	re := regexp.MustCompile(fmt.Sprintf(`^/%s(@\w+)?(\s[\s\S]+)?$`, pattern))
+	log.Trace().Any("re", re).Send()
+
+	matchFunc := func(update *models.Update) bool {
+		if update.Message == nil || update.Message.Text == "" {
+			return false // Not a text message.
+		}
+
+		text := update.Message.Text
+		log.Trace().Str("pattern", pattern).Str("username", username).Str("text", text).Msg("Checking command match...")
+
+		if !re.MatchString(text) {
+			log.Trace().Str("text", text).Msg("Invalid command")
+			return false
+		}
+		submatches := re.FindStringSubmatch(text)
+		if submatches == nil {
+			log.Trace().Str("text", text).Msg("No subtaches")
+			return true
+		}
+		log.Trace().Str("text", text).Strs("submatches", submatches).Send()
+
+		if update.Message.Chat.Type == models.ChatTypeGroup || update.Message.Chat.Type == models.ChatTypeSupergroup {
+			log.Trace().Str("text", text).Msg("Command in group chat")
+
+			if submatches[1] == "" {
+				// In group chats command without username are sent to last accessed bot.
+				// That means, if this bot is not the last accessed, that message the bot won't receive it.
+				// Otherwise, it will receive it and should handle it.
+				log.Trace().Str("text", text).Msg("Command without username")
+				return true
+			}
+
+			if submatches[1] == "@"+username {
+				log.Trace().Str("text", text).Msg("Command with my username")
+				return true
+			}
+			log.Trace().Str("text", text).Msg("Not my username")
+			return false
+		}
+		log.Trace().Str("text", text).Msg("Command in private chat")
+
+		// In private chat any username is allowed.
+		return true
+	}
+	return matchFunc
+}
+
+func (mb *MainBot) registerTextMessageHandler(pattern string, f bot.HandlerFunc, m ...bot.Middleware) string {
+	return mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeMessageText, regexp.MustCompile(fmt.Sprintf("(?i)^%s$", pattern)), f, m...)
+}
+
+func (mb *MainBot) registerChatStateHandler(
+	chatState database.ChatState,
+	f bot.HandlerFunc,
+	m ...bot.Middleware,
+) string {
+	matchFunc := func(update *models.Update) bool {
+		if update.Message == nil {
+			return false
+		}
+
+		chat, err := mb.ensureChat(mb.Bot, update)
+		if err != nil {
+			log.Error().Err(err).Int64("chat_id", update.Message.Chat.ID).Msg("Failed to ensure chat to match its state")
+			return false
+		}
+		return chat.State == chatState && update.Message.Text != "отмена"
+	}
+	return mb.Bot.RegisterHandlerMatchFunc(matchFunc, f, m...)
 }
 
 func callbackDataRegexp(command string) *regexp.Regexp {
