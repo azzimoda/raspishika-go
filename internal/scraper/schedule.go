@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-telegram/bot"
+	"github.com/rs/zerolog/log"
+
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-
-	"github.com/rs/zerolog/log"
 )
 
 type PairKind string
@@ -34,9 +34,9 @@ type ScheduleConfig struct {
 func (sc *ScheduleConfig) FormatMarkdown() string {
 	switch {
 	case sc.Group != nil:
-		return "Расписание группы — *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Group.GroupName) + "*"
+		return "Расписание группы — *" + bot.EscapeMarkdown(sc.Group.GroupName) + "*"
 	case sc.Teacher != nil:
-		return "Расписание преподавателя — *" + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, sc.Teacher.Name) + "*"
+		return "Расписание преподавателя — *" + bot.EscapeMarkdown(sc.Teacher.Name) + "*"
 	default:
 		return "?"
 	}
@@ -57,10 +57,10 @@ type Pair struct {
 }
 
 func (p Pair) String() string {
-	discipline := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Discipline)
-	teacher := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, utils.DerefOrTypeDefault(p.Teacher))
-	timeRange := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.StartTime+"-"+p.EndTime)
-	classroom := tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Classroom)
+	discipline := bot.EscapeMarkdown(p.Discipline)
+	teacher := bot.EscapeMarkdown(utils.DerefOrTypeDefault(p.Teacher))
+	timeRange := bot.EscapeMarkdown(p.StartTime + "-" + p.EndTime)
+	classroom := bot.EscapeMarkdown(p.Classroom)
 
 	switch p.Kind {
 	case PairKindSubject:

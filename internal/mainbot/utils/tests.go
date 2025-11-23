@@ -26,6 +26,7 @@ func InitPaths() (string, string) {
 	return debugConfigFile, templateFile
 }
 
+// TODO: Adapt to new services structure.
 func InitServices(t *testing.T, debugConfigFile, templateFile string) (
 	string,
 	*config.MainConfig,
