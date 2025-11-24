@@ -23,10 +23,7 @@ func (mb *MainBot) reminderOffHandler(ctx context.Context, b *bot.Bot, update *m
 }
 
 func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *models.Update, on bool) {
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		MessageID: update.Message.ID,
-	})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)

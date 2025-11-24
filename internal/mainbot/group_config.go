@@ -24,10 +24,7 @@ const (
 func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Group handler")
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		MessageID: update.Message.ID,
-	})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	mb.sendGroupMenu(ctx, b)

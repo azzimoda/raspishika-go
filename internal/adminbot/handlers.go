@@ -31,10 +31,7 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *mode
 	if update.Message != nil {
 		if strings.HasPrefix(update.Message.Text, "/") {
 			// Remove not handled command.
-			b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-				ChatID:    update.Message.Chat.ID,
-				MessageID: update.Message.ID,
-			})
+			b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: update.Message.Chat.ID, MessageID: update.Message.ID})
 		}
 	}
 }

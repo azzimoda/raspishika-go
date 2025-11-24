@@ -24,10 +24,7 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *mode
 		return
 	}
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		MessageID: update.Message.ID,
-	})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	text, replyMarkup := settingsMessageParams(chat)

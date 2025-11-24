@@ -86,10 +86,7 @@ func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot,
 func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Quick select course handler")
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		MessageID: update.Message.ID,
-	})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	if err := mb.services.Repo.UpdateChatState(update.Message.Chat.ID, database.ChatStateDefault); err != nil {
