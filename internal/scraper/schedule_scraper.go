@@ -29,7 +29,7 @@ var (
 func ScrapeSchedule(cacheDir, url string, config ScheduleConfig) (*RawSchedule, error) {
 	log.Trace().Msg("Scraping schedule with HTTP")
 
-	resp, err := httpGetRequestRetryingRandomHeaders(url, 10)
+	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(url, 10)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -82,7 +82,7 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (
 			retries++
 			log.Debug().Msgf("Fetching schedule page (attempt %d/%d)", retries, browser.Config.MaxRetries)
 
-			if err = p.SetExtraHTTPHeaders(generateHeaders()); err != nil {
+			if err = p.SetExtraHTTPHeaders(utils.GenerateHeaders()); err != nil {
 				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying...")
 				err = fmt.Errorf("failed to set extra HTTP headers: %w", err)
 				continue

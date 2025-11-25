@@ -6,6 +6,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func Test_httpGetRequest(t *testing.T) {
@@ -23,7 +24,7 @@ func Test_httpGetRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := httpGetRequestRetryingRandomHeaders(tt.url, 3)
+			got, gotErr := utils.HTTPGetRequestRetryingRandomHeaders(tt.url, 3)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("httpGetRequest() failed: %v", gotErr)

@@ -303,7 +303,7 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 }
 
 func (s ScheduleDay) String() string {
-	text := fmt.Sprintf("📅 %s, %s: ", s.WeekDay, utils.EscapeMarkdown(s.Date))
+	text := fmt.Sprintf("📅 %s, %s: ", s.WeekDay, bot.EscapeMarkdown(s.Date))
 
 	if kind := s.DetectOneKind(); kind != nil {
 		log.Trace().Msgf("Detected one kind: %s", *kind)

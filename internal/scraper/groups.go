@@ -8,6 +8,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
@@ -28,7 +29,7 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		return data.([]Department), nil
 	}
 
-	resp, err := httpGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
+	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
 	if err != nil {
 		return nil, err
 	}
