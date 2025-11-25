@@ -2,7 +2,6 @@ package mainbot
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/go-telegram/bot"
@@ -14,9 +13,11 @@ import (
 
 // addContextHandlerError adds an error to the handler error context.
 func addContextHandlerError(ctx context.Context, err error) {
-	handlerErr, ok := ctx.Value(errorContextKey).(*error)
+	handlerErrs, ok := ctx.Value(errorContextKey).(*[]error)
 	if ok {
-		*handlerErr = errors.Join(*handlerErr, err)
+		if err != nil {
+			*handlerErrs = append(*handlerErrs, err)
+		}
 	} else {
 		log.Warn().Err(err).Msg("Error context not found")
 	}

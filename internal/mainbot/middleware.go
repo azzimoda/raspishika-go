@@ -148,8 +148,8 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, bot *bot.Bot, update *models.Update) {
 		log.Trace().Any("update", update).Msg("Received update")
 
-		var handlerErr error
-		ctx = context.WithValue(ctx, errorContextKey, &handlerErr)
+		var handlerErrs []error
+		ctx = context.WithValue(ctx, errorContextKey, &handlerErrs)
 
 		var defaultHandlerFlag bool
 		ctx = context.WithValue(ctx, defaultHandlerContextKey, &defaultHandlerFlag)
@@ -173,12 +173,6 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 		updateKind := "unknown"
 		messageID := 0
 		updateData := ""
-
-		handlerErrStr := ""
-		if handlerErr != nil {
-			mb.services.Reporter.Report().Log().Err(handlerErr).Chat(chat).Debug("update", update).Msg("Handler error")
-			handlerErrStr = handlerErr.Error()
-		}
 
 		logEvent := log.Info().Dur("elapsed_time", elapsedTime)
 		if update.Message != nil {
@@ -205,6 +199,20 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 				Msg("Callback query handled")
 		} else {
 			logEvent.Msg("Unknown update type")
+		}
+
+		// NOTE: I may want to implement skipping of some kinds of errors here.
+
+		var handlerErr error
+		handlerErrStr := ""
+		if len(handlerErrs) > 0 {
+			log.Trace().Errs("errs", handlerErrs).Send()
+			handlerErr = errors.Join(handlerErrs...)
+			handlerErrStr = handlerErr.Error()
+			mb.services.Reporter.Report().Log().Err(handlerErr).Chat(chat).
+				Debug("update_type", updateKind).
+				Debug("update_data", updateData).
+				Msg("Handler error")
 		}
 
 		mb.services.Repo.InsertUpdateLog(&database.UpdateLog{

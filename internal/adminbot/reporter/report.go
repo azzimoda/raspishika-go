@@ -96,7 +96,6 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 		caller = fmt.Sprintf("%s:%d", file, line)
 	}
 
-	// isAdmin := rc.ctx.Value(adminKey).(bool)
 	doLog := rc.ctx.Value(logKey).(bool)
 	reportErr, ok := rc.ctx.Value(errKey).(error)
 	if !ok {
@@ -138,7 +137,7 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 
 	// Debug objects
 	if len(debugObjects) > 0 {
-		msgText += "Debug objects:\n```\n"
+		msgText += "\n```\n"
 		for name, value := range debugObjects {
 			msgText += fmt.Sprintf("%s=%+v\n", name, value)
 		}
@@ -146,8 +145,9 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 	}
 
 	// Message text
-	msgText += fmt.Sprintf("\n%s", bot.EscapeMarkdown(text))
+	msgText += bot.EscapeMarkdown(text)
 
+	// Send the message.
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID:    rc.recipientChatID,
 		Text:      msgText,
