@@ -113,9 +113,17 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*dat
 	}
 	scheduleCfg := scraper.GroupScheduleConfig(group)
 
+	ctx := context.Background()
+	imageFilename, imageData, err := sm.bot.PrepareWeekScheduleData(ctx, sm.bot.Bot, chats[0].TgChatID, scheduleCfg)
+	if err != nil {
+		return []error{fmt.Errorf("failed preparing week schedule data: %w", err)}, true
+	}
+
 	var errs []error
 	for _, chat := range chats {
-		if err := sm.bot.SendWeekSchedule(context.Background(), sm.bot.Bot, chat.TgChatID, chat.IsPrivate(), scheduleCfg); err != nil {
+		err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, chat, scheduleCfg, imageFilename, imageData)
+
+		if err != nil {
 			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
 			if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
 				continue

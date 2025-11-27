@@ -74,44 +74,47 @@ func ScrapeScheduleWithBrowser(
 }
 
 func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (string, error) {
+	var lastErr error
 	var html string
-	err := browser.WithPage(func(p playwright.Page) (err error) {
-		retries := 0
+	for range browser.Config.MaxRetries {
+		headers := utils.GenerateHeaders()
+		lastErr = browser.WithPage(func(p playwright.Page) (err error) {
+			log.Trace().Msgf("Fetching schedule page...")
 
-		for retries < browser.Config.MaxRetries {
-			retries++
-			log.Debug().Msgf("Fetching schedule page (attempt %d/%d)", retries, browser.Config.MaxRetries)
-
-			if err = p.SetExtraHTTPHeaders(utils.GenerateHeaders()); err != nil {
+			if err = p.SetExtraHTTPHeaders(headers); err != nil {
 				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying...")
-				err = fmt.Errorf("failed to set extra HTTP headers: %w", err)
-				continue
+				return fmt.Errorf("failed to set extra HTTP headers: %w", err)
 			}
 			if _, err = p.Goto(url); err != nil {
 				log.Error().Err(err).Msgf("Failed to goto URL; retrying...")
-				err = fmt.Errorf("failed to goto URL: %w", err)
-				continue
+				return fmt.Errorf("failed to goto URL: %w", err)
 			}
 			tableLocator := p.Locator("#main_table")
 			if err = tableLocator.WaitFor(playwright.LocatorWaitForOptions{}); err != nil {
 				log.Error().Err(err).Msgf("Failed to wait for table; retrying...")
-				err = fmt.Errorf("failed to wait for table: %w", err)
-				continue
+				return fmt.Errorf("failed to wait for table: %w", err)
 			}
 			time.Sleep(1 * time.Second)
 
 			html, err = p.Content()
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to get HTML content; retrying...")
-				err = fmt.Errorf("failed to get HTML content: %w", err)
-				continue
+				return fmt.Errorf("failed to get HTML content: %w", err)
 			}
-
-			return nil
+			return err
+		})
+		if lastErr == nil {
+			break
 		}
-		log.Error().Err(err).Msgf("Failed to fetch schedule page after %d retries", browser.Config.MaxRetries)
-		return fmt.Errorf("out of retries (%d): %w", browser.Config.MaxRetries, err)
-	})
+		log.Error().Err(lastErr).Str("url", url).Any("headers", headers).
+			Msgf("Failed to fetch schedule page; retrying...")
+		time.Sleep(1 * time.Second)
+	}
+
+	if lastErr != nil {
+		return "", fmt.Errorf("failed to fetch schedule page with browser after %d retries: %w",
+			browser.Config.MaxRetries, lastErr)
+	}
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
 		filename := fmt.Sprintf(filepath.Join(browser.CacheConfig.Dir, "schedule_%s.html"), time.Now().Format("20060102"))
@@ -122,7 +125,7 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (
 		}
 	}
 
-	return html, err
+	return html, nil
 }
 
 func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSchedule, err error) {

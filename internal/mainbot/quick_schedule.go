@@ -86,6 +86,13 @@ func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot,
 func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Quick select course handler")
 
+	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		return
+	}
+
 	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
@@ -102,8 +109,20 @@ func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Группа не найдена"})
+		return
 	}
 
-	err = mb.SendWeekSchedule(ctx, b, update.Message.Chat.ID, update.Message.Chat.Type == models.ChatTypePrivate, scraper.GroupScheduleConfig(group))
+	scheduleCfg := scraper.GroupScheduleConfig(group)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, update.Message.Chat.ID, scheduleCfg)
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   ErrMsgCouldNotLoadSchedule,
+		})
+		return
+	}
+
+	err = mb.SendWeekScheduleMessages(ctx, b, chat, scheduleCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }

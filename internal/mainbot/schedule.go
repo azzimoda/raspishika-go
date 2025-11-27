@@ -20,11 +20,13 @@ import (
 func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Week handler")
 
+	tgChat := update.Message.Chat
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
-		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(update.Message.Chat.ID).
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgTryLater})
+		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(tgChat.ID).
 			Msg("Error in groupHandler")
 		return
 	}
@@ -43,61 +45,70 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.U
 	}
 
 	scheduleCfg := scraper.GroupScheduleConfig(group)
-	err = mb.SendWeekSchedule(ctx, b, update.Message.Chat.ID, update.Message.Chat.Type == models.ChatTypePrivate, scheduleCfg)
+
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, tgChat.ID, scheduleCfg)
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		return
+	}
+
+	err = mb.SendWeekScheduleMessages(ctx, b, chat, scheduleCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) SendWeekSchedule(
+func (mb *MainBot) PrepareWeekScheduleData(
 	ctx context.Context,
 	b *bot.Bot,
 	chatID int64,
-	isPrivate bool,
 	scheduleCfg scraper.ScheduleConfig,
-) error {
-	log.Trace().Msg("Sending week schedule")
+) (imageFilename string, imageData []byte, err error) {
+	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
 
-	var errs []error
-
-	_, err := b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
-	errs = append(errs, err)
-
-	schedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
+	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
 	if err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		errs = append(errs, fmt.Errorf("failed loading schedule: %w", err))
-		return errors.Join(errs...)
+		err = errors.Join(chatActionErr, fmt.Errorf("failed loading schedule: %w", err))
+		return
 	}
 
 	html := schedule.HTML(mb.config.ScheduleTemplate)
-	imageFilename := path.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
-	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
-		// TODO: Try to send old screenshot.
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		errs = append(errs, fmt.Errorf("failed taking screenshot: %w", err))
-		return errors.Join(errs...)
+	imageFilename = path.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
+	if err = mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
+		err = errors.Join(chatActionErr, fmt.Errorf("failed taking screenshot: %w", err))
+		return
 	}
 
-	imageData, err := os.ReadFile(imageFilename)
+	imageData, err = os.ReadFile(imageFilename)
 	if err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
-		errs = append(errs, fmt.Errorf("failed reading screenshot: %w", err))
-		return errors.Join(errs...)
+		err = errors.Join(chatActionErr, fmt.Errorf("failed reading screenshot: %w", err))
+		return
 	}
+	return imageFilename, imageData, chatActionErr
+}
 
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
+func (*MainBot) SendWeekScheduleMessages(
+	ctx context.Context,
+	b *bot.Bot,
+	chat *database.Chat,
+	scheduleCfg scraper.ScheduleConfig,
+	imageFilename string,
+	imageData []byte,
+) error {
+	var errs []error
+
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      chat.TgChatID,
 		Text:        scheduleCfg.FormatMarkdown() + ":",
 		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: mainMenuReplyMarkup(isPrivate),
+		ReplyMarkup: mainMenuReplyMarkup(chat.IsPrivate()),
 	})
 	errs = append(errs, err)
 
-	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionUploadPhoto})
+	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chat.TgChatID, Action: models.ChatActionUploadPhoto})
 	errs = append(errs, err)
 
 	_, err = b.SendPhoto(ctx, &bot.SendPhotoParams{
-		ChatID:      chatID,
+		ChatID:      chat.TgChatID,
 		Photo:       &models.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
 		ReplyMarkup: weekScheduleMarkup(scheduleCfg),
 	})

@@ -169,6 +169,13 @@ func (mb *MainBot) sendTeacherSchedule(
 	}
 
 	schedueCfg := scraper.TeacherScheduleConfig(teacher)
-	err = mb.SendWeekSchedule(ctx, b, chat.ID, chat.Type == models.ChatTypePrivate, schedueCfg)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, chat.ID, schedueCfg)
+	if err != nil {
+		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		return
+	}
+
+	err = mb.SendWeekScheduleMessages(ctx, b, localChat, schedueCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
