@@ -46,12 +46,9 @@ func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot,
 	log.Trace().Msg("Quick select department handler")
 
 	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
-
 	chatID := update.CallbackQuery.Message.Message.Chat.ID
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    chatID,
-		MessageID: update.CallbackQuery.Message.Message.ID,
-	})
+
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.CallbackQuery.Message.Message)
 	addContextHandlerError(ctx, err)
 
 	groups, err := scraper.FetchDepartmentGroups(

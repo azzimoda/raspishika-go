@@ -125,7 +125,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 
 	command := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)

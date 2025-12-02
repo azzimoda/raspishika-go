@@ -41,7 +41,7 @@ func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *m
 	log.Trace().Msg("Config group handler")
 
 	message := update.CallbackQuery.Message.Message
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	mb.sendGroupMenu(ctx, b)

@@ -293,10 +293,7 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.U
 func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Delete handler")
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-		ChatID:    update.CallbackQuery.Message.Message.Chat.ID,
-		MessageID: update.CallbackQuery.Message.Message.ID,
-	})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, update.CallbackQuery.Message.Message)
 	addContextHandlerError(ctx, err)
 
 	if repoErr := mb.services.Repo.UpdateChatState(

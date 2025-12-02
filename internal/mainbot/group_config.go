@@ -94,7 +94,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	callbackCommand := tgbothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	groups, err := scraper.FetchDepartmentGroups(
@@ -133,7 +133,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 }
 
 func groupsReplyMarkup(groups []database.Group) models.ReplyKeyboardMarkup {
-	keyboard := [][]models.KeyboardButton{{{Text: "Назад"}}}
+	keyboard := [][]models.KeyboardButton{{{Text: "Отмена"}}}
 	for i := 0; i < len(groups); i += 2 {
 		row := make([]models.KeyboardButton, 0)
 		for j := i; j < len(groups) && j < i+2; j++ {

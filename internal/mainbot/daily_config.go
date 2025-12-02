@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
 // Commands
@@ -116,7 +117,7 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 	log.Trace().Msg("Config daily time handler")
 
 	message := update.CallbackQuery.Message.Message
-	_, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
+	_, err := tgbothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
@@ -138,9 +139,9 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 	}
 	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: message.Chat.ID,
-		Text: text,
-		ParseMode: models.ParseModeMarkdown,
+		ChatID:      message.Chat.ID,
+		Text:        text,
+		ParseMode:   models.ParseModeMarkdown,
 		ReplyMarkup: models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
 	})
 	addContextHandlerError(ctx, err)

@@ -155,10 +155,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 			log.Trace().Dur("PairNotificationTTLDuration", sm.config.Sendings.PairNotificationTTLDuration()).Send()
 			time.Sleep(sm.config.Sendings.PairNotificationTTLDuration())
 			for _, msg := range messagesToDelete {
-				_, err := sm.bot.Bot.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
-					ChatID:    msg.Chat.ID,
-					MessageID: msg.ID,
-				})
+				_, err := tgbothelpers.DeleteMessageSafely(context.Background(), sm.bot.Bot, msg)
 				if err != nil {
 					log.Error().Err(err).Msg("Failed to delete pair notification message")
 				}

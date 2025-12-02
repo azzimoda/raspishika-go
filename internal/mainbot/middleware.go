@@ -85,10 +85,7 @@ func (mb *MainBot) sendNewChatReport(chat *database.Chat, err error, tgChatID in
 	time.Sleep(20 * time.Second)
 	if chat, err := mb.services.Repo.GetChatByTgChatID(tgChatID); err == nil && chat.GroupName != nil {
 		if sentErr == nil {
-			b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
-				ChatID:    msg.Chat.ID,
-				MessageID: msg.ID,
-			})
+			b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
 		}
 
 		mb.services.Reporter.Report().Chat(chat).Msgf("Chat configured group %s", *chat.GroupName)

@@ -35,15 +35,12 @@ func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params 
 
 	go func() {
 		time.Sleep(dur)
-		success, err := b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-			ChatID:    msg.Chat.ID,
-			MessageID: msg.ID,
-		})
+		success, err := DeleteMessageSafely(ctx, b, msg)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting temporary message")
 		}
 		if !success {
-			log.Error().Msg("Failed to delete temporary message")
+			log.Warn().Msg("Temporary message could not be deleted")
 		}
 	}()
 
