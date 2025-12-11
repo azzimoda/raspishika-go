@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"time"
+	"strings"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -86,7 +86,7 @@ func (mb *MainBot) registerHandlers() {
 		mb.registerTextMessageHandler("преподаватель", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
 		mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
-			return update.Message != nil && update.Message.Text == "отмена"
+			return update.Message != nil && strings.ToLower(update.Message.Text) == "отмена"
 		}, mb.textCancelHandler, mb.checkRegularAccessMiddleware)
 
 		mb.registerChatStateHandler(database.ChatStateSelectingGroup, mb.textGroupHandler,
@@ -246,10 +246,10 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.
 
 	if err == nil {
 		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
-		if err == nil && chat.GroupName == nil {
-			mb.groupHandler(ctx, b, update)
-		} else {
+		if err != nil {
 			addContextHandlerError(ctx, fmt.Errorf("failed to get chat by chat ID: %w", err))
+		} else if chat.GroupName == nil {
+			mb.groupHandler(ctx, b, update)
 		}
 	}
 }
@@ -327,7 +327,7 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *mo
 		return
 	}
 
-	err = tgbothelpers.SendTempMessage(ctx, b, 3*time.Second, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		Text:        "Действие отменено",
 		ReplyMarkup: mainMenuReplyMarkup(update.Message.Chat.ID > 0),
