@@ -122,7 +122,11 @@ Recent updates:
 		recentUpdatesStr,
 	)
 
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
 }
 
 func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -150,7 +154,11 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models
 		text += fmt.Sprintf("• `/chat %d`\n", chat.TgChatID)
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
 }
 
 func (ab *AdminBot) chatsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -182,7 +190,11 @@ Group chats: %d
 Active chats: %d
 Inactive chats: %d`,
 		totalChats, privateChatCount, groupChatCount, activeChatCount, inactiveCount)
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
 
 	ab.sendConfigReport(ctx, b, update)
 }
@@ -218,7 +230,11 @@ func (ab *AdminBot) sendConfigReport(ctx context.Context, b *bot.Bot, update *mo
 	}
 	text += "```\n"
 
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
 }
 
 func (ab *AdminBot) updatesHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
