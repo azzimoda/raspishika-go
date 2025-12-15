@@ -39,8 +39,8 @@ func (sm *SendingManager) ScheduleDailySending() error {
 
 func (sm *SendingManager) SchedulePairSending() error {
 	times := [][2]int{
-		{7, 45},  // 8:00
-		{9, 30},  // 9:45
+		{7, 45},  // 08:00
+		{9, 30},  // 09:45
 		{11, 15}, // 11:30
 		// Big break, 40 minutes.
 		{13, 30}, // 13:45
@@ -72,25 +72,32 @@ func handleTelegramAPIError(services *services.Services, chat *database.Chat, er
 		return nil
 	}
 
-	if errors.Is(err, bot.ErrorBadRequest) {
-		// Handle the ErrorBadRequest (400) case here
-	}
+	// if errors.Is(err, bot.ErrorBadRequest) {
+	// 	// Handle the ErrorBadRequest (400) case here
+	// }
 
-	if errors.Is(err, bot.ErrorUnauthorized) {
-		// Handle the ErrorUnauthorized (401) case here
-	}
+	// if errors.Is(err, bot.ErrorUnauthorized) {
+	// 	// Handle the ErrorUnauthorized (401) case here
+	// }
 
 	if errors.Is(err, bot.ErrorForbidden) {
 		// Handle the ErrorForbidden (403) case here
+		log.Warn().Err(err).Msg("Telegram API error: Forbidden; deactivating sendings for chat...")
+		chat.DailySendingTime = nil
+		chat.PairSending = false
+		if err := services.Repo.UpdateChat(chat); err != nil {
+			return fmt.Errorf("failed to deactivate forbidden sendings for chat: %w", err)
+		}
+		return nil
 	}
 
-	if errors.Is(err, bot.ErrorNotFound) {
-		// Handle the ErrorNotFound (404) case here
-	}
+	// if errors.Is(err, bot.ErrorNotFound) {
+	// 	// Handle the ErrorNotFound (404) case here
+	// }
 
-	if errors.Is(err, bot.ErrorConflict) {
-		// Handle the ErrorConflict (409) case here
-	}
+	// if errors.Is(err, bot.ErrorConflict) {
+	// 	// Handle the ErrorConflict (409) case here
+	// }
 
 	if bot.IsMigrateError(err) {
 		// Handle the MigrateError (420) case here
@@ -113,16 +120,15 @@ func handleTelegramAPIError(services *services.Services, chat *database.Chat, er
 				log.Error().
 					Err(err).
 					Int64("tgChatID", chat.TgChatID).
-					Int64("migrateToChatID", int64(migrateErr.MigrateToChatID)).
+					Int("migrateToChatID", migrateErr.MigrateToChatID).
 					Msg("Failed to update chat ID")
 				return fmt.Errorf("failed to update chat ID: %w", err)
-
 			}
 		}
 
 		log.Info().
 			Int64("tgChatID", chat.TgChatID).
-			Int64("migrateToChatID", int64(migrateErr.MigrateToChatID)).
+			Int("migrateToChatID", migrateErr.MigrateToChatID).
 			Msg("Chat ID migration applied successfully")
 		return nil
 	}
