@@ -14,6 +14,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func (sm *SendingManager) processPairSending(t time.Time) {
@@ -128,7 +129,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		text = fmt.Sprintf("Следующая пара в кабинете %s:\n\t*%s*\n\t%s",
 			bot.EscapeMarkdown(pair.Classroom),
 			bot.EscapeMarkdown(pair.Discipline),
-			bot.EscapeMarkdown(*pair.Teacher))
+			bot.EscapeMarkdown(utils.DerefOrTypeDefault(pair.Teacher)))
 	}
 
 	messagesToDelete := make([]*models.Message, 0)

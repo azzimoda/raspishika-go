@@ -28,6 +28,7 @@ func HTTPGetRequestRetryingRandomHeaders(url string, maxRetries int) (*http.Resp
 		retries++
 		time.Sleep(time.Duration(retries) * time.Second)
 	}
+	log.Error().Str("url", url).Msgf("HTTP GET request failed after %d retries", maxRetries)
 	return nil, fmt.Errorf("failed to get %s after %d retries", url, maxRetries)
 }
 

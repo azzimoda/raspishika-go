@@ -52,7 +52,7 @@ func ScrapeSchedule(cacheDir, url string, config ScheduleConfig) (*RawSchedule, 
 		if err := os.WriteFile(filename, []byte(fixedEncoding), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {
-			log.Debug().Msgf("Saved schedule HTML to file %s", filename)
+			log.Trace().Msgf("Saved schedule HTML to file %s", filename)
 		}
 	}
 
