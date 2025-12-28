@@ -9,17 +9,16 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/adminbot"
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
 type App struct {
-	Config   *config.MainConfig
 	MainBot  *mainbot.MainBot
 	AdminBot *adminbot.AdminBot
 	Services *services.Services
@@ -40,12 +39,12 @@ func (a *App) Run() error {
 		defer cancel()
 
 		go a.AdminBot.Start(ctx)
-		a.Report().Msg("Starting application...")
+		a.Report().Log().Msg("Starting application...")
 	}
 
-	sendingManager := sendings.NewSendingManager(a.Config, a.MainBot, a.Services)
+	sendingManager := sendings.NewSendingManager(a.MainBot, a.Services)
 
-	if a.Config.Features.DailySending {
+	if viper.GetBool("features.daily_sending") {
 		if err := sendingManager.ScheduleDailySending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
 		} else {
@@ -53,7 +52,7 @@ func (a *App) Run() error {
 		}
 	}
 
-	if a.Config.Features.PairSending {
+	if viper.GetBool("features.pair_sending") {
 		if err := sendingManager.SchedulePairSending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
 		} else {
@@ -93,23 +92,23 @@ func (a *App) Report() reporter.ReportConfig {
 	return a.AdminBot.Report()
 }
 
-func New(cfg *config.MainConfig, commandsCfg *config.CommandsConfig) (*App, error) {
-	s, err := services.NewServices(cfg)
+func New() (*App, error) {
+	s, err := services.NewServices()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
-	app := App{Config: cfg, Services: s}
+	app := App{Services: s}
 	app.Services.Reporter = &app
 
-	app.MainBot, err = mainbot.New(cfg, commandsCfg.MainBot, app.Services)
+	app.MainBot, err = mainbot.New(app.Services)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize main bot: %w", err)
 	} else {
 		log.Info().Msg("Initialized main bot")
 	}
 
-	if cfg.Features.AdminBot {
-		app.AdminBot, err = adminbot.New(cfg, commandsCfg.AdminBot, app.Services)
+	if viper.GetBool("features.admin_bot") {
+		app.AdminBot, err = adminbot.New(app.Services)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		} else {

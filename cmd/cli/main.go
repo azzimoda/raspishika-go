@@ -1,94 +1,55 @@
 package main
 
 import (
-	"flag"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/app"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
-
-	"github.com/rs/zerolog/log"
 )
 
-const MainConfigFile = `configs/config.yml`
-const CommandsConfigFile = `configs/commands.yml`
-
-type Options struct {
-	Help     bool
-	Config   string
-	LogLevel string
-	Start    string
-	Notify   string
-}
-
-var options Options = Options{
-	Help:     false,
-	Config:   MainConfigFile,
-	LogLevel: "",
-	Start:    "",
-	Notify:   "",
-}
-
-func init() {
-	flag.BoolVar(&options.Help, "help", false, "Prints help message")
-	flag.StringVar(&options.Config, "config", MainConfigFile, "Path to the main configuration file")
-	flag.StringVar(&options.LogLevel, "log-level", "",
-		"Log level, overrides config file (trace, debug, info, warn, error, fatal)")
-	flag.StringVar(&options.Start, "start", "",
-		"Schedules start on the given date/time in format '2006-01-02T15:04' (system time zone)")
-	flag.StringVar(&options.Notify, "notify", "",
-		"Sends notification to all chats; does not start the bot and features")
-}
-
 func main() {
-	flag.Parse()
-
-	if options.Help {
-		flag.Usage()
-		os.Exit(0)
-	}
-
-	configFile := MainConfigFile
-	if options.Config != "" {
-		configFile = options.Config
-	}
-	log.Debug().Str("filename", configFile).Msg("Using configuration file")
-
-	mainConfig, err := config.LoadMainConfig(configFile)
-	if err != nil {
+	if err := config.Load(); err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")
 	}
-	if err := mainConfig.LoadTemplate(); err != nil {
-		log.Panic().Err(err).Msg("Failed to load schedule template")
+
+	logger.SetupLogger(viper.GetString("logger.level"), viper.GetString("logger.dir"))
+
+	if config.PrintUsage() {
+		return
 	}
 
-	if options.LogLevel != "" {
-		mainConfig.Logger.Level = options.LogLevel
-	}
-	logger.SetupLogger(mainConfig.Logger)
-
-	log.Debug().Msg("Loaded configuration")
-	log.Trace().Any("config", mainConfig).Send()
-
-	commandsConfig, err := config.LoadCommandsConfig(CommandsConfigFile)
-	if err != nil {
-		log.Panic().Err(err).Msg("Failed to load commands configuration")
+	log.Debug().Str("baseConfigFile", viper.GetString("config_file")).Msg("Loaded configuration")
+	if zerolog.GlobalLevel() == zerolog.TraceLevel {
+		log.Trace().Msg("Viper debug:")
+		viper.Debug()
+		log.Trace().Msg("All settings:")
+		log.Trace().Any("settings", viper.AllSettings()).Send()
 	}
 
-	if err := mainConfig.EnsureDirs(); err != nil {
-		log.Fatal().Err(err).Msg("Failed to create directories")
-	}
+	log.Trace().Int64("admin_id", viper.GetInt64("telegram.admin_id")).Send()
 
-	app, err := app.New(mainConfig, commandsConfig)
+	app, err := app.New()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create application")
 	}
 
 	// Check for scheduled start.
-	if options.Start != "" {
-		startTime, err := time.Parse("2006-01-02T15:04", options.Start)
+	if startTime := viper.GetTime("start"); startTime != (time.Time{}) {
+		now := time.Now()
+		if startTime.Year() == 0 {
+			startTime = time.Date(
+				now.Year(), startTime.Month(), startTime.Day(),
+				startTime.Hour(), startTime.Minute(), 0, 0,
+				time.Now().Location(),
+			)
+		}
+
 		startTime = time.Date(
 			startTime.Year(), startTime.Month(), startTime.Day(),
 			startTime.Hour(), startTime.Minute(), 0, 0,
@@ -103,8 +64,8 @@ func main() {
 	}
 
 	// Send notification if the option provided.
-	if options.Notify != "" {
-		app.SendNotification(options.Notify)
+	if text := viper.GetString("notify"); text != "" {
+		app.SendNotification(text)
 		os.Exit(0)
 	}
 

@@ -8,14 +8,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
-
-	"github.com/azzimoda/raspishika-go/internal/config"
 )
 
-func SetupLogger(cfg config.LoggerConfig) {
-	log.Trace().Any("config", cfg).Msg("Setting up logger")
+func SetupLogger(logLevelStr, logDir string) {
+	log.Trace().Msg("Setting up logger")
 
-	logLevel, err := zerolog.ParseLevel(cfg.Level)
+	logLevel, err := zerolog.ParseLevel(logLevelStr)
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to parse configured log level; fallback to DEBUG")
 		logLevel = zerolog.DebugLevel
@@ -23,11 +21,11 @@ func SetupLogger(cfg config.LoggerConfig) {
 
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 
-	if cfg.Dir == "" {
+	if logDir == "" {
 		log.Debug().Msg("No log directory configured; logging to console only")
 		log.Logger = zerolog.New(consoleWriter).With().Timestamp().Caller().Logger()
 	} else {
-		logFileName := filepath.Join(cfg.Dir, "raspishika.log")
+		logFileName := filepath.Join(logDir, "raspishika.log")
 		log.Debug().Str("logFile", logFileName).Send()
 
 		log.Logger = zerolog.New(zerolog.MultiLevelWriter(

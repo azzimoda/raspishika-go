@@ -3,7 +3,7 @@ package database
 import (
 	"fmt"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/spf13/viper"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,18 +22,19 @@ func (r *Repository) Close() error {
 	return r.db.Close()
 }
 
-func New(cfg *config.MainConfig) (*Repository, error) {
-	log.Debug().Str("file", cfg.Database.File).Msg("Creating database repository")
-	db, err := sqlx.Open("sqlite3", cfg.Database.File)
+func New() (*Repository, error) {
+	file := viper.GetString("database.file")
+	log.Debug().Str("file", file).Msg("Creating database repository")
+	db, err := sqlx.Open("sqlite3", file)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	if err := createTables(db); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create tables: %w", err)
 	}
 
 	return &Repository{db: db}, nil

@@ -3,59 +3,129 @@ package config
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
-type ConfigProvider interface {
-	Config() *MainConfig
+var Defaults = map[string]any{
+	"config_file":   "configs/config.yml",
+	"commands_file": "configs/commands.yml",
+
+	"database.file": "databse/db.sqlite3",
+
+	"browser.headless":       false,
+	"browser.timeout":        30, // seconds
+	"browser.max_retries":    10,
+	"browser.screenshot_dir": "storage/cache/screenshots",
+
+	"cache.dir":          "storage/cache",
+	"cache.default_ttl":  10, // minutes
+	"cache.schedule_ttl": 20, // minutes
+	"cache.group_ttl":    7,  // days
+
+	"logger.level": "debug",
+	"logger.dir":   "storage/logs",
+
+	"features.admin_bot":     false,
+	"features.daily_sending": false,
+	"features.pair_sending":  false,
+
+	"pair_sending.notification_ttl": 90, // minutes
+
+	"adminbot.new_chat_report": true,
+
+	"schedule_template_file": "storage/schedule_template.html",
 }
 
-type MainConfig struct {
-	Telegram struct {
-		Token      string `yaml:"token"`
-		AdminToken string `yaml:"admin_token"`
-		AdminID    int64  `yaml:"admin_id"`
-	} `yaml:"telegram"`
-
-	Features struct {
-		AdminBot     bool `yaml:"admin_bot"`
-		DailySending bool `yaml:"daily_sending"`
-		PairSending  bool `yaml:"pair_sending"`
-	} `yaml:"features"`
-
-	Database struct {
-		File string `yaml:"file"`
-	} `yaml:"database"`
-
-	Browser  BrowserConfig `yaml:"browser"`
-	Sendings SendingConfig `yaml:"sendings"`
-	Cache    CacheConfig   `yaml:"cache"`
-	Logger   LoggerConfig  `yaml:"logger"`
-
-	ScheduleTemplateFile string `yaml:"schedule_template_file"`
-	ScheduleTemplate     string `yaml:"schedule_template"`
-	AdminConfigFile      string `yaml:"admin_config_file"`
-}
-
-func (c *MainConfig) EnsureDirs() error {
-	dirs := []string{
-		path.Dir(c.Database.File),
-		c.Browser.ScreenshotDir,
-		c.Cache.Dir,
-		c.Logger.Dir,
+func Load() (err error) {
+	// Set defaults.
+	for key, value := range Defaults {
+		viper.SetDefault(key, value)
 	}
-	log.Trace().Strs("dirs", dirs).Msg("Ensuring dirs...")
 
+	ConfigEnv()
+	ConfigFlags()
+	if err := LoadFiles(); err != nil {
+		return err
+	}
+
+	if err := EnsureDirs(); err != nil {
+		return err
+	}
+
+	// Read schedule template from file.
+	data, err := os.ReadFile(viper.GetString("schedule_template_file"))
+	if err != nil {
+		return fmt.Errorf("failed to read schedule template file: %w", err)
+	}
+	viper.Set("schedule_template", string(data))
+
+	return nil
+}
+
+func ConfigEnv() {
+	viper.SetEnvPrefix("raspishika")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.BindEnv("config_file")
+	viper.BindEnv("commands_file")
+	viper.BindEnv("telegram_token")
+	viper.BindEnv("telegram_admin_token")
+	viper.BindEnv("telegram_admin_id")
+	viper.AutomaticEnv()
+}
+
+func ConfigFlags() {
+	pflag.String("config", "", "Specify config file")
+	pflag.String("commands", "", "Specify commands config file")
+	pflag.Time("start", time.Time{}, []string{"2006-01-02T15:04", "01-02T15:04"},
+		"Start bot at specified time; format: 2006-01-02T15:04")
+	pflag.String("notify", "", "Send specified notification to all chats")
+	pflag.String("log", "", "Specify log level")
+	pflag.String("log-dir", "", "Specify log directory")
+	pflag.Bool("help", false, "Print usage")
+	pflag.Parse()
+
+	viper.BindPFlag("config_file", pflag.CommandLine.Lookup("config"))
+	viper.BindPFlag("commands_file", pflag.CommandLine.Lookup("commands"))
+	viper.BindPFlag("start", pflag.CommandLine.Lookup("start"))
+	viper.BindPFlag("notify", pflag.CommandLine.Lookup("notify"))
+	viper.BindPFlag("logger.level", pflag.CommandLine.Lookup("log"))
+	viper.BindPFlag("logger.dir", pflag.CommandLine.Lookup("log-dir"))
+}
+
+func LoadFiles() error {
+	filename := viper.GetString("config_file")
+	log.Debug().Str("filename", filename).Msg("Loading base config...")
+	viper.SetConfigFile(filename)
+	if err := viper.ReadInConfig(); err != nil {
+		return fmt.Errorf("failed to read base config file: %w", err)
+	}
+
+	filename = viper.GetString("commands_file")
+	log.Debug().Str("filename", filename).Msg("Loading commands config...")
+	viper.SetConfigFile(filename)
+	if err := viper.MergeInConfig(); err != nil {
+		return fmt.Errorf("failed to read commands config file: %w", err)
+	}
+	return nil
+}
+
+func EnsureDirs() error {
+	dirs := []string{
+		filepath.Dir(viper.GetString("database.file")),
+		viper.GetString("browser.screenshot_dir"),
+		viper.GetString("cache.dir"),
+		viper.GetString("logger.dir"),
+	}
 	for _, dir := range dirs {
 		if dir == "" {
 			continue
 		}
-
-		log.Trace().Str("dir", dir).Msg("Ensuring dir...")
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to make dir '%s': %w", dir, err)
 		}
@@ -63,91 +133,48 @@ func (c *MainConfig) EnsureDirs() error {
 	return nil
 }
 
-func (c *MainConfig) LoadTemplate() error {
-	data, err := os.ReadFile(c.ScheduleTemplateFile)
-	if err != nil {
-		return fmt.Errorf("failed to load schedule template: %w", err)
+func PrintUsage() bool {
+	if f := pflag.Lookup("help"); f != nil && f.Value.String() == "true" {
+		pflag.Usage()
+		return true
 	}
-	c.ScheduleTemplate = string(data)
-	return nil
+	return false
 }
 
-type BrowserConfig struct {
-	Headless      bool   `yaml:"headless"`
-	Timeout       int64  `yaml:"timeout"`
-	MaxRetries    int    `yaml:"max_retries"`
-	ScreenshotDir string `yaml:"screenshot_dir"`
+func DefaultTTLDur() time.Duration {
+	return viper.GetDuration("cache.default_ttl") * time.Minute
 }
 
-type SendingConfig struct {
-	// minutes
-	PairNotificationTTL int64 `yaml:"pair_notification_ttl"`
+func ScheduleTTLDur() time.Duration {
+	return viper.GetDuration("cache.schedule_ttl") * time.Minute
 }
 
-// PairNotificationTTLDuration retrnus the pair notification TTL as a time.Duration.
-//
-// Value of SendingConfig.PairNotificationTTL is in minutes, so it is multiplied by time.Minute.
-func (sc *SendingConfig) PairNotificationTTLDuration() time.Duration {
-	return time.Duration(sc.PairNotificationTTL) * time.Minute
+func GroupTTLDur() time.Duration {
+	return viper.GetDuration("cache.group_ttl") * 24 * time.Hour
 }
 
-type CacheConfig struct {
-	Dir         string `yaml:"dir"`
-	DefaultTTL  int64  `yaml:"default_ttl"`  // Minutes
-	ScheduleTTL int64  `yaml:"schedule_ttl"` // Minutes
-	GroupTTL    int64  `yaml:"group_ttl"`    // Days
+func PairNotificationTTLDur() time.Duration {
+	return viper.GetDuration("pair_sending.notification_ttl") * time.Minute
 }
 
-// DefaultTTLDuration retrnus the default TTL as a time.Duration.
-//
-// Value of CacheConfig.DefaultTTL is in minutes, so it is multiplied by time.Minute.
-func (c *CacheConfig) DefaultTTLDuration() time.Duration {
-	return time.Duration(c.DefaultTTL) * time.Minute
-}
-
-// ScheduleTTLDuration returns the schedule TTL as a time.Duration.
-//
-// Value of CacheConfig.ScheduleTTL is in minutes, so it is multiplied by time.Minute.
-func (c *CacheConfig) ScheduleTTLDuration() time.Duration {
-	return time.Duration(c.ScheduleTTL) * time.Minute
-}
-
-// GroupTTLDuration returns the group TTL as a time.Duration.
-//
-// Value of CacheConfig.GroupTTL is in days, so it is multiplied by 24 hours.
-func (c *CacheConfig) GroupTTLDuration() time.Duration {
-	return time.Duration(c.GroupTTL) * 24 * time.Hour
-}
-
-type LoggerConfig struct {
-	Level string `yaml:"level"`
-	Dir   string `yaml:"dir"`
-}
-
-func LoadMainConfig(filename string) (*MainConfig, error) {
-	var config MainConfig
-	if err := loadConfig(filename, &config); err != nil {
-		return nil, err
+func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
+	myCommandsArrayAny, ok := myCommandsAny.([]any)
+	if !ok {
+		return nil, false
 	}
 
-	return &config, nil
-}
+	myCommands := make([]map[string]string, len(myCommandsArrayAny))
+	for i, cmdAny := range myCommandsArrayAny {
+		cmdMapAny, ok := cmdAny.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		cmdMapString := make(map[string]string)
+		for k, v := range cmdMapAny {
+			cmdMapString[k] = v.(string)
+		}
 
-func LoadCommandsConfig(filename string) (*CommandsConfig, error) {
-	var config CommandsConfig
-	if err := loadConfig(filename, &config); err != nil {
-		return nil, err
+		myCommands[i] = cmdMapString
 	}
-	return &config, nil
-}
-
-func loadConfig[T any](filename string, config *T) error {
-	yamlData, err := os.ReadFile(filename)
-	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-	if err := yaml.Unmarshal(yamlData, config); err != nil {
-		return fmt.Errorf("failed to unmarshal YAML config: %w", err)
-	}
-	return nil
+	return myCommands, true
 }

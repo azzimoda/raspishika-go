@@ -14,6 +14,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/spf13/viper"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
@@ -76,7 +77,7 @@ func ScrapeScheduleWithBrowser(
 func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (string, error) {
 	var lastErr error
 	var html string
-	for range browser.Config.MaxRetries {
+	for range viper.GetInt("browser.max_retries") {
 		headers := utils.GenerateHeaders()
 		lastErr = browser.WithPage(func(p playwright.Page) (err error) {
 			log.Trace().Msgf("Fetching schedule page...")
@@ -113,11 +114,11 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string) (
 
 	if lastErr != nil {
 		return "", fmt.Errorf("failed to fetch schedule page with browser after %d retries: %w",
-			browser.Config.MaxRetries, lastErr)
+			viper.GetInt("browser.max_retries"), lastErr)
 	}
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
-		filename := fmt.Sprintf(filepath.Join(browser.CacheConfig.Dir, "schedule_%s.html"), time.Now().Format("20060102"))
+		filename := fmt.Sprintf(filepath.Join(viper.GetString("cache.dir"), "schedule_%s.html"), time.Now().Format("20060102"))
 		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {
@@ -143,7 +144,7 @@ func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSched
 
 	table := doc.Find("table#main_table")
 	if table.Length() == 0 {
-		return nil, fmt.Errorf("table not found")
+		return nil, fmt.Errorf("table element not found")
 	}
 
 	var headers []map[string]string

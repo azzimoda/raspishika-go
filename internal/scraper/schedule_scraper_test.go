@@ -11,13 +11,12 @@ var debugConfigFile string
 var templateFile string
 
 func init() {
-	debugConfigFile, templateFile = utils.InitPaths()
-	println(debugConfigFile, templateFile)
+	utils.InitPaths()
 }
 
 func TestScrapeScheduleWithBrowser(t *testing.T) {
 	// Initialize configuration.
-	testsDir, _, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
+	testsDir, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
 
 	// Prepare test data.
 	if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {

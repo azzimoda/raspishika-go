@@ -9,19 +9,17 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
-func NewSendingManager(config *config.MainConfig, bot *mainbot.MainBot, services *services.Services) *SendingManager {
-	return &SendingManager{cron: cron.New(), config: config, bot: bot, services: services}
+func NewSendingManager(bot *mainbot.MainBot, services *services.Services) *SendingManager {
+	return &SendingManager{cron: cron.New(), bot: bot, services: services}
 }
 
 type SendingManager struct {
 	cron     *cron.Cron
-	config   *config.MainConfig
 	bot      *mainbot.MainBot
 	services *services.Services
 }

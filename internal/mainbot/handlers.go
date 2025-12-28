@@ -247,7 +247,10 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.
 	if err == nil {
 		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
 		if err != nil {
-			addContextHandlerError(ctx, fmt.Errorf("failed to get chat by chat ID: %w", err))
+			// Error: failed to get chat by chat ID: %!w(<nil>)
+			errFormatted := fmt.Errorf("failed to get chat by chat ID: %w", err)
+			log.Warn().Err(err).Err(errFormatted).Msg("Failed to get chat by chat ID")
+			addContextHandlerError(ctx, errFormatted)
 		} else if chat.GroupName == nil {
 			mb.groupHandler(ctx, b, update)
 		}

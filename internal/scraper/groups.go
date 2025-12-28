@@ -7,6 +7,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 
@@ -53,14 +54,14 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		})
 	})
 
-	cache.C.Set(DepartmentsCacheKey, departments, cache.Config.GroupTTLDuration())
+	cache.C.Set(DepartmentsCacheKey, departments, config.GroupTTLDur())
 	return departments, nil
 }
 
 func FetchGroups(
 	repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
 ) ([]database.Group, error) {
-	if groups, err := checkGroups(repo, cache.Config.GroupTTLDuration()); err == nil && len(groups) > 0 {
+	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
 		log.Debug().Msg("Using cached groups")
 		return groups, nil
 	}

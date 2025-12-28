@@ -8,33 +8,30 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/services"
+	"github.com/spf13/viper"
 )
 
-var debugConfigFile string
-var templateFile string
-
 func init() {
-	debugConfigFile, templateFile = utils.InitPaths()
-	println(debugConfigFile, templateFile)
+	utils.InitPaths()
 }
 
 func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
 	testDir := t.TempDir()
-	cfg := utils.InitConfig(t, debugConfigFile, templateFile, testDir)
+	utils.InitConfig(t, testDir)
 
-	srvs, err := services.NewServices(cfg)
+	srvs, err := services.NewServices()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	b, err := mainbot.New(cfg, nil, srvs)
+	b, err := mainbot.New(srvs)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sm := NewSendingManager(cfg, b, srvs)
+	sm := NewSendingManager(b, srvs)
 
 	tests := []struct {
 		name string // description of this test case
@@ -46,7 +43,7 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	}{
 		{"send pair sending to 1 group with 1 chat",
 			"ИСПт-22-(9)-2",
-			[]*database.Chat{{TgChatID: cfg.Telegram.AdminID, PairSending: true}},
+			[]*database.Chat{{TgChatID: viper.GetInt64("telegram.admin_id"), PairSending: true}},
 			false,
 			false,
 		},

@@ -6,7 +6,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/rs/zerolog/log"
@@ -20,20 +19,20 @@ type Services struct {
 	Reporter        reporter.Reporter
 }
 
-func NewServices(cfg *config.MainConfig) (s *Services, err error) {
+func NewServices() (s *Services, err error) {
 	s = &Services{
-		Cache:           cache.New(&cfg.Cache),
+		Cache:           cache.New(),
 		ScheduleManager: scraper.NewScheduleManager(),
 	}
 
-	s.Repo, err = database.New(cfg)
+	s.Repo, err = database.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {
 		log.Debug().Msg("Created repository")
 	}
 
-	s.Browser, err = browser.New(cfg)
+	s.Browser, err = browser.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create browser service: %w", err)
 	} else {

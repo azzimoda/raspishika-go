@@ -1,5 +1,5 @@
 ---
-mainbot:
+mainbot_commands:
   - week: Расписание на неделю
   - tomorrow: Расписание на завтра
   - left: Оставшиеся пары
@@ -17,7 +17,7 @@ mainbot:
   - help: Список команд
   - stop: Остановить бота
   - start: Запустить бота
-adminbot:
+adminbot_commands:
   - chats: Send all chats stats
   - groups: Send all groups stats
   - updates: Send update handling stats

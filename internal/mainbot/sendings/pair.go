@@ -10,6 +10,7 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/mainbot"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
@@ -153,8 +154,9 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 	// Delete notifications after a while.
 	if len(messagesToDelete) != 0 {
 		go func() {
-			log.Trace().Dur("PairNotificationTTLDuration", sm.config.Sendings.PairNotificationTTLDuration()).Send()
-			time.Sleep(sm.config.Sendings.PairNotificationTTLDuration())
+			dur := config.PairNotificationTTLDur() // sm.config.Sendings.PairNotificationTTLDuration()
+			log.Trace().Dur("PairNotificationTTLDuration", dur).Send()
+			time.Sleep(dur)
 			for _, msg := range messagesToDelete {
 				_, err := tgbothelpers.DeleteMessageSafely(context.Background(), sm.bot.Bot, msg)
 				if err != nil {

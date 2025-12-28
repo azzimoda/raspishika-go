@@ -7,6 +7,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -17,11 +18,8 @@ import (
 )
 
 type AdminBot struct {
-	config      *config.MainConfig
-	myCommands  []map[string]string
-	adminConfig *config.AdminConfig
-	bot         *bot.Bot
-	services    *services.Services
+	bot      *bot.Bot
+	services *services.Services
 }
 
 func (b *AdminBot) API() *bot.Bot {
@@ -30,7 +28,12 @@ func (b *AdminBot) API() *bot.Bot {
 
 func (b *AdminBot) Start(ctx context.Context) {
 	log.Info().Msg("Starting admin bot...")
-	success, err := tgbothelpers.SetMyCommands(context.Background(), b.bot, b.myCommands)
+	myCommands, ok := config.AssertMyCommands(viper.Get("adminbot_commands"))
+	if !ok {
+		log.Error().Msg("Failed to assert adminbot_commands")
+	}
+
+	success, err := tgbothelpers.SetMyCommands(context.Background(), b.bot, myCommands)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set my commands")
 	}
@@ -42,11 +45,11 @@ func (b *AdminBot) Start(ctx context.Context) {
 
 func (b *AdminBot) Report() reporter.ReportConfig {
 	log.Trace().Msg("Reporting...")
-	return reporter.NewReportConfig(b.bot, b.config.Telegram.AdminID)
+	return reporter.NewReportConfig(b.bot, viper.GetInt64("telegram.admin_id"))
 }
 
 func (b *AdminBot) ReportNewChat(chat *database.Chat) {
-	if !b.adminConfig.NewChatReport {
+	if !viper.GetBool("adminbot.new_chat_report") {
 		log.Trace().Msg("New chat report is disabled.")
 		return
 	}
@@ -54,27 +57,16 @@ func (b *AdminBot) ReportNewChat(chat *database.Chat) {
 		Msgf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
 }
 
-func New(
-	cfg *config.MainConfig,
-	myCommands []map[string]string,
-	services *services.Services,
-) (*AdminBot, error) {
-	adminCfg, err := config.LoadAdminConfig(cfg.AdminConfigFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load admin config: %w", err)
-	}
-	ab := AdminBot{
-		config:      cfg,
-		myCommands:  myCommands,
-		adminConfig: adminCfg,
-		services:    services,
-	}
+func New(services *services.Services) (*AdminBot, error) {
+	ab := AdminBot{services: services}
 
 	opts := []bot.Option{
 		bot.WithMiddlewares(ab.filterNotAdminMiddleware),
 		bot.WithDefaultHandler(ab.defaultHandler),
 	}
-	ab.bot, err = bot.New(cfg.Telegram.AdminToken, opts...)
+
+	var err error
+	ab.bot, err = bot.New(viper.GetString("telegram.admin_token"), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new bot: %w", err)
 	}
@@ -87,7 +79,7 @@ func New(
 func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		if update.Message != nil {
-			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != ab.config.Telegram.AdminID {
+			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != viper.GetInt64("telegram.admin_id") {
 				log.Trace().Msgf("Ignoring update from chat %d", update.Message.Chat.ID)
 				return
 			}

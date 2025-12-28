@@ -4,10 +4,12 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/internal/cache"
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/database"
 )
 
@@ -28,10 +30,10 @@ func (sm *ScheduleManager) Get(
 	repo *database.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,
-	config ScheduleConfig,
+	scheduleCfg ScheduleConfig,
 ) (*RawSchedule, error) {
 	// Check cache.
-	key := scheduleKey(config)
+	key := scheduleKey(scheduleCfg)
 	if rawScheduleCache, found := cache.C.Get(key); found {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		if rawSchedule, ok := rawScheduleCache.(*RawSchedule); ok {
@@ -46,7 +48,7 @@ func (sm *ScheduleManager) Get(
 	// Update cache.
 	log.Debug().Str("cacheKey", key).Msg("Cache miss, scraping schedule")
 	result, err, _ := sm.sf.Do(key, func() (schedule any, err error) {
-		return sm.scrapeSchedule(repo, config, cache, browser)
+		return sm.scrapeSchedule(repo, scheduleCfg, cache, browser)
 	})
 
 	if err != nil {
@@ -54,7 +56,7 @@ func (sm *ScheduleManager) Get(
 	}
 
 	// Save cache.
-	cache.C.Set(key, result, cache.Config.ScheduleTTLDuration())
+	cache.C.Set(key, result, config.ScheduleTTLDur())
 
 	return result.(*RawSchedule), nil
 }
@@ -72,7 +74,7 @@ func (*ScheduleManager) scrapeSchedule(
 
 	url := ScheduleURL(config, departmentIDs)
 	if config.Group != nil {
-		return ScrapeSchedule(cache.Config.Dir, url, config)
+		return ScrapeSchedule(viper.GetString("cache.dir"), url, config)
 	} else if config.Teacher != nil {
 		return ScrapeScheduleWithBrowser(browser, url, config)
 	} else {

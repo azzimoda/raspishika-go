@@ -12,6 +12,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
@@ -52,8 +53,8 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *m
 		return
 	}
 
-	html := schedule.HTML(mb.config.ScheduleTemplate)
-	imageFilename := filepath.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
+	html := schedule.HTML(viper.GetString("schedule_template"))
+	imageFilename := filepath.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
 	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -114,8 +115,8 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	html := schedule.HTML(mb.config.ScheduleTemplate)
-	imageFilename := filepath.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
+	html := schedule.HTML(viper.GetString("schedule_template"))
+	imageFilename := filepath.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
 	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{

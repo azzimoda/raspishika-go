@@ -4,22 +4,33 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/spf13/viper"
 
 	"github.com/playwright-community/playwright-go"
 )
 
 // TODO: Implement regular restart.
 
-type BrowserServiceProvider interface {
-	Browser() *BrowserService
+func New() (*BrowserService, error) {
+	pw, err := playwright.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(viper.GetBool("browser.headless")),
+		Timeout:  playwright.Float(float64(viper.GetInt("browser.timeout")) * 1000),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &BrowserService{pw: pw, browser: browser}, nil
 }
 
 type BrowserService struct {
-	pw          *playwright.Playwright
-	browser     playwright.Browser
-	Config      *config.BrowserConfig
-	CacheConfig *config.CacheConfig
+	pw      *playwright.Playwright
+	browser playwright.Browser
 }
 
 func (b *BrowserService) Close() error {
@@ -69,21 +80,4 @@ func (b *BrowserService) TakeScreenshotHTML(html string, filename string) error 
 		}
 		return nil
 	})
-}
-
-func New(cfg *config.MainConfig) (*BrowserService, error) {
-	pw, err := playwright.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: &cfg.Browser.Headless,
-		Timeout:  playwright.Float(float64(cfg.Browser.Timeout) * 1000),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &BrowserService{pw: pw, browser: browser, Config: &cfg.Browser, CacheConfig: &cfg.Cache}, nil
 }

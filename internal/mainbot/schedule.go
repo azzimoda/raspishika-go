@@ -12,6 +12,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
@@ -52,6 +53,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.U
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
+	log.Debug().Str("filename", imageFilename).Msg("Screenshot saved")
 
 	err = mb.SendWeekScheduleMessages(ctx, b, chat, scheduleCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
@@ -71,8 +73,8 @@ func (mb *MainBot) PrepareWeekScheduleData(
 		return
 	}
 
-	html := schedule.HTML(mb.config.ScheduleTemplate)
-	imageFilename = path.Join(mb.config.Browser.ScreenshotDir, scheduleScreenshotFileName(scheduleCfg))
+	html := schedule.HTML(viper.GetString("schedule_template"))
+	imageFilename = path.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
 	if err = mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		err = errors.Join(chatActionErr, fmt.Errorf("failed taking screenshot: %w", err))
 		return

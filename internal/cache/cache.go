@@ -11,15 +11,11 @@ type CacheProvider interface {
 }
 
 type Cache struct {
-	Config *config.CacheConfig
-	C      *cache.Cache
+	C *cache.Cache
 }
 
-func New(cfg *config.CacheConfig) *Cache {
-	ttl := cfg.DefaultTTLDuration()
+func New() *Cache {
+	ttl := config.DefaultTTLDur()
 	cache := cache.New(ttl, ttl*2)
-	return &Cache{
-		Config: cfg,
-		C:      cache,
-	}
+	return &Cache{C: cache}
 }

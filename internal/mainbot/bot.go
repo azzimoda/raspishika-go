@@ -9,6 +9,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -20,14 +21,10 @@ import (
 )
 
 func New(
-	cfg *config.MainConfig,
-	myCommands []map[string]string,
 	services *services.Services,
 ) (mb *MainBot, err error) {
 	mb = &MainBot{
-		config:     cfg,
-		myCommands: myCommands,
-		services:   services,
+		services: services,
 	}
 
 	opts := []bot.Option{
@@ -40,7 +37,7 @@ func New(
 		bot.WithDefaultHandler(mb.defaultHandler),
 		// bot.WithErrorsHandler(mb.errorsHandler),
 	}
-	mb.Bot, err = bot.New(cfg.Telegram.Token, opts...)
+	mb.Bot, err = bot.New(viper.GetString("telegram.token"), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
@@ -57,15 +54,19 @@ func New(
 }
 
 type MainBot struct {
-	config     *config.MainConfig
-	myCommands []map[string]string
-	Bot        *bot.Bot
-	Me         *models.User
-	services   *services.Services
+	Bot      *bot.Bot
+	Me       *models.User
+	services *services.Services
 }
 
 func (mb *MainBot) Start() {
-	success, err := tgbothelpers.SetMyCommands(context.Background(), mb.Bot, mb.myCommands)
+	log.Trace().Any("mainbot_commands", viper.Get("mainbot_commands")).Send()
+	myCommands, ok := config.AssertMyCommands(viper.Get("mainbot_commands"))
+	if !ok {
+		log.Error().Msg("Failed to assert mainbot_commands")
+	}
+
+	success, err := tgbothelpers.SetMyCommands(context.Background(), mb.Bot, myCommands)
 	if err != nil {
 		log.Error().Err(err).Msg("Error while trying to set my commands")
 	}
