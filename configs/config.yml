@@ -1,8 +1,4 @@
 ---
-telegram:
-  token: ''
-  admin_token: ''
-  admin_id: 0
 database:
   file: database/db.sqlite3
 browser:

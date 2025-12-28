@@ -28,8 +28,8 @@ func main() {
 	if zerolog.GlobalLevel() == zerolog.TraceLevel {
 		log.Trace().Msg("Viper debug:")
 		viper.Debug()
-		log.Trace().Msg("All settings:")
-		log.Trace().Any("settings", viper.AllSettings()).Send()
+		// HACK: The line below prints secrets from env variables. Do not use it in production.
+		// log.Trace().Any("settings", viper.AllSettings()).Send()
 	}
 
 	log.Trace().Int64("admin_id", viper.GetInt64("telegram.admin_id")).Send()

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -48,7 +49,9 @@ func Load() (err error) {
 		viper.SetDefault(key, value)
 	}
 
-	ConfigEnv()
+	if err := ConfigEnv(); err != nil {
+		return err
+	}
 	ConfigFlags()
 	if err := LoadFiles(); err != nil {
 		return err
@@ -68,7 +71,11 @@ func Load() (err error) {
 	return nil
 }
 
-func ConfigEnv() {
+func ConfigEnv() error {
+	if err := godotenv.Load(); err != nil {
+		return fmt.Errorf("failed to load .env file: %w", err)
+	}
+
 	viper.SetEnvPrefix("raspishika")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.BindEnv("config_file")
@@ -77,6 +84,8 @@ func ConfigEnv() {
 	viper.BindEnv("telegram_admin_token")
 	viper.BindEnv("telegram_admin_id")
 	viper.AutomaticEnv()
+
+	return nil
 }
 
 func ConfigFlags() {
