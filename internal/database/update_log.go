@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -44,4 +45,55 @@ func (r *Repository) InsertUpdateLog(log *UpdateLog) error {
 		log,
 	)
 	return err
+}
+
+type DistributionElement struct {
+	Name  string `db:"name"`
+	Value int    `db:"value"`
+}
+
+func (r *Repository) GetDistribution(dataKind, periodKind string, dur time.Duration) ([]DistributionElement, error) {
+	nameQuery :=
+		`CASE strftime('%w', created_at)
+			WHEN '0' THEN '7'
+			WHEN '1' THEN '1'
+			WHEN '2' THEN '2'
+			WHEN '3' THEN '3'
+			WHEN '4' THEN '4'
+			WHEN '5' THEN '5'
+			WHEN '6' THEN '6'
+		END`
+	switch periodKind {
+	case "day":
+		nameQuery = "strftime('%H:00', created_at)"
+	// case "week":
+	// 	// Default
+	case "month":
+		nameQuery = "strftime('%y-%m-%d', created_at)"
+	case "year":
+		nameQuery = "strftime('%y-%m', created_at)"
+	}
+
+	period := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
+
+	switch dataKind {
+	case "activity":
+		var elements []DistributionElement
+		if err := r.db.Select(
+			&elements,
+			`SELECT `+nameQuery+` AS name,
+				COUNT(*) AS value
+			FROM update_logs
+			WHERE created_at > datetime('now', ?)
+			GROUP BY name
+			ORDER BY name ASC`,
+			period,
+		); err != nil {
+			return nil, err
+		}
+
+		return elements, nil
+	default:
+		return nil, nil
+	}
 }

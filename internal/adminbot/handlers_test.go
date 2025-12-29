@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Test_parseDuration(t *testing.T) {
+func Test_parsePeriod(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 
@@ -23,7 +23,7 @@ func Test_parseDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotOk := parseDuration(tt.str)
+			got, gotOk := parsePeriod(tt.str)
 			if tt.wantOk && gotOk {
 				if got != tt.want {
 					t.Errorf("parseDuration() = %v, want %v", got, tt.want)

@@ -23,6 +23,8 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "distribution", bot.MatchTypeCommand,
+		ab.distributionHandler)
 
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
 }
@@ -203,7 +205,7 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *model
 
 func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	_, args := tgbothelpers.ParseCommand(update.Message.Text)
-	duration, ok := parseDuration(args)
+	duration, ok := parsePeriod(args)
 	if !ok {
 		duration = 24 * time.Hour
 	}
@@ -285,7 +287,55 @@ Callbacks: %d`,
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
 }
 
-func parseDuration(str string) (time.Duration, bool) {
+// var Kinds = []string{"activity", "sending", "errors"}
+func (ab *AdminBot) distributionHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+
+	_, args := tgbothelpers.ParseCommand(update.Message.Text)
+	words := strings.Fields(args)
+
+	dataKind := "activity"
+	periodKind := "week"
+	dataPeriod := "1m"
+	// TODO: Implement distribution data kinds
+	// if len(words) >= 1 {
+	// 	for _, k := range Kinds {
+	// 		if k == words[0] {
+	// 			kind = k
+	// 			break
+	// 		}
+	// 	}
+	// }
+	if len(words) >= 2 {
+		periodKind = words[1]
+	}
+	if len(words) >= 3 {
+		dataPeriod = words[2]
+	}
+	dur, ok := parsePeriod(dataPeriod)
+	if !ok {
+		dur = 30 * 24 * time.Hour
+	}
+
+	distribution, err := ab.services.Repo.GetDistribution(dataKind, periodKind, dur)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get distribution")
+		return
+	}
+
+	text := "```\n"
+	for _, s := range distribution {
+		text += fmt.Sprintf("%s: %d\n", s.Name, s.Value)
+	}
+	text += "\n```"
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		Text:      text,
+		ParseMode: models.ParseModeMarkdown,
+	})
+}
+
+func parsePeriod(str string) (time.Duration, bool) {
 	if str == "" {
 		return 0, false
 	}
