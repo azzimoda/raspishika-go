@@ -176,6 +176,17 @@ func (r *Repository) GetPrivateChatCount() (int, error) {
 	return count, nil
 }
 
+func (r *Repository) GetNewChatCount(dur time.Duration) (int, error) {
+	var count int
+	if err := r.db.Get(&count,
+		`SELECT COUNT(*) FROM chats WHERE created_at > datetime('now', ?)`,
+		fmt.Sprintf("-%d seconds", int(dur.Seconds())),
+	); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // GetInactiveChatCount returns the number of inactive chats.
 //
 // Chat is inactive if it didn't use any commands for 48 hours,
@@ -190,9 +201,8 @@ func (r *Repository) GetInactiveChatCount(dur time.Duration) (int, error) {
 			LEFT JOIN (
 				SELECT * FROM update_logs WHERE created_at > datetime('now', ?)
 			) ul ON c.id = ul.chat_id
-			WHERE ("group" IS NULL OR "group" = '' OR daily_sending_time IS NULL AND pair_sending = 0)
-				AND c.updated_at < datetime('now', ?)
-			GROUP BY c.id HAVING count = 0
+			GROUP BY c.id
+			HAVING count = 0 AND ("group" IS NULL OR "group" = '' OR daily_sending_time IS NULL AND pair_sending = 0)
 		);`,
 		period, period,
 	); err != nil {

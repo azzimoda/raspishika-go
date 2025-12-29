@@ -14,15 +14,17 @@ import (
 )
 
 func main() {
+	logger.SetupLogger("debug", "")
+
 	if err := config.Load(); err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")
 	}
-
-	logger.SetupLogger(viper.GetString("logger.level"), viper.GetString("logger.dir"))
-
 	if config.PrintUsage() {
 		return
 	}
+
+	// Reset logget with loaded config.
+	logger.SetupLogger(viper.GetString("logger.level"), viper.GetString("logger.dir"))
 
 	log.Debug().Str("baseConfigFile", viper.GetString("config_file")).Msg("Loaded configuration")
 	if zerolog.GlobalLevel() == zerolog.TraceLevel {

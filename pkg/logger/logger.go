@@ -22,11 +22,11 @@ func SetupLogger(logLevelStr, logDir string) {
 	consoleWriter := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 
 	if logDir == "" {
-		log.Debug().Msg("No log directory configured; logging to console only")
+		log.Trace().Msg("No log directory configured; logging to console only")
 		log.Logger = zerolog.New(consoleWriter).With().Timestamp().Caller().Logger()
 	} else {
 		logFileName := filepath.Join(logDir, "raspishika.log")
-		log.Debug().Str("logFile", logFileName).Send()
+		log.Trace().Str("logFile", logFileName).Send()
 
 		log.Logger = zerolog.New(zerolog.MultiLevelWriter(
 			consoleWriter,

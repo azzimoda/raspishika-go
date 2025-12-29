@@ -3,6 +3,7 @@ package adminbot
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,8 +22,9 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, ab.startHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chats", bot.MatchTypeCommand, ab.chatsHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "updates", bot.MatchTypeCommand, ab.updatesHandler)
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
+
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
 }
 
 func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -161,45 +163,7 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models
 	})
 }
 
-func (ab *AdminBot) chatsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	totalChats, err := ab.services.Repo.GetChatCount()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get total chat count")
-		totalChats = 0
-	}
-
-	privateChatCount, err := ab.services.Repo.GetPrivateChatCount()
-	groupChatCount := totalChats - privateChatCount
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get private chat count")
-		privateChatCount = 0
-		groupChatCount = 0
-	}
-
-	inactiveCount, err := ab.services.Repo.GetInactiveChatCount(48 * time.Hour) // TODO: Make duration configurable.
-	activeChatCount := totalChats - inactiveCount
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get inactive chat count")
-		inactiveCount = 0
-		activeChatCount = 0
-	}
-
-	text := fmt.Sprintf(`Total chats: %d
-Private chats: %d
-Group chats: %d
-Active chats: %d
-Inactive chats: %d`,
-		totalChats, privateChatCount, groupChatCount, activeChatCount, inactiveCount)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text,
-		ParseMode: models.ParseModeMarkdown,
-	})
-
-	ab.sendConfigReport(ctx, b, update)
-}
-
-func (ab *AdminBot) sendConfigReport(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	dailyTimes, err := ab.services.Repo.GetChatGroupedByDailySendingTime()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats grouped by daily sending time")
@@ -237,37 +201,115 @@ func (ab *AdminBot) sendConfigReport(ctx context.Context, b *bot.Bot, update *mo
 	})
 }
 
-func (ab *AdminBot) updatesHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	startTime := time.Now().Add(-24 * time.Hour) // TODO: Make it configurable from args.
+func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	_, args := tgbothelpers.ParseCommand(update.Message.Text)
+	duration, ok := parseDuration(args)
+	if !ok {
+		duration = 24 * time.Hour
+	}
 
-	updateLogs, err := ab.services.Repo.GetUpdateLogsByPeriod(startTime, time.Now())
+	totalChats, err := ab.services.Repo.GetChatCount()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get chat count")
+		return
+	}
+
+	privateChatCount, err := ab.services.Repo.GetPrivateChatCount()
+	groupChatCount := totalChats - privateChatCount
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get private chat count")
+		privateChatCount = 0
+		groupChatCount = 0
+	}
+
+	inactiveCount, err := ab.services.Repo.GetInactiveChatCount(duration)
+	activeChatCount := totalChats - inactiveCount
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get inactive chat count")
+		inactiveCount = 0
+		activeChatCount = 0
+	}
+
+	newChats, err := ab.services.Repo.GetNewChatCount(duration)
+
+	updateLogs, err := ab.services.Repo.GetUpdateLogsByPeriod(time.Now().Add(-duration), time.Now())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update logs by period")
 		return
 	}
 
+	totalUpdates := len(updateLogs)
 	errorCount := 0
 	scheduleCommandCount := 0
-	updateCallbackCount := 0
+	callbackCount := 0
 	for _, log := range updateLogs {
 		if log.Error != nil && *log.Error != "" {
 			errorCount += 1
 		}
 
 		if log.Kind == "message" &&
-			(log.Data == "/week" || log.Data == "Неделя" || log.Data == "/tomorrow" || log.Data == "Завтра" ||
+			(log.Data == "/week" || log.Data == "Неделя" ||
+				log.Data == "/tomorrow" || log.Data == "Завтра" ||
 				log.Data == "/left" || log.Data == "Сегодня") {
 			scheduleCommandCount += 1
 		}
 
 		if log.Kind == "callback_query" && strings.Contains(log.Data, "update_") {
-			updateCallbackCount += 1
+			callbackCount += 1
 		}
 	}
 
-	successfulCount := len(updateLogs) - errorCount
+	// TODO: Collect metrics...
 
-	text := fmt.Sprintf("Success: %d\nError: %d\nSchedule: %d\nUpdate callback: %d",
-		successfulCount, errorCount, scheduleCommandCount, updateCallbackCount)
+	text := fmt.Sprintf(
+		`MONTHLY STATISTICS
+
+Total: %d
+Private/Group: %d / %d
+Active/Inactive: %d / %d
+New reigstered: %d
+
+Updates: %d
+Success/Fail: %d / %d
+Schedule: %d
+Callbacks: %d`,
+		totalChats,
+		privateChatCount, groupChatCount,
+		activeChatCount, inactiveCount,
+		newChats,
+		totalUpdates,
+		totalUpdates-errorCount, errorCount,
+		scheduleCommandCount, callbackCount,
+	)
+
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
+}
+
+func parseDuration(str string) (time.Duration, bool) {
+	if str == "" {
+		return 0, false
+	}
+
+	re := regexp.MustCompile(`^(\d+)\s*(h|d|w|m|y)?$`)
+	matches := re.FindStringSubmatch(str)
+	multiplier := time.Hour
+	switch matches[2] {
+	// case "h":
+	// 	multiplier = time.Hour
+	case "d":
+		multiplier = 24 * time.Hour
+	case "w":
+		multiplier = 7 * 24 * time.Hour
+	case "m":
+		multiplier = 30 * 24 * time.Hour
+	case "y":
+		multiplier = 365 * 24 * time.Hour
+		// Defualt is hours
+	}
+
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, false
+	}
+	return time.Duration(multiplier * time.Duration(num)), true
 }

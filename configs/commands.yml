@@ -18,9 +18,8 @@ mainbot_commands:
   - stop: Остановить бота
   - start: Запустить бота
 adminbot_commands:
-  - chats: Send all chats stats
-  - groups: Send all groups stats
-  - updates: Send update handling stats
+  - stats: 'Send bot stats for period (default: 24h)'
+  - config: Send config stats
 
   - chat: Send chat data view
   - group: Send group data view

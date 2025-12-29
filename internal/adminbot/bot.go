@@ -83,8 +83,13 @@ func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFu
 				log.Trace().Msgf("Ignoring update from chat %d", update.Message.Chat.ID)
 				return
 			}
+
+			log.Trace().Msgf("Processing update from admin chat %d", update.Message.Chat.ID)
+		} else {
+			log.Trace().Msg("Ignoring update")
+			return
 		}
-		log.Trace().Msgf("Processing update from admin chat %d", update.Message.Chat.ID)
+
 		next(ctx, b, update)
 	}
 }
