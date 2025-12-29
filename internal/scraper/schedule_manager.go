@@ -67,7 +67,7 @@ func (*ScheduleManager) scrapeSchedule(
 	cache *cache.Cache,
 	browser *browser.BrowserService,
 ) (any, error) {
-	departmentIDs, err := repo.GetDepartmentIDs()
+	departmentIDs, err := FetchDepartmentIDs(repo, browser, cache)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get department IDs: %w", err)
 	}

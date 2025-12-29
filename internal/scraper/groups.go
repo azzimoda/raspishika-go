@@ -58,8 +58,22 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 	return departments, nil
 }
 
+func FetchDepartmentIDs(repo *database.Repository,
+	browser *browser.BrowserService,
+	cache *cache.Cache,
+) ([]string, error) {
+	log.Trace().Msg("Fetching departments...")
+	if _, err := FetchGroups(repo, browser, cache); err != nil {
+		return nil, err
+	}
+
+	return repo.GetDepartmentIDs()
+}
+
 func FetchGroups(
-	repo *database.Repository, browser *browser.BrowserService, cache *cache.Cache,
+	repo *database.Repository,
+	browser *browser.BrowserService,
+	cache *cache.Cache,
 ) ([]database.Group, error) {
 	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
 		log.Debug().Msg("Using cached groups")
@@ -108,17 +122,24 @@ func FetchDepartmentGroups(
 }
 
 func checkGroups(repo *database.Repository, ttl time.Duration) ([]database.Group, error) {
+	log.Trace().Dur("groupTTLDur", ttl).Float64("hours", ttl.Hours()).Send()
 	groups, err := repo.GetGroups()
 	if err != nil {
 		return nil, err
 	}
 
+	outdatedCount := 0
 	for _, group := range groups {
-		if time.Since(group.UpdatedAt) < ttl {
-			return groups, nil
+		if time.Since(group.UpdatedAt) > ttl {
+			outdatedCount++
 		}
 	}
-	return nil, fmt.Errorf("all groups are outdated")
+	outdatedGroupsPercent := float64(outdatedCount) / float64(len(groups))
+	log.Trace().Float64("outdatedGroupsPercent", outdatedGroupsPercent).Msg("Checked groups")
+	if outdatedGroupsPercent <= 0.5 {
+		return groups, nil
+	}
+	return nil, fmt.Errorf("more than 50%% groups are outdated")
 }
 
 func scrapeDepartmentGroups(browser *browser.BrowserService, department Department) ([]database.Group, error) {

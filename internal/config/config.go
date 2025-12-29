@@ -91,9 +91,13 @@ func ConfigEnv() error {
 func ConfigFlags() {
 	pflag.String("config", "", "Specify config file")
 	pflag.String("commands", "", "Specify commands config file")
+
 	pflag.Time("start", time.Time{}, []string{"2006-01-02T15:04", "01-02T15:04"},
 		"Start bot at specified time; format: 2006-01-02T15:04")
 	pflag.String("notify", "", "Send specified notification to all chats")
+
+	pflag.Int("year", 0, "Specify fixed year for schedule URL")
+
 	pflag.String("log", "", "Specify log level")
 	pflag.String("log-dir", "", "Specify log directory")
 	pflag.Bool("help", false, "Print usage")
@@ -101,8 +105,12 @@ func ConfigFlags() {
 
 	viper.BindPFlag("config_file", pflag.CommandLine.Lookup("config"))
 	viper.BindPFlag("commands_file", pflag.CommandLine.Lookup("commands"))
+
 	viper.BindPFlag("start", pflag.CommandLine.Lookup("start"))
 	viper.BindPFlag("notify", pflag.CommandLine.Lookup("notify"))
+
+	viper.BindPFlag("fixed_year", pflag.CommandLine.Lookup("year"))
+
 	viper.BindPFlag("logger.level", pflag.CommandLine.Lookup("log"))
 	viper.BindPFlag("logger.dir", pflag.CommandLine.Lookup("log-dir"))
 }
