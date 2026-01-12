@@ -5,15 +5,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/database"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
@@ -24,38 +19,6 @@ func InitPaths() {
 	viper.Set("config_file", filepath.Join(rootDir, "configs/.debug-config.yml"))
 	viper.Set("commands_file", filepath.Join(rootDir, "configs/commands.yml"))
 	viper.Set("schedule_template_file", filepath.Join(rootDir, "storage/schedule_template.html"))
-}
-
-// TODO: Adapt to new services structure.
-func InitServices(t *testing.T, debugConfigFile, templateFile string) (
-	string,
-	*database.Repository,
-	*browser.BrowserService,
-	*cache.Cache,
-) {
-	testsDir := filepath.Join(os.TempDir(), time.Now().Format("20060102150405"))
-	if err := os.MkdirAll(testsDir, 0755); err != nil {
-		t.Fatalf("could not create tests directory: %v", err)
-	}
-
-	log.Trace().Str("debugConfigFile", debugConfigFile).Str("templateFile", templateFile).Str("testsDir", testsDir).
-		Msg("InitServices")
-
-	InitConfig(t, testsDir)
-
-	repo, err := database.New()
-	if err != nil {
-		t.Fatalf("could not construct repository: %v", err)
-	}
-
-	browserService, err := browser.New()
-	if err != nil {
-		t.Fatalf("could not construct browser: %v", err)
-	}
-
-	cacheService := cache.New()
-
-	return testsDir, repo, browserService, cacheService
 }
 
 func InitConfig(t *testing.T, testsDir string) {

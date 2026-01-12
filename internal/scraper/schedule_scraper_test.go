@@ -5,6 +5,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/mainbot/utils"
 	"github.com/azzimoda/raspishika-go/internal/scraper"
+	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
 var debugConfigFile string
@@ -15,20 +16,25 @@ func init() {
 }
 
 func TestScrapeScheduleWithBrowser(t *testing.T) {
-	// Initialize configuration.
-	testsDir, repo, browser, cache := utils.InitServices(t, debugConfigFile, templateFile)
+	testsDir := t.TempDir()
+	utils.InitConfig(t, testsDir)
+
+	srvs, err := services.NewServices()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Prepare test data.
-	if _, err := scraper.FetchGroups(repo, browser, cache); err != nil {
+	if _, err := scraper.FetchGroups(srvs.Repo, srvs.Browser, srvs.Cache); err != nil {
 		t.Fatalf("Failed to fetch groups: %v", err)
 	}
 
-	departmentIDs, err := repo.GetDepartmentIDs()
+	departmentIDs, err := srvs.Repo.GetDepartmentIDs()
 	if err != nil {
 		t.Fatalf("Failed to get department IDs: %v", err)
 	}
 
-	teachers, err := scraper.FetchTeachers(repo, browser)
+	teachers, err := scraper.FetchTeachers(srvs.Repo, srvs.Browser)
 	if err != nil {
 		t.Fatalf("Failed to fetch teachers: %v", err)
 	}
@@ -52,7 +58,7 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := scraper.ScrapeScheduleWithBrowser(browser, tt.url, tt.config)
+			got, gotErr := scraper.ScrapeScheduleWithBrowser(srvs.Browser, tt.url, tt.config)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("ScrapeScheduleWithBrowser() failed: %v", gotErr)
