@@ -14,6 +14,7 @@ import (
 )
 
 var Defaults = map[string]any{
+	"env":           ".env",
 	"config_file":   "configs/config.yml",
 	"commands_file": "configs/commands.yml",
 
@@ -72,7 +73,7 @@ func Load() (err error) {
 }
 
 func ConfigEnv() error {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(viper.GetString("env")); err != nil {
 		return fmt.Errorf("failed to load .env file: %w", err)
 	}
 

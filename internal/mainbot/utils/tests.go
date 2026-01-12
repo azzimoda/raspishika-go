@@ -12,16 +12,19 @@ import (
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
+// InitPaths initializes the paths for the tests. Should be called before any other function in this package.
 func InitPaths() {
 	_, filename, _, _ := runtime.Caller(0)
 	rootDir := filepath.Join(filepath.Dir(filename), "..", "..", "..")
 
+	viper.Set("root", rootDir)
 	viper.Set("config_file", filepath.Join(rootDir, "configs/.debug-config.yml"))
 	viper.Set("commands_file", filepath.Join(rootDir, "configs/commands.yml"))
 	viper.Set("schedule_template_file", filepath.Join(rootDir, "storage/schedule_template.html"))
 }
 
 func InitConfig(t *testing.T, testsDir string) {
+	viper.Set("env", filepath.Join(viper.GetString("root"), ".env"))
 	if err := config.Load(); err != nil {
 		t.Fatalf("could not load config: %v", err)
 	}
