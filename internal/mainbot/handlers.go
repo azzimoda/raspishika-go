@@ -103,8 +103,8 @@ func (mb *MainBot) registerHandlers() {
 	{
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete"),
 			mb.deleteHandler, mb.checkRegularAccessMiddleware)
-		// mb.bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
-		// 	mb.deleteHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
+			mb.deleteHandler, mb.checkConfigAccessMiddleware)
 
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_group"),
 			mb.configGroupHandler, mb.checkConfigAccessMiddleware)

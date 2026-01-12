@@ -65,6 +65,8 @@ type sendingResult struct {
 	failedAll bool
 }
 
+// handleTelegramAPIError handles errors returned by Telegram API.
+// Returns an error if the error is not recoverable.
 func handleTelegramAPIError(services *services.Services, chat *database.Chat, err error) error {
 	if err == nil {
 		return nil
@@ -135,7 +137,7 @@ func handleTelegramAPIError(services *services.Services, chat *database.Chat, er
 		// Handle the TooManyRequestsError (429) case here
 		retryAfter := err.(*bot.TooManyRequestsError).RetryAfter
 		fmt.Println("Received TooManyRequestsError with retry_after:", retryAfter)
-		// TODO: Implement timeout and retry logic here.
+		// NOTE: It would be better to implement timeout and retry logic here. But it seems to work fine without it.
 	}
 
 	return fmt.Errorf("unhandled Telegram API error: %w", err)

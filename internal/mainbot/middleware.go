@@ -105,8 +105,6 @@ func (mb *MainBot) ignoreOldMessagesMiddleware(next bot.HandlerFunc) bot.Handler
 	}
 }
 
-// TODO: Maybe I should not define callbackSF in global scope.
-
 // callbackSF is a single flight group for handling callback queries
 // and preventing them from being handled multiple times simultaneously for one message.
 var callbackSF = singleflight.Group{}
@@ -248,8 +246,17 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 		if chat.Access == database.ChatAccessAll || isAdmin {
 			logEvent.Msg("User is allowed to use config commands")
 			next(ctx, b, update)
+			
+			return
+		} else {
+			logEvent.Msg("User is not allowed to use config commands")
+			if update.CallbackQuery != nil {
+				mb.Bot.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
+					CallbackQueryID: update.CallbackQuery.ID,
+					Text:            "Доступ запрещен",
+				})
+			}
 		}
-		logEvent.Msg("User is not allowed to use config commands")
 	}
 }
 

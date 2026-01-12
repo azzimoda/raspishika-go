@@ -196,8 +196,7 @@ func settingsMessageParams(chat *database.Chat) (string, *models.InlineKeyboardM
 		}
 		keyboard = append(keyboard, row)
 	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete"}})
-	// TODO: use `delete_config`.
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete_config"}})
 
 	return text, &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }

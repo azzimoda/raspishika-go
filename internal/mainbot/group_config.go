@@ -84,7 +84,12 @@ func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) m
 		}
 		keyboard = append(keyboard, row)
 	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
+
+	deleteCommand := "delete_config"
+	if isQuick {
+		deleteCommand = "delete"
+	}
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: deleteCommand}})
 	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 

@@ -44,7 +44,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *mod
 		Text:      text,
 		ParseMode: models.ParseModeMarkdown,
 		ReplyMarkup: models.InlineKeyboardMarkup{
-			InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}},
+			InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete_config"}}},
 		},
 	})
 	addContextHandlerError(ctx, err)

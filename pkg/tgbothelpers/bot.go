@@ -68,6 +68,7 @@ func DeleteMessageSafely(ctx context.Context, b *bot.Bot, message *models.Messag
 		return b.DeleteMessage(ctx, &bot.DeleteMessageParams{ChatID: message.Chat.ID, MessageID: message.ID})
 	}
 
+	log.Warn().Msg("Bot does not have permission to delete messages in this group")
 	return false, nil
 }
 

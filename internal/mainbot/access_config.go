@@ -99,7 +99,7 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 func accessMenuInlineMarkup(accessLevel database.ChatAccessLevel) *models.InlineKeyboardMarkup {
 	keyboard := [][]models.InlineKeyboardButton{
 		{},
-		{{Text: "Закрыть", CallbackData: "delete"}},
+		{{Text: "Закрыть", CallbackData: "delete_config"}},
 	}
 	for i := range 3 {
 		text := fmt.Sprint(i)
