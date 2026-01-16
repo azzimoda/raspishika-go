@@ -19,8 +19,9 @@ func (mb *MainBot) quickHandler(ctx context.Context, b *bot.Bot, update *models.
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgCouldNotLoadSchedule,
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
 		})
 		return
 	}
@@ -28,16 +29,18 @@ func (mb *MainBot) quickHandler(ctx context.Context, b *bot.Bot, update *models.
 	if err := mb.services.Repo.UpdateChatState(update.Message.Chat.ID, database.ChatStateQuickSelectingDepartment); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgCouldNotLoadSchedule,
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
 		})
 		return
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        "Выберите отделение",
-		ReplyMarkup: departmentSelectionMarkup(departments, true),
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Выберите отделение",
+		ReplyMarkup:     departmentSelectionMarkup(departments, true),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -60,22 +63,28 @@ func (mb *MainBot) quickSelectDepartmentHandler(ctx context.Context, b *bot.Bot,
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: chatID,
-			Text:   ErrMsgCouldNotLoadSchedule,
+			ChatID:          chatID,
+			MessageThreadID: update.CallbackQuery.Message.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
 		})
 		return
 	}
 
 	if err := mb.services.Repo.UpdateChatState(chatID, database.ChatStateQuickSelectingGroup); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          chatID,
+			MessageThreadID: update.CallbackQuery.Message.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
-		Text:        "Выберите группу на клавиатуре",
-		ReplyMarkup: groupsReplyMarkup(groups),
+		ChatID:          update.CallbackQuery.Message.Message.Chat.ID,
+		MessageThreadID: update.CallbackQuery.Message.Message.MessageThreadID,
+		Text:            "Выберите группу на клавиатуре или введите название в верном формате (например: ИСПт-22-(9)-2)",
+		ReplyMarkup:     groupsReplyMarkup(groups),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -86,7 +95,11 @@ func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
@@ -96,8 +109,9 @@ func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update
 	if err := mb.services.Repo.UpdateChatState(update.Message.Chat.ID, database.ChatStateDefault); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgCouldNotUpdateData,
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
 		})
 		return
 	}
@@ -105,21 +119,32 @@ func (mb *MainBot) textQuickGroupHandler(ctx context.Context, b *bot.Bot, update
 	group, err := mb.services.Repo.GetGroupByName(update.Message.Text)
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Группа не найдена"})
-		return
-	}
-
-	scheduleCfg := scraper.GroupScheduleConfig(group)
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, update.Message.Chat.ID, scheduleCfg)
-	if err != nil {
-		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgCouldNotLoadSchedule,
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Группа не найдена",
 		})
 		return
 	}
 
-	err = mb.SendWeekScheduleMessages(ctx, b, chat, scheduleCfg, imageFilename, imageData)
+	scheduleCfg := scraper.GroupScheduleConfig(group)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
+		ctx,
+		b,
+		update.Message.Chat.ID,
+		update.Message.MessageThreadID,
+		scheduleCfg,
+	)
+	if err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
+		})
+		return
+	}
+
+	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, scheduleCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }

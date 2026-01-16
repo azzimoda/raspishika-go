@@ -29,14 +29,22 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *mo
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
 	chat.PairSending = on
 	if err := mb.services.Repo.UpdateChat(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
@@ -45,8 +53,9 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *mo
 		text = "Напоминания включены"
 	}
 	err = tgbothelpers.SendTempMessage(ctx, b, 5*time.Second, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   text,
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            text,
 	})
 	addContextHandlerError(ctx, err)
 }

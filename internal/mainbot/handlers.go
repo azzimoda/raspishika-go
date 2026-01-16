@@ -145,53 +145,56 @@ func (mb *MainBot) registerCommandHandler(pattern string, f bot.HandlerFunc, m .
 }
 
 func commandMatchFunction(pattern string, username string) bot.MatchFunc {
-	log.Trace().Str("pattern", pattern).Str("username", username).Msg("Generating command match function...")
 	re := regexp.MustCompile(fmt.Sprintf(`^/%s(@\w+)?(\s[\s\S]+)?$`, pattern))
-	log.Trace().Any("re", re).Send()
+	log.Trace().Str("pattern", pattern).Str("username", username).Any("re", re).
+		Msg("Generating command match function...")
+	return func(update *models.Update) bool {
+		return matchUpdatePatternUsername(update, pattern, username, re)
+	}
+}
 
-	matchFunc := func(update *models.Update) bool {
-		if update.Message == nil || update.Message.Text == "" {
-			return false // Not a text message.
-		}
+func matchUpdatePatternUsername(update *models.Update, pattern string, username string, re *regexp.Regexp) bool {
+	if update.Message == nil || update.Message.Text == "" {
+		return false // Not a text message.
+	}
 
-		text := update.Message.Text
-		log.Trace().Str("pattern", pattern).Str("username", username).Str("text", text).Msg("Checking command match...")
+	text := update.Message.Text
+	log.Trace().Str("pattern", pattern).Str("username", username).Str("text", text).Msg("Checking command match...")
 
-		if !re.MatchString(text) {
-			log.Trace().Str("text", text).Msg("Invalid command")
-			return false
-		}
-		submatches := re.FindStringSubmatch(text)
-		if submatches == nil {
-			log.Trace().Str("text", text).Msg("No subtaches")
-			return true
-		}
-		log.Trace().Str("text", text).Strs("submatches", submatches).Send()
-
-		if update.Message.Chat.Type == models.ChatTypeGroup || update.Message.Chat.Type == models.ChatTypeSupergroup {
-			log.Trace().Str("text", text).Msg("Command in group chat")
-
-			if submatches[1] == "" {
-				// In group chats command without username are sent to last accessed bot.
-				// That means, if this bot is not the last accessed, that message the bot won't receive it.
-				// Otherwise, it will receive it and should handle it.
-				log.Trace().Str("text", text).Msg("Command without username")
-				return true
-			}
-
-			if submatches[1] == "@"+username {
-				log.Trace().Str("text", text).Msg("Command with my username")
-				return true
-			}
-			log.Trace().Str("text", text).Msg("Not my username")
-			return false
-		}
-		log.Trace().Str("text", text).Msg("Command in private chat")
-
-		// In private chat any username is allowed.
+	if !re.MatchString(text) {
+		log.Trace().Str("text", text).Msg("Invalid command")
+		return false
+	}
+	submatches := re.FindStringSubmatch(text)
+	if submatches == nil {
+		log.Trace().Str("text", text).Msg("No submatches")
 		return true
 	}
-	return matchFunc
+	log.Trace().Str("text", text).Strs("submatches", submatches).Send()
+
+	if update.Message.Chat.Type == models.ChatTypeGroup || update.Message.Chat.Type == models.ChatTypeSupergroup {
+		log.Trace().Str("text", text).Msg("Command in group chat")
+
+		if submatches[1] == "" {
+			// In group chats command without username are sent to last accessed bot.
+			// That means, if this bot is not the last accessed, it won't receive that message.
+			// Otherwise, it will receive it and should handle it.
+			log.Trace().Str("text", text).Msg("Command without username")
+			return true
+		}
+
+		if submatches[1] == "@"+username {
+			log.Trace().Str("text", text).Msg("Command with my username")
+			return true
+		}
+
+		log.Trace().Str("text", text).Msg("Not my username")
+		return false
+	}
+	log.Trace().Str("text", text).Msg("Command in private chat")
+
+	// In private chat any username is allowed.
+	return true
 }
 
 func (mb *MainBot) registerTextMessageHandler(pattern string, f bot.HandlerFunc, m ...bot.Middleware) string {
@@ -241,7 +244,11 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 
 func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Start handler")
-	_, err := mb.Bot.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: StartMessage})
+	_, err := mb.Bot.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            StartMessage,
+	})
 	addContextHandlerError(ctx, err)
 
 	if err == nil {
@@ -259,7 +266,11 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.
 
 func (mb *MainBot) helpHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Help handler")
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: HelpMessage})
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            HelpMessage,
+	})
 	addContextHandlerError(ctx, err)
 }
 
@@ -270,8 +281,9 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.U
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Не удалось удалить данные чата, попробуйте позже",
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Не удалось удалить данные чата, попробуйте позже",
 		})
 		return
 	}
@@ -279,16 +291,18 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.U
 	if err := mb.services.Repo.DeleteChat(chat.ID); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to delete chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Не удалось удалить данные чата, попробуйте позже",
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Не удалось удалить данные чата, попробуйте позже",
 		})
 		return
 	}
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        "Рассылки остановлены и ваши данные удалены. Спасибо, что пользовались нашим ботом!",
-		ReplyMarkup: models.ReplyKeyboardRemove{RemoveKeyboard: true},
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Рассылки остановлены и ваши данные удалены. Спасибо, что пользовались нашим ботом!",
+		ReplyMarkup:     models.ReplyKeyboardRemove{RemoveKeyboard: true},
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -331,9 +345,10 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *mo
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        "Действие отменено",
-		ReplyMarkup: mainMenuReplyMarkup(update.Message.Chat.ID > 0),
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Действие отменено",
+		ReplyMarkup:     mainMenuReplyMarkup(update.Message.Chat.ID > 0),
 	})
 	addContextHandlerError(ctx, err)
 }

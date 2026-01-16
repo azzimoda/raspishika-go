@@ -21,13 +21,21 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *mod
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
 	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, database.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
@@ -40,9 +48,10 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *mod
 	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text,
-		ParseMode: models.ParseModeMarkdown,
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            text,
+		ParseMode:       models.ParseModeMarkdown,
 		ReplyMarkup: models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete_config"}}},
 		},
@@ -56,20 +65,29 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *mode
 	chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
 	chat.DailySendingTime = nil
 	if err := mb.services.Repo.UpdateChat(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Ежедневная рассылка выключена",
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Ежедневная рассылка выключена",
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -82,15 +100,21 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *mode
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
 	t, err := time.Parse("15:04", update.Message.Text)
 	if err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Неправильный вормат времени, попробуйте ещё раз: `19:00`",
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Неправильный вормат времени, попробуйте ещё раз: `19:00`",
+			ParseMode:       models.ParseModeMarkdown,
 		})
 		return
 	}
@@ -100,13 +124,18 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *mode
 	chat.DailySendingTime = &timeStr
 	if err := mb.services.Repo.UpdateChat(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Время рассылки установлено на " + timeStr,
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Время рассылки установлено на " + timeStr,
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -123,12 +152,20 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, database.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 	time := ""
@@ -139,10 +176,11 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 	}
 	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      message.Chat.ID,
-		Text:        text,
-		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
+		ChatID:          message.Chat.ID,
+		MessageThreadID: message.MessageThreadID,
+		Text:            text,
+		ParseMode:       models.ParseModeMarkdown,
+		ReplyMarkup:     models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
 	})
 	addContextHandlerError(ctx, err)
 }

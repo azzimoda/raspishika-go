@@ -30,7 +30,7 @@ func main() {
 	if zerolog.GlobalLevel() == zerolog.TraceLevel {
 		log.Trace().Msg("Viper debug:")
 		viper.Debug()
-		// HACK: The line below prints secrets from env variables. Do not use it in production.
+		// HACK: The line below prints secrets from env variables. Do not use it in production, only for debugging.
 		// log.Trace().Any("settings", viper.AllSettings()).Send()
 	}
 

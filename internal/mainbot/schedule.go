@@ -21,13 +21,16 @@ import (
 func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Week handler")
 
-	tgChat := update.Message.Chat
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgTryLater})
-		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(tgChat.ID).
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
+		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(update.Message.Chat.ID).
 			Msg("Error in groupHandler")
 		return
 	}
@@ -47,15 +50,25 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.U
 
 	scheduleCfg := scraper.GroupScheduleConfig(group)
 
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, tgChat.ID, scheduleCfg)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
+		ctx,
+		b,
+		update.Message.Chat.ID,
+		update.Message.MessageThreadID,
+		scheduleCfg,
+	)
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
+		})
 		return
 	}
 	log.Debug().Str("filename", imageFilename).Msg("Screenshot saved")
 
-	err = mb.SendWeekScheduleMessages(ctx, b, chat, scheduleCfg, imageFilename, imageData)
+	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, scheduleCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
 
@@ -63,9 +76,14 @@ func (mb *MainBot) PrepareWeekScheduleData(
 	ctx context.Context,
 	b *bot.Bot,
 	chatID int64,
+	messageThreadID int,
 	scheduleCfg scraper.ScheduleConfig,
 ) (imageFilename string, imageData []byte, err error) {
-	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chatID, Action: models.ChatActionTyping})
+	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID:          chatID,
+		MessageThreadID: messageThreadID,
+		Action:          models.ChatActionTyping,
+	})
 
 	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
 	if err != nil {
@@ -91,6 +109,7 @@ func (mb *MainBot) PrepareWeekScheduleData(
 func (*MainBot) SendWeekScheduleMessages(
 	ctx context.Context,
 	b *bot.Bot,
+	messageThreadID int,
 	chat *database.Chat,
 	scheduleCfg scraper.ScheduleConfig,
 	imageFilename string,
@@ -99,20 +118,26 @@ func (*MainBot) SendWeekScheduleMessages(
 	var errs []error
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chat.TgChatID,
-		Text:        scheduleCfg.FormatMarkdown() + ":",
-		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: mainMenuReplyMarkup(chat.IsPrivate()),
+		ChatID:          chat.TgChatID,
+		MessageThreadID: messageThreadID,
+		Text:            scheduleCfg.FormatMarkdown() + ":",
+		ParseMode:       models.ParseModeMarkdown,
+		ReplyMarkup:     mainMenuReplyMarkup(chat.IsPrivate()),
 	})
 	errs = append(errs, err)
 
-	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{ChatID: chat.TgChatID, Action: models.ChatActionUploadPhoto})
+	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID:          chat.TgChatID,
+		MessageThreadID: messageThreadID,
+		Action:          models.ChatActionUploadPhoto,
+	})
 	errs = append(errs, err)
 
 	_, err = b.SendPhoto(ctx, &bot.SendPhotoParams{
-		ChatID:      chat.TgChatID,
-		Photo:       &models.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
-		ReplyMarkup: weekScheduleMarkup(scheduleCfg),
+		ChatID:          chat.TgChatID,
+		MessageThreadID: messageThreadID,
+		Photo:           &models.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
+		ReplyMarkup:     weekScheduleMarkup(scheduleCfg),
 	})
 	errs = append(errs, err)
 
@@ -161,7 +186,11 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *mode
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          chatID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).Msg("Error in groupHandler")
 		return
 	}
@@ -183,7 +212,11 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *mode
 		mb.services.Repo, mb.services.Browser, mb.services.Cache, scraper.GroupScheduleConfig(group))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          chatID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotLoadSchedule,
+		})
 		return
 	}
 
@@ -197,10 +230,11 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *mode
 
 	text := tomorrow.String()
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
-		Text:        text,
-		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: updateInlineMarkup("tomorrow", *chat.GroupName),
+		ChatID:          chatID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            text,
+		ParseMode:       models.ParseModeMarkdown,
+		ReplyMarkup:     updateInlineMarkup("tomorrow", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -208,21 +242,23 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *mode
 func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Left handler")
 
-	chatID := update.Message.Chat.ID
-
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
+		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(update.Message.Chat.ID).
+			Msg("Error in groupHandler")
+		return
+	}
 
 	text := ""
 	if time.Now().Weekday() == time.Sunday {
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
-		if !ok {
-			addContextHandlerError(ctx, ErrNoChatContext)
-			sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgTryLater})
-			mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).Msg("Error in groupHandler")
-			return
-		}
-
 		if chat.GroupName == nil {
 			// Offer to set group.
 			log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
@@ -237,10 +273,18 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.U
 		}
 
 		rawSchedule, err := mb.services.ScheduleManager.Get(
-			mb.services.Repo, mb.services.Browser, mb.services.Cache, scraper.GroupScheduleConfig(group))
+			mb.services.Repo,
+			mb.services.Browser,
+			mb.services.Cache,
+			scraper.GroupScheduleConfig(group),
+		)
 		if err != nil {
 			addContextHandlerError(ctx, err)
-			sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chatID, Text: ErrMsgCouldNotLoadSchedule})
+			sendErrorMessage(ctx, b, &bot.SendMessageParams{
+				ChatID:          update.Message.Chat.ID,
+				MessageThreadID: update.Message.MessageThreadID,
+				Text:            ErrMsgCouldNotLoadSchedule,
+			})
 			return
 		}
 
@@ -255,10 +299,11 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.U
 	}
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
-		Text:        text,
-		ParseMode:   models.ParseModeMarkdown,
-		ReplyMarkup: updateInlineMarkup("left", *chat.GroupName),
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            text,
+		ParseMode:       models.ParseModeMarkdown,
+		ReplyMarkup:     updateInlineMarkup("left", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -290,12 +335,17 @@ func (mb *MainBot) tryGetGroup(
 		chat.GroupName = nil
 		if err := mb.services.Repo.UpdateChat(chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   ErrMsgCouldNotUpdateData,
+				ChatID:          update.Message.Chat.ID,
+				MessageThreadID: update.Message.MessageThreadID,
+				Text:            ErrMsgCouldNotUpdateData,
 			})
 		}
 
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgSelectGroupAgain})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgSelectGroupAgain,
+		})
 		mb.groupHandler(ctx, b, update)
 		return nil, true, nil
 	case errors.Is(err, ErrGroupNotFound):
@@ -305,19 +355,25 @@ func (mb *MainBot) tryGetGroup(
 		chat.GroupName = nil
 		if err := mb.services.Repo.UpdateChat(chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text:   ErrMsgCouldNotUpdateData,
+				ChatID:          update.Message.Chat.ID,
+				MessageThreadID: update.Message.MessageThreadID,
+				Text:            ErrMsgCouldNotUpdateData,
 			})
 		}
 
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgSelectGroupAgain,
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgSelectGroupAgain,
 		})
 		mb.groupHandler(ctx, b, update)
 		return nil, true, nil
 	default:
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return nil, true, fmt.Errorf("failed to fetch group: %w", err)
 	}
 }

@@ -114,14 +114,21 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*dat
 	scheduleCfg := scraper.GroupScheduleConfig(group)
 
 	ctx := context.Background()
-	imageFilename, imageData, err := sm.bot.PrepareWeekScheduleData(ctx, sm.bot.Bot, chats[0].TgChatID, scheduleCfg)
+	imageFilename, imageData, err := sm.bot.PrepareWeekScheduleData(
+		ctx,
+		sm.bot.Bot,
+		chats[0].TgChatID,
+		0, // NOTE: By default bot sends daily sending to the general chat.
+		scheduleCfg,
+	)
 	if err != nil {
 		return []error{fmt.Errorf("failed preparing week schedule data: %w", err)}, true
 	}
 
 	var errs []error
 	for _, chat := range chats {
-		err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, chat, scheduleCfg, imageFilename, imageData)
+		// NOTE: By default bot send dailt sending to general chat, so the message thread ID is 0.
+		err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, 0, chat, scheduleCfg, imageFilename, imageData)
 
 		if err != nil {
 			log.Error().Err(err).Int64("TgChatID", chat.TgChatID).Msgf("Failed to send daily schedule to chat")

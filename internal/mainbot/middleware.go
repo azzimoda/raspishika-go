@@ -171,14 +171,16 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 
 		logEvent := log.Info().Dur("elapsed_time", elapsedTime)
 		if update.Message != nil {
+			message := update.Message
+			log.Trace().Bool("IsTopicMessage", message.IsTopicMessage).Int("MessageThreadID", message.MessageThreadID).Send()
 			updateKind = "message"
-			updateData = update.Message.Text
+			updateData = message.Text
 			logEvent.
-				Int64("chat_id", update.Message.Chat.ID).
-				Str("username", update.Message.From.Username).
-				Str("first_name", update.Message.From.FirstName).
-				Str("last_name", update.Message.From.LastName).
-				Str("text", shortenText(update.Message.Text, 100)).
+				Int64("chat_id", message.Chat.ID).
+				Str("username", message.From.Username).
+				Str("first_name", message.From.FirstName).
+				Str("last_name", message.From.LastName).
+				Str("text", shortenText(message.Text, 100)).
 				Msg("Message handled")
 		} else if update.CallbackQuery != nil {
 			updateKind = "callback_query"
@@ -246,7 +248,7 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 		if chat.Access == database.ChatAccessAll || isAdmin {
 			logEvent.Msg("User is allowed to use config commands")
 			next(ctx, b, update)
-			
+
 			return
 		} else {
 			logEvent.Msg("User is not allowed to use config commands")

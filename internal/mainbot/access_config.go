@@ -23,7 +23,11 @@ func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *models
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			Text:            ErrMsgTryLater,
+			MessageThreadID: update.Message.MessageThreadID,
+		})
 		return
 	}
 
@@ -42,9 +46,10 @@ func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *models
 			chat.Access,
 		)
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:      update.Message.Chat.ID,
-			Text:        text,
-			ReplyMarkup: accessMenuInlineMarkup(chat.Access),
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            text,
+			ReplyMarkup:     accessMenuInlineMarkup(chat.Access),
 		})
 	}
 }
@@ -55,7 +60,11 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
 		return
 	}
 
@@ -64,8 +73,9 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Произошла ошибка, установлено значение по умолчанию — 0",
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Произошла ошибка, установлено значение по умолчанию — 0",
 		})
 		log.Error().Err(err).Msg("Failed to parse access level; fallback to 0")
 		chat.Access = 0
@@ -75,7 +85,11 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 
 	if err := mb.services.Repo.UpdateChat(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 

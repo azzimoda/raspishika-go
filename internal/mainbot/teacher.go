@@ -37,9 +37,10 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *model
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        "Пришлите полное имя преподавателя или его часть",
-		ReplyMarkup: teacherInlineMarkup(teachers),
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Пришлите полное имя преподавателя или его часть",
+		ReplyMarkup:     teacherInlineMarkup(teachers),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -83,15 +84,16 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 			addContextHandlerError(ctx, fmt.Errorf("could not send teacher schedule: %w", ErrNoChatContext))
 			// If failed, reask user to select teacher manually.
 		} else {
-			mb.sendTeacherSchedule(ctx, b, &update.Message.Chat, chat, &matchedTeachers[0])
+			mb.sendTeacherSchedule(ctx, b, update.Message.MessageThreadID, &update.Message.Chat, chat, &matchedTeachers[0])
 			return
 		}
 	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
-		Text:        "Выберите проподавателя из списка или попробуйте снова",
-		ReplyMarkup: teachersInlineMarkup(matchedTeachers),
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Text:            "Выберите проподавателя из списка или попробуйте снова",
+		ReplyMarkup:     teachersInlineMarkup(matchedTeachers),
 	})
 }
 
@@ -148,12 +150,13 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	mb.sendTeacherSchedule(ctx, b, &message.Chat, chat, teacher)
+	mb.sendTeacherSchedule(ctx, b, message.MessageThreadID, &message.Chat, chat, teacher)
 }
 
 func (mb *MainBot) sendTeacherSchedule(
 	ctx context.Context,
 	b *bot.Bot,
+	messageThreadID int,
 	chat *models.Chat,
 	localChat *database.Chat,
 	teacher *database.Teacher,
@@ -169,13 +172,13 @@ func (mb *MainBot) sendTeacherSchedule(
 	}
 
 	schedueCfg := scraper.TeacherScheduleConfig(teacher)
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, chat.ID, schedueCfg)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, chat.ID, messageThreadID, schedueCfg)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
 
-	err = mb.SendWeekScheduleMessages(ctx, b, localChat, schedueCfg, imageFilename, imageData)
+	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, localChat, schedueCfg, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
