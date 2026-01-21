@@ -27,7 +27,7 @@ func Windows1251ToUTF8(s string) (string, error) {
 
 // ValidateGroupNameFormat determines whether the given string can be formatted into a valid group name,
 // and if it can, returns valid group name, else returns an error.
-// It uses regexp provided by the constant GroupRegexp.
+// It uses regexp provided by the constant [GroupRegexp].
 //
 // Important: the function doesn't validate case, i.e. if string "иСпТ-22-(9)-2" is given, the result is the same.
 func ValidateGroupNameFormat(s string) (string, error) {

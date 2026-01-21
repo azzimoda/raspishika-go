@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
@@ -39,20 +40,32 @@ func (r *Repository) GetDepartmentIDs() (departmentIDs []string, err error) {
 	return
 }
 
+// ValidateGroupNameCase validates group name case. Argument value must has valid format.
 func (r *Repository) ValidateGroupNameCase(name string) (string, error) {
 	nameLower := strings.ToLower(name)
 
 	groups, err := r.GetGroups()
 	if err != nil {
+		log.Debug().Err(err).Msg("Failed to get groups from DB")
 		return name, err
 	}
 
 	for _, group := range groups {
-		if strings.ToLower(group.GroupName) == nameLower {
-			return name, nil
+		groupNameLower := strings.ToLower(group.GroupName)
+		if groupNameLower == nameLower {
+			return group.GroupName, nil
 		}
 	}
 	return name, errors.New("group name not found")
+}
+
+// ValidateGroupName validate group name format and case.
+func (r *Repository) ValidateGroupName(name string) (string, error) {
+	validatedFormat, err := utils.ValidateGroupNameFormat(name)
+	if err != nil {
+		return name, err
+	}
+	return r.ValidateGroupNameCase(validatedFormat)
 }
 
 func (r *Repository) UpdateGroups(groups []Group) error {

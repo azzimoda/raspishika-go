@@ -222,6 +222,10 @@ func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection
 	pair.Teacher = &teacher
 	classroom := daySelection.Find(".cabs").Text()
 	pair.Classroom = classroom
+	subgroupSelection := daySelection.Find(".podgrupp")
+	if subgroupSelection != nil {
+		pair.Subgroup = subgroupSelection.Text()
+	}
 
 	if config.Group != nil {
 		discipline := daySelection.Find(".disc").Text()

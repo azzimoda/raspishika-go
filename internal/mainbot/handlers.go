@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/tgbothelpers"
 )
 
@@ -233,6 +234,13 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 	defaultHandlerFlag := ctx.Value(defaultHandlerContextKey).(*bool)
 	*defaultHandlerFlag = true
 
+	if update.Message != nil {
+		log.Trace().Str("message", update.Message.Text).Msg("Unhandled message")
+		if groupName, err := mb.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
+			mb.sendQuickestGroupSchedule(ctx, groupName, update, b)
+		} // Else just ignore message
+	}
+
 	if update.CallbackQuery != nil {
 		_, err := b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
@@ -240,6 +248,48 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 		})
 		addContextHandlerError(ctx, err)
 	}
+}
+
+func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName string, update *models.Update, b *bot.Bot) {
+	log.Trace().Str("groupName", groupName).Msg("Sending quickest group week schedule")
+
+	chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get chat from DB")
+		return
+	}
+
+	group, err := mb.services.Repo.GetGroupByName(groupName)
+	if err != nil {
+		log.Error().Str("groupName", groupName).Err(err).
+			Msg("Failed get group from DB for quickest group week schedule")
+		return
+	}
+
+	scheduleCfg := scraper.GroupScheduleConfig(group)
+	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
+		ctx,
+		b,
+		update.Message.Chat.ID,
+		update.Message.MessageThreadID,
+		scheduleCfg,
+	)
+	if err != nil {
+		log.Error().Any("group", group).Err(err).
+			Msg("Failed to prepare week schedule data for quickest group schedule")
+		return
+	}
+
+	// TODO: Handle error
+	mb.SendWeekScheduleMessages(
+		ctx,
+		b,
+		update.Message.MessageThreadID,
+		chat,
+		scheduleCfg,
+		imageFilename,
+		imageData,
+	)
 }
 
 func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {

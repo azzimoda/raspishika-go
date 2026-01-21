@@ -52,6 +52,7 @@ type Pair struct {
 	Discipline string   `json:"discipline"`
 	Teacher    *string  `json:"teacher"`
 	Group      *string  `json:"group"`
+	Subgroup   string   `json:"subgroup"`
 	Classroom  string   `json:"classroom"`
 	Replaced   bool     `json:"replaced"`
 }
@@ -134,14 +135,14 @@ func (s *RawSchedule) HTML(template string) string {
 		header = "Расписание"
 	}
 
-	tableHead := ""
+	var tableHead strings.Builder
 	for _, day := range s.Rows[0].Days {
-		tableHead += fmt.Sprintf("<th>%s<br>%s<br>%s</th>\n", day.Date, day.WeekDay, day.WeekKind)
+		fmt.Fprintf(&tableHead, "<th>%s<br>%s<br>%s</th>\n", day.Date, day.WeekDay, day.WeekKind)
 	}
 
 	html := strings.NewReplacer(
 		"HEADER", header,
-		"TABLE_HEAD", tableHead,
+		"TABLE_HEAD", tableHead.String(),
 		"TABLE_BODY", s.generateTableBody(s.Rows),
 		"TIMESTAMP", time.Now().Format(time.RFC3339),
 	).Replace(template)
@@ -150,22 +151,21 @@ func (s *RawSchedule) HTML(template string) string {
 }
 
 func (s *RawSchedule) generateTableBody(rows []RawScheduleRow) string {
-	tableBody := ""
+	var tableBody strings.Builder
 
 	for _, row := range rows {
-		tableBody += fmt.Sprintf(
-			`<tr>
+		fmt.Fprintf(&tableBody, `<tr>
 				<td class="side_column_number">%d</td>
 				<td class="side_column_time">%s</td>
 				%s
 			</tr>`,
 			row.Number, strings.ReplaceAll(row.TimeRange, "-", "<hr>"), s.generateRowPairs(row.Days))
 	}
-	return tableBody
+	return tableBody.String()
 }
 
 func (s *RawSchedule) generateRowPairs(days []RawScheduleDay) string {
-	rowPairs := ""
+	var rowPairs strings.Builder
 
 	for _, day := range days {
 		cssClass := day.Pair.Kind
@@ -175,10 +175,9 @@ func (s *RawSchedule) generateRowPairs(days []RawScheduleDay) string {
 
 		switch day.Pair.Kind {
 		case PairKindEvent, PairKindVacation, PairKindSession, PairKindPractice, PairKindIGA:
-			rowPairs += fmt.Sprintf(`<td class="%s"><span>%s</span></td>`, cssClass, day.Pair.Label)
+			fmt.Fprintf(&rowPairs, `<td class="%s"><span>%s</span></td>`, cssClass, day.Pair.Label)
 		case PairKindExam, PairKindConsultation:
-			rowPairs += fmt.Sprintf(
-				`<td class='%s'>
+			fmt.Fprintf(&rowPairs, `<td class='%s'>
 					<span class='title'>%s</span><br>
 					<hr>
 					<span class='discipline'>%s</span><br> <br>
@@ -193,26 +192,29 @@ func (s *RawSchedule) generateRowPairs(days []RawScheduleDay) string {
 			} else if day.Pair.Teacher != nil {
 				secondLine = fmt.Sprintf("<span class='teacher'>%s</span>", *day.Pair.Teacher)
 			}
+			subgroupLine := ""
+			if day.Pair.Subgroup != "" {
+				subgroupLine = fmt.Sprintf("<br><span class='subgroup'>%s</span>", day.Pair.Subgroup)
+			}
 
-			rowPairs += fmt.Sprintf(
-				`<td class='%s'>
-					<span class='discipline'>%s</span><br>
+			fmt.Fprintf(&rowPairs, `<td class='%s'>
+					<span class='discipline'>%s</span>%s<br>
 					<br>
 					%s<br>
 					<span class='classroom'>%s</span><br>
 				</td>`,
-				cssClass, day.Pair.Discipline, secondLine, day.Pair.Classroom)
+				cssClass, day.Pair.Discipline, subgroupLine, secondLine, day.Pair.Classroom)
 		default:
 			label := ""
 			if day.Pair.Replaced {
 				label = "Снято"
 			}
-			rowPairs += fmt.Sprintf(`<td class="%s"><span>%s</span></td>`, cssClass, label)
+			fmt.Fprintf(&rowPairs, `<td class="%s"><span>%s</span></td>`, cssClass, label)
 		}
-		rowPairs += "\n"
+		rowPairs.WriteString("\n")
 	}
 
-	return rowPairs
+	return rowPairs.String()
 }
 
 type ScheduleDay struct {
