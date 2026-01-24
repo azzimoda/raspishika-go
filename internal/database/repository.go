@@ -2,6 +2,8 @@ package database
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 
@@ -9,18 +11,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
 )
-
-type RepositoryProvider interface {
-	Repo() *Repository
-}
-
-type Repository struct {
-	db *sqlx.DB
-}
-
-func (r *Repository) Close() error {
-	return r.db.Close()
-}
 
 func New() (*Repository, error) {
 	file := viper.GetString("database.file")
@@ -33,67 +23,75 @@ func New() (*Repository, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	if err := createTables(db); err != nil {
-		return nil, fmt.Errorf("failed to create tables: %w", err)
+	r := &Repository{db: db}
+	if err := r.applyMigrations(); err != nil {
+		return nil, err
 	}
-
-	return &Repository{db: db}, nil
+	return r, nil
 }
 
-func createTables(db *sqlx.DB) error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS chats(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			tg_chat_id INTEGER NOT NULL UNIQUE,
-			username TEXT,
-			state TEXT DEFAULT 'default',
-			department TEXT,
-			"group" TEXT,
-			daily_sending_time TEXT,
-			pair_sending BOOLEAN NOT NULL DEFAULT 0,
-			access INTEGER NOT NULL DEFAULT 0,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS groups(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			group_id TEXT NOT NULL UNIQUE,
-			department_id TEXT NOT NULL,
-			group_name TEXT NOT NULL,
-			department_name TEXT NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS teachers(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			teacher_id TEXT NOT NULL UNIQUE,
-			name TEXT NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS recent_teachers(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			chat_id INTEGER NOT NULL REFERENCES chat(id) ON DELETE CASCADE ON UPDATE CASCADE,
-			teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE ON UPDATE CASCADE,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS update_logs(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			chat_id INTEGER REFERENCES chat(id) ON UPDATE CASCADE,
-			kind TEXT NOT NULL,
-			message_id INTEGER,
-			data TEXT,
-			handling_time INTEGER NOT NULL DEFAULT 0, -- milliseconds
-			error TEXT,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
+type Repository struct {
+	db *sqlx.DB
+}
+
+func (r *Repository) Close() error {
+	return r.db.Close()
+}
+
+func (r *Repository) applyMigrations() error {
+	log.Trace().Msg("Applying migrations...")
+	if err := r.ensureMigrationsTable(); err != nil {
+		return fmt.Errorf("failed to ensure migrations table: %w", err)
 	}
-	for _, query := range queries {
-		_, err := db.Exec(query)
-		if err != nil {
-			log.Error().Str("query", query).Msg("Failed to execute query")
-			return fmt.Errorf("failed to execute query: %w", err)
+
+	files, err := migrationFiles()
+	if err != nil {
+		return fmt.Errorf("failed to load migration files: %w", err)
+	}
+	log.Trace().Int("count", len(files)).Msg("Loaded migration files")
+
+	count := 0
+	for _, file := range files {
+		name := file.name
+		sql := file.sql
+		if err := r.checkMigration(name); err != nil {
+			if err := r.applyMigration(name, sql); err != nil {
+				log.Error().Err(err).Str("name", name).Msg("Failed to apply migration")
+				return fmt.Errorf("failed to apply migration %s: %w", name, err)
+			}
+			log.Debug().Str("name", name).Msg("Applied migration")
+			count++
+		} else {
+			log.Trace().Str("name", name).Msg("Skipped migration")
 		}
 	}
+	log.Debug().Int("count", count).Msg("Migrations applied")
+
 	return nil
+}
+
+func migrationFiles() ([]migrationFile, error) {
+	migrationsDir := viper.GetString("database.migrations")
+	log.Trace().Str("migrationsDir", migrationsDir).Send()
+	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load migration files: %w", err)
+	}
+	log.Trace().Int("count", len(files)).Msg("Found migration files")
+
+	var migrations []migrationFile
+	for _, file := range files {
+		name := filepath.Base(file)
+		sql, err := os.ReadFile(file)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read migration file %s: %w", name, err)
+		}
+		migrations = append(migrations, migrationFile{name: name, sql: string(sql)})
+	}
+	return migrations, nil
+}
+
+type migrationFile struct {
+	name string
+	sql  string
 }

@@ -147,8 +147,6 @@ func (mb *MainBot) registerCommandHandler(pattern string, f bot.HandlerFunc, m .
 
 func commandMatchFunction(pattern string, username string) bot.MatchFunc {
 	re := regexp.MustCompile(fmt.Sprintf(`^/%s(@\w+)?(\s[\s\S]+)?$`, pattern))
-	log.Trace().Str("pattern", pattern).Str("username", username).Any("re", re).
-		Msg("Generating command match function...")
 	return func(update *models.Update) bool {
 		return matchUpdatePatternUsername(update, pattern, username, re)
 	}
@@ -280,8 +278,7 @@ func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName stri
 		return
 	}
 
-	// TODO: Handle error
-	mb.SendWeekScheduleMessages(
+	err = mb.SendWeekScheduleMessages(
 		ctx,
 		b,
 		update.Message.MessageThreadID,
@@ -290,6 +287,7 @@ func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName stri
 		imageFilename,
 		imageData,
 	)
+	addContextHandlerError(ctx, err)
 }
 
 func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {

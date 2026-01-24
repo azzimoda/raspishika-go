@@ -18,7 +18,8 @@ var Defaults = map[string]any{
 	"config_file":   "configs/config.yml",
 	"commands_file": "configs/commands.yml",
 
-	"database.file": "databse/db.sqlite3",
+	"database.file":       "databse/db.sqlite3",
+	"database.migrations": "databse/migrations",
 
 	"browser.headless":       false,
 	"browser.timeout":        30, // seconds

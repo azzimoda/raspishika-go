@@ -34,8 +34,6 @@ func main() {
 		// log.Trace().Any("settings", viper.AllSettings()).Send()
 	}
 
-	log.Trace().Int64("admin_id", viper.GetInt64("telegram.admin_id")).Send()
-
 	app, err := app.New()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create application")
