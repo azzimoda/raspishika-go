@@ -16,14 +16,14 @@ type Group struct {
 	DepartmentID   string    `db:"department_id" json:"department_id"`
 	GroupName      string    `db:"group_name" json:"group_name"`
 	DepartmentName string    `db:"department_name" json:"department_name"`
+	Year           int       `db:"year" json:"year"`
 	CreatedAt      time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
 }
 
 func (r *Repository) GetGroups() ([]Group, error) {
 	var groups []Group
-	err := r.db.Select(&groups, "SELECT * FROM groups")
-	if err != nil {
+	if err := r.db.Select(&groups, "SELECT * FROM groups"); err != nil {
 		return nil, err
 	}
 	return groups, nil
@@ -81,8 +81,8 @@ func (r *Repository) UpdateGroups(groups []Group) error {
 		if err := tx.Get(&_g, `SELECT * FROM groups WHERE group_id = ?`, group.GroupID); err != nil {
 			// Insert new.
 			_, err = tx.NamedExec(
-				`INSERT INTO groups (group_id, department_id, group_name, department_name)
-				VALUES (:group_id, :department_id, :group_name, :department_name)`, group)
+				`INSERT INTO groups (group_id, department_id, group_name, department_name, year)
+				VALUES (:group_id, :department_id, :group_name, :department_name, :year)`, group)
 			if err != nil {
 				tx.Rollback()
 				return err

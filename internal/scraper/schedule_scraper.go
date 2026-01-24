@@ -14,12 +14,12 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
-	"github.com/spf13/viper"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"golang.org/x/net/html"
 )
 
@@ -293,31 +293,35 @@ func detectPairKind(daySelection *goquery.Selection) PairKind {
 
 // ScheduleURL returns formatted URL for group or teacher schedule page depending on the given schedule config.
 // Parameter departmentIDs is used for teacher schedule page only and may be empty or nil for group.
+//
+// Returns empty string if config is invalid.
 func ScheduleURL(config ScheduleConfig, departmentIDs []string) string {
-	// TODO: Getch year from site. It is specified in group's option tag with `sid` and `gr`.
-	year := time.Now().Year()
-	if y := viper.GetInt("fixed_year"); y != 0 {
-		year = y
-	}
-
 	switch {
 	case config.Group != nil:
-		zaochnoeFlag := ""
+		zFlag := "" // Заочное обучение?
 		if strings.Contains(strings.ToLower(config.Group.DepartmentName), "заоч") {
-			zaochnoeFlag = "z"
+			zFlag = "z"
 		}
 		return fmt.Sprintf(
 			"https://coworking.tyuiu.ru/shs/all_t/sh%s.php?action=group&union=0&sid=%s&gr=%s&year=%d&vr=1",
-			zaochnoeFlag, config.Group.DepartmentID, config.Group.GroupID, year)
+			zFlag, config.Group.DepartmentID, config.Group.GroupID, config.Group.Year)
 	case config.Teacher != nil:
-		departmentArgs := ""
+		var departmentArgs strings.Builder
 		for i, id := range departmentIDs {
-			departmentArgs += fmt.Sprintf("&shed[%d]=%s&union[%d]=0&year[%d]=%d", i, id, i, i, year)
+			fmt.Fprintf(
+				&departmentArgs,
+				"&shed[%d]=%s&union[%d]=0&year[%d]=%d",
+				i, id, i, i, time.Now().Year(),
+				// Note: Here I use current year because I cannot fetch it from DB.
+				// Commonly it shouldn't give trouble,
+				// because the year in their DB changes at the end of the first semester.
+			)
 		}
 		return fmt.Sprintf(
 			"https://coworking.tyuiu.ru/shs/all_t/sh.php?action=prep&prep=%s&vr=1&count=%d%s",
-			config.Teacher.TeacherID, len(departmentIDs), departmentArgs)
+			config.Teacher.TeacherID, len(departmentIDs), departmentArgs.String())
 	default:
-		panic("invalid schedule config")
+		// Error: invalid config
+		return ""
 	}
 }

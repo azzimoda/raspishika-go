@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -162,20 +163,33 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 		}
 
 		options, err := frameLocator.Locator("#groups option").EvaluateAll(
-			`els => els.map(el => ({ text: el.textContent.trim(), value: el.value, sid: el.getAttribute("sid") }))`)
+			`els => els.map(el => ({ text: el.textContent.trim(), value: el.value, sid: el.getAttribute("sid"), year: el.getAttribute("year") }))`)
 		if err != nil {
 			return fmt.Errorf("failed to get groups options: %w", err)
 		}
 
 		for _, opt := range options.([]any) {
 			opt := opt.(map[string]any)
-			if opt["value"] == nil || opt["text"] == nil || opt["sid"] == nil {
+			if validateOptionValue(opt["value"]) ||
+				validateOptionValue(opt["text"]) ||
+				validateOptionValue(opt["sid"]) ||
+				validateOptionValue(opt["year"]) {
+
+				continue
+			}
+
+			year, err := strconv.ParseInt(opt["year"].(string), 10, 64)
+			if err != nil {
 				continue
 			}
 
 			groups = append(groups, database.Group{
-				GroupID: opt["value"].(string), DepartmentID: opt["sid"].(string),
-				GroupName: opt["text"].(string), DepartmentName: department.Name})
+				GroupID:        opt["value"].(string),
+				DepartmentID:   opt["sid"].(string),
+				GroupName:      opt["text"].(string),
+				Year:           int(year),
+				DepartmentName: department.Name,
+			})
 		}
 		return nil
 	})
@@ -183,4 +197,15 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 		return nil, err
 	}
 	return groups, nil
+}
+
+func validateOptionValue(value any) bool {
+	if value == nil {
+		return false
+	}
+	if s, ok := value.(string); !ok {
+		return false
+	} else {
+		return s != ""
+	}
 }

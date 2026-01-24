@@ -91,6 +91,7 @@ func ConfigEnv() error {
 }
 
 func ConfigFlags() {
+	// Parse flags
 	pflag.String("config", "", "Specify config file")
 	pflag.String("commands", "", "Specify commands config file")
 
@@ -98,6 +99,7 @@ func ConfigFlags() {
 		"Start bot at specified time; format: 2006-01-02T15:04")
 	pflag.String("notify", "", "Send specified notification to all chats")
 
+	// TODO: Remove this option later when I'm sure it's useless, or leave it.
 	pflag.Int("year", 0, "Specify fixed year for schedule URL")
 
 	pflag.String("log", "", "Specify log level")
@@ -105,6 +107,7 @@ func ConfigFlags() {
 	pflag.Bool("help", false, "Print usage")
 	pflag.Parse()
 
+	// Bind flags
 	viper.BindPFlag("config_file", pflag.CommandLine.Lookup("config"))
 	viper.BindPFlag("commands_file", pflag.CommandLine.Lookup("commands"))
 

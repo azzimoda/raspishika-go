@@ -1,0 +1,5 @@
+-- ALTER TABLE groups
+-- ADD COLUMN year INTEGER NOT NULL DEFAULT (STRFTIME('%Y', 'now'));
+
+ALTER TABLE groups ADD COLUMN year INTEGER NOT NULL DEFAULT 0;
+UPDATE groups SET year = STRFTIME('%Y', 'now');
