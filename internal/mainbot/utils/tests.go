@@ -21,6 +21,7 @@ func InitPaths() {
 	viper.Set("config_file", filepath.Join(rootDir, "configs/.debug-config.yml"))
 	viper.Set("commands_file", filepath.Join(rootDir, "configs/commands.yml"))
 	viper.Set("schedule_template_file", filepath.Join(rootDir, "storage/schedule_template.html"))
+	viper.Set("database.migrations", filepath.Join(rootDir, "database/migrations"))
 }
 
 func InitConfig(t *testing.T, testsDir string) {

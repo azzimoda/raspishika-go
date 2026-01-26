@@ -156,7 +156,6 @@ func weekScheduleMarkup(config scraper.ScheduleConfig) models.ReplyMarkup {
 	markup := models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{{button}},
 	}
-	log.Trace().Any("config", config).Any("markup", markup).Msg("Week schedule markup")
 	return markup
 }
 

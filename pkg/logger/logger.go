@@ -23,15 +23,23 @@ func SetupLogger(logLevelStr, logDir string) {
 
 	if logDir == "" {
 		log.Trace().Msg("No log directory configured; logging to console only")
-		log.Logger = zerolog.New(consoleWriter).With().Timestamp().Caller().Logger()
+		loggerContext := zerolog.New(consoleWriter).With().Timestamp()
+		if logLevel <= zerolog.DebugLevel {
+			loggerContext = loggerContext.Caller()
+		}
+		log.Logger = loggerContext.Logger()
 	} else {
 		logFileName := filepath.Join(logDir, "raspishika.log")
 		log.Trace().Str("logFile", logFileName).Send()
 
-		log.Logger = zerolog.New(zerolog.MultiLevelWriter(
+		loggerContext := zerolog.New(zerolog.MultiLevelWriter(
 			consoleWriter,
 			&lumberjack.Logger{Filename: logFileName, MaxSize: 16, MaxBackups: 16, MaxAge: 30},
-		)).With().Timestamp().Caller().Logger()
+		)).With().Timestamp()
+		if logLevel <= zerolog.DebugLevel {
+			loggerContext = loggerContext.Caller()
+		}
+		log.Logger = loggerContext.Logger()
 	}
 
 	log.Debug().Msgf("Log level: %s", logLevel)

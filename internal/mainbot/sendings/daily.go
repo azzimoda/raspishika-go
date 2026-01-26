@@ -18,6 +18,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	startTime := time.Now()
 	timeStr := t.Format("15:04")
 
+	// Get chats daily sending configured to current time
 	chats, err := sm.services.Repo.GetChatsByDailySendingTime(timeStr)
 	if err != nil {
 		log.Error().Err(err).Time("sendingTime", t).Msg("Failed to get chats by daily sending time")
@@ -31,12 +32,12 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	}
 	log.Info().Time("sendingTime", t).Int("chatCount", len(chats)).Msg("Processing daily sending...")
 
+	// Group chats by configured group
 	groupedChats := make(map[string][]*database.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
 			groupedChats[*chat.GroupName] = []*database.Chat{}
 		}
-
 		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
 	log.Debug().Time("sendingTime", t).Int("groupCount", len(groupedChats)).Msg("Chats grouped by group name")
@@ -47,6 +48,9 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 		sm.services.Reporter.Report().Err(err).Msg("Errors while daily sending")
 	}
 
+	// TODO: Save daily sending statistics to DB.
+
+	// Log statistics
 	takenTime := time.Since(startTime)
 	log.Info().
 		Time("sendingTime", t).
@@ -62,11 +66,13 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	}
 }
 
+// sendDailyNotificationToGroups sends daily notifications to each chat in each group in parallel.
+//
+// Returns a slice of errors and the total number of failed chats.
 func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string][]*database.Chat) ([]error, int) {
-	// Send notifications to each chat in each group.
 	var wg sync.WaitGroup
 	results := make(chan sendingResult, 50)
-	semaphore := make(chan struct{}, 15)
+	semaphore := make(chan struct{}, 15) // Limits the number of concurrent goroutines
 
 	for groupName, chats := range groupedChats {
 		wg.Add(1)

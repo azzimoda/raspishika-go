@@ -102,6 +102,7 @@ func ConfigFlags() {
 	// TODO: Remove this option later when I'm sure it's useless, or leave it.
 	pflag.Int("year", 0, "Specify fixed year for schedule URL")
 
+	pflag.Bool("headless", true, "Enable browser headless mode")
 	pflag.String("log", "", "Specify log level")
 	pflag.String("log-dir", "", "Specify log directory")
 	pflag.Bool("help", false, "Print usage")
@@ -116,6 +117,7 @@ func ConfigFlags() {
 
 	viper.BindPFlag("fixed_year", pflag.CommandLine.Lookup("year"))
 
+	viper.BindPFlag("browser.headless", pflag.CommandLine.Lookup("headless"))
 	viper.BindPFlag("logger.level", pflag.CommandLine.Lookup("log"))
 	viper.BindPFlag("logger.dir", pflag.CommandLine.Lookup("log-dir"))
 }
