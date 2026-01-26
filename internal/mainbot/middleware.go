@@ -17,9 +17,9 @@ import (
 type contextKey string
 
 const (
-	chatContextKey           contextKey = "chat"
-	errorContextKey          contextKey = "error"
-	defaultHandlerContextKey contextKey = "default_handler"
+	chatContextKey      contextKey = "chat"
+	errorContextKey     contextKey = "error"
+	noLogFlagContextKey contextKey = "default_handler"
 )
 
 var (
@@ -146,8 +146,8 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 		var handlerErrs []error
 		ctx = context.WithValue(ctx, errorContextKey, &handlerErrs)
 
-		var defaultHandlerFlag bool
-		ctx = context.WithValue(ctx, defaultHandlerContextKey, &defaultHandlerFlag)
+		var noLogFlag bool
+		ctx = context.WithValue(ctx, noLogFlagContextKey, &noLogFlag)
 
 		startTime := time.Now()
 		next(ctx, bot, update)
@@ -155,7 +155,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 
 		log.Trace().Any("update", update).Msg("Update processed")
 
-		if defaultHandlerFlag {
+		if noLogFlag {
 			return
 		}
 

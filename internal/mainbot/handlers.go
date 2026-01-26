@@ -222,15 +222,14 @@ func callbackDataRegexp(command string) *regexp.Regexp {
 
 func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	log.Trace().Msg("Default handler")
-
-	defaultHandlerFlag := ctx.Value(defaultHandlerContextKey).(*bool)
-	*defaultHandlerFlag = true
-
+	
 	if update.Message != nil {
 		log.Trace().Str("message", update.Message.Text).Msg("Unhandled message")
 		if groupName, err := mb.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
 			mb.sendQuickGroupSchedule(ctx, groupName, update, b)
 		} // Else just ignore message
+		
+		return
 	}
 
 	if update.CallbackQuery != nil {
@@ -239,7 +238,12 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 			Text:            "Это сообщение больше не поддерживается",
 		})
 		addContextHandlerError(ctx, err)
+		
+		return
 	}
+
+	notLogFlag := ctx.Value(noLogFlagContextKey).(*bool)
+	*notLogFlag = true
 }
 
 func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string, update *models.Update, b *bot.Bot) {
