@@ -170,10 +170,12 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 
 		for _, opt := range options.([]any) {
 			opt := opt.(map[string]any)
-			if validateOptionValue(opt["value"]) ||
-				validateOptionValue(opt["text"]) ||
-				validateOptionValue(opt["sid"]) ||
-				validateOptionValue(opt["year"]) {
+			log.Trace().Any("opt", opt).Msg("Validating option...")
+			if !(validateOptionValue(opt["value"]) &&
+				validateOptionValue(opt["text"]) &&
+				validateOptionValue(opt["sid"]) &&
+				validateOptionValue(opt["year"])) {
+				log.Trace().Msg("Option is invalid")
 
 				continue
 			}

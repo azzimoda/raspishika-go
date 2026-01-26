@@ -28,8 +28,8 @@ func mainMenuReplyMarkup(isPrivate bool) models.ReplyMarkup {
 	if isPrivate {
 		return models.ReplyKeyboardMarkup{
 			Keyboard: [][]models.KeyboardButton{
-				{{Text: "Сегодня"}, {Text: "Завтра"}, {Text: "Неделя"}},
-				{{Text: "Другая группа"}, {Text: "Преподаватель"}},
+				{{Text: "Неделя"}},
+				{{Text: "Сегодня"}, {Text: "Завтра"}, {Text: "Преподаватель"}},
 			},
 			ResizeKeyboard: true,
 		}

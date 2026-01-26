@@ -77,32 +77,23 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		ChatID:          chatID,
 		MessageThreadID: messageThreadID,
 		Text:            fmt.Sprintf("%s\n\nВыберите отделение", currentGroup),
-		ReplyMarkup:     departmentSelectionMarkup(departments, false),
+		ReplyMarkup:     departmentSelectionMarkup(departments),
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func departmentSelectionMarkup(departments []scraper.Department, isQuick bool) models.InlineKeyboardMarkup {
-	command := "select_department"
-	if isQuick {
-		command = "quick_select_department"
-	}
-
+func departmentSelectionMarkup(departments []scraper.Department) models.InlineKeyboardMarkup {
 	keyboard := make([][]models.InlineKeyboardButton, 0)
 	for i := 0; i < len(departments); i += 2 {
 		row := make([]models.InlineKeyboardButton, 0)
 		for j := i; j < len(departments) && j < i+2; j++ {
 			row = append(row, models.InlineKeyboardButton{Text: departments[j].Name,
-				CallbackData: fmt.Sprintf("%s\n%s", command, departments[j].Name)})
+				CallbackData: fmt.Sprintf("%s\n%s", "select_department", departments[j].Name)})
 		}
 		keyboard = append(keyboard, row)
 	}
 
-	deleteCommand := "delete_config"
-	if isQuick {
-		deleteCommand = "delete"
-	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: deleteCommand}})
+	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete_config"}})
 	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 

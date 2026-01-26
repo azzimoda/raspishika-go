@@ -33,7 +33,6 @@ const HelpMessage = `Доступные команды:
 • /week — Расписание на неделю
 • /tomorrow — Расписание на завтра
 • /left — Оставшиеся пары
-• /quick — Расписание другой группы
 • /teacher — Расписание преподавателя
 
 • /settings — Меню настроек
@@ -49,10 +48,11 @@ const HelpMessage = `Доступные команды:
 
 Прочие функции:
 
+• Чтобы получить расписание любой группы, пришлите её название, например: "ИСПт-22-(9)-2", или "испт 22 9 2"
 • Бота можно добавить в групповой чат
 • Напоминание приходит в течение 15 минут до начала пары
 
-По всем вопросам обращайтесь к расработчику @MazzzaRellla или пишите в комментарии канала @mazzaLLM.`
+По всем вопросам пишите в комментарии или в директ канала @mazzaLLM.`
 
 func (mb *MainBot) registerHandlers() {
 	// Commands
@@ -73,7 +73,6 @@ func (mb *MainBot) registerHandlers() {
 		mb.registerCommandHandler("tomorrow", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
 		mb.registerCommandHandler("left", mb.leftHandler, mb.checkRegularAccessMiddleware)
 
-		mb.registerCommandHandler("quick", mb.quickHandler, mb.checkRegularAccessMiddleware)
 		mb.registerCommandHandler("teacher", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 	}
 
@@ -83,7 +82,6 @@ func (mb *MainBot) registerHandlers() {
 		mb.registerTextMessageHandler("завтра", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
 		mb.registerTextMessageHandler("сегодня", mb.leftHandler, mb.checkRegularAccessMiddleware)
 
-		mb.registerTextMessageHandler("другая группа", mb.quickHandler, mb.checkRegularAccessMiddleware)
 		mb.registerTextMessageHandler("преподаватель", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
 		mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
@@ -92,8 +90,6 @@ func (mb *MainBot) registerHandlers() {
 
 		mb.registerChatStateHandler(database.ChatStateSelectingGroup, mb.textGroupHandler,
 			mb.checkConfigAccessMiddleware)
-		mb.registerChatStateHandler(database.ChatStateQuickSelectingGroup, mb.textQuickGroupHandler,
-			mb.checkRegularAccessMiddleware)
 		mb.registerChatStateHandler(database.ChatStateSelectingTime, mb.textTimeHandler,
 			mb.checkConfigAccessMiddleware)
 		mb.registerChatStateHandler(database.ChatStateSelectingTeacher, mb.textTeacherNameHandler,
@@ -120,8 +116,6 @@ func (mb *MainBot) registerHandlers() {
 
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_department"),
 			mb.selectDepartmentHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("quick_select_department"),
-			mb.quickSelectDepartmentHandler, mb.checkRegularAccessMiddleware)
 
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_teacher"),
 			mb.selectTeacherHandler, mb.checkRegularAccessMiddleware)
@@ -235,7 +229,7 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 	if update.Message != nil {
 		log.Trace().Str("message", update.Message.Text).Msg("Unhandled message")
 		if groupName, err := mb.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
-			mb.sendQuickestGroupSchedule(ctx, groupName, update, b)
+			mb.sendQuickGroupSchedule(ctx, groupName, update, b)
 		} // Else just ignore message
 	}
 
@@ -248,8 +242,8 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 	}
 }
 
-func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName string, update *models.Update, b *bot.Bot) {
-	log.Trace().Str("groupName", groupName).Msg("Sending quickest group week schedule")
+func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string, update *models.Update, b *bot.Bot) {
+	log.Trace().Str("groupName", groupName).Msg("Sending quick group week schedule")
 
 	chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
 	if err != nil {
@@ -260,7 +254,7 @@ func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName stri
 	group, err := mb.services.Repo.GetGroupByName(groupName)
 	if err != nil {
 		log.Error().Str("groupName", groupName).Err(err).
-			Msg("Failed get group from DB for quickest group week schedule")
+			Msg("Failed get group from DB for quick group week schedule")
 		return
 	}
 
@@ -274,7 +268,7 @@ func (mb *MainBot) sendQuickestGroupSchedule(ctx context.Context, groupName stri
 	)
 	if err != nil {
 		log.Error().Any("group", group).Err(err).
-			Msg("Failed to prepare week schedule data for quickest group schedule")
+			Msg("Failed to prepare week schedule data for quick group schedule")
 		return
 	}
 
