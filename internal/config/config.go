@@ -39,6 +39,7 @@ var Defaults = map[string]any{
 	"features.pair_sending":  false,
 
 	"pair_sending.notification_ttl": 90, // minutes
+	"sending.workers":               20,
 
 	"adminbot.new_chat_report": true,
 
@@ -99,7 +100,7 @@ func ConfigFlags() {
 		"Start bot at specified time; format: 2006-01-02T15:04")
 	pflag.String("notify", "", "Send specified notification to all chats")
 
-	// TODO: Remove this option later when I'm sure it's useless, or leave it.
+	// TODO: Decide whether to leave or to remove this option.
 	pflag.Int("year", 0, "Specify fixed year for schedule URL")
 
 	pflag.Bool("headless", true, "Enable browser headless mode")

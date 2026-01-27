@@ -132,7 +132,7 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 
 	// Error
 	if reportErr != nil {
-		msgText += fmt.Sprintf("Error: _%s_\n", bot.EscapeMarkdown(reportErr.Error()))
+		msgText += fmt.Sprintf("Error:\n```\n%s\n```\n", bot.EscapeMarkdown(reportErr.Error()))
 	}
 
 	// Debug objects
