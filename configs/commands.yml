@@ -18,8 +18,9 @@ mainbot_commands:
   - start: Запустить бота
 adminbot_commands:
   - stats: 'Send bot stats for period (default: 24h)'
-  - distribution: 'Send distribution stats (args: dataKind, periodKind, period)'
   - config: Send config stats
+  - dist_aw: Send distribution stats of activity for week days
+  - dist_ah: Send distribution stats of activity for hours
 
   - chat: Send chat data view
   - group: Send group data view

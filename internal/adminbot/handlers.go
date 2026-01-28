@@ -23,8 +23,7 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "distribution", bot.MatchTypeCommand,
-		ab.distributionHandler)
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
 }
@@ -37,6 +36,13 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *mode
 			// Remove not handled command.
 			tgbothelpers.DeleteMessageSafely(ctx, b, update.Message)
 		}
+
+		if _, err := ab.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
+			ab.groupHandler(ctx, b, update)
+			return
+		}
+
+		// TODO: Handle username and chat_id.
 	}
 }
 
@@ -134,9 +140,12 @@ Recent updates:
 }
 
 func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	_, group := tgbothelpers.ParseCommand(update.Message.Text)
+	group := update.Message.Text // For default handler
+	if strings.HasPrefix(update.Message.Text, "/") {
+		_, group = tgbothelpers.ParseCommand(update.Message.Text) // For /group command
+	}
 
-	group, err := utils.ValidateGroupNameFormat(group)
+	group, err := ab.services.Repo.ValidateGroupName(update.Message.Text)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return
@@ -153,14 +162,15 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models
 		return
 	}
 
-	text := bot.EscapeMarkdown(fmt.Sprintf("Chats in group `%s` (%d):\n", group, len(chats)))
+	var text strings.Builder
+	text.WriteString(bot.EscapeMarkdown(fmt.Sprintf("Chats in group `%s` (%d chats):\n", group, len(chats))))
 	for _, chat := range chats {
-		text += fmt.Sprintf("• `/chat %d`\n", chat.TgChatID)
+		fmt.Fprintf(&text, "• `/chat %d`\n", chat.TgChatID)
 	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      text,
+		Text:      text.String(),
 		ParseMode: models.ParseModeMarkdown,
 	})
 }
@@ -287,52 +297,64 @@ Callbacks: %d`,
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
 }
 
-// var Kinds = []string{"activity", "sending", "errors"}
-func (ab *AdminBot) distributionHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	log.Trace().Msg("distHandler")
+	command, args := tgbothelpers.ParseCommand(update.Message.Text)
 
-	_, args := tgbothelpers.ParseCommand(update.Message.Text)
-	words := strings.Fields(args)
+	log.Trace().Msg("Parsing parameters...")
+	dataKind := "a"   // Variants: a, ...
+	distPeriod := "w" // Variants: w - week days, h - hours of day
+	parts := strings.Split(command, "_")
+	if len(parts) == 2 {
+		suffix := parts[1]
+		if len(suffix) >= 1 {
+			switch suffix[0] {
+			case 'a':
+				dataKind = string(suffix[0])
+			}
+		}
+		if len(suffix) >= 2 {
+			switch suffix[1] {
+			case 'w', 'h':
+				distPeriod = string(suffix[1])
+			}
+		}
+	}
+	log.Trace().Str("dataKind", dataKind).Str("distPeriod", distPeriod).Send()
 
-	dataKind := "activity"
-	periodKind := "week"
-	dataPeriod := "1m"
-	// TODO: Implement distribution data kinds
-	// if len(words) >= 1 {
-	// 	for _, k := range Kinds {
-	// 		if k == words[0] {
-	// 			kind = k
-	// 			break
-	// 		}
-	// 	}
-	// }
-	if len(words) >= 2 {
-		periodKind = words[1]
-	}
-	if len(words) >= 3 {
-		dataPeriod = words[2]
-	}
-	dur, ok := parsePeriod(dataPeriod)
+	log.Trace().Msg("Parsing period parameter...")
+	dur, ok := parsePeriod(args)
 	if !ok {
-		dur = 30 * 24 * time.Hour
+		dur = 30 * 24 * time.Hour // Default: month
 	}
+	log.Trace().Dur("dur", dur).Send()
 
-	distribution, err := ab.services.Repo.GetDistribution(dataKind, periodKind, dur)
+	log.Trace().Msg("Fetching distribution...")
+	distribution, err := ab.services.Repo.GetDist(dataKind, distPeriod, dur)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get distribution")
 		return
 	}
+	log.Trace().Int("len(distribution)", len(distribution)).Send()
 
-	text := "```\n"
+	log.Trace().Msg("Building message text...")
+	var text strings.Builder
+	text.WriteString("```\n")
 	for _, s := range distribution {
-		text += fmt.Sprintf("%s: %d\n", s.Name, s.Value)
+		fmt.Fprintf(&text, "%s: %d\n", s.Name, s.Value)
 	}
-	text += "\n```"
+	text.WriteString("\n```")
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	log.Trace().Msg("Sending message...")
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      text,
+		Text:      text.String(),
 		ParseMode: models.ParseModeMarkdown,
 	})
+	if err != nil {
+		log.Error().Err(err).Send()
+	}
+	log.Trace().Msg("distHandler: Done!")
 }
 
 func parsePeriod(str string) (time.Duration, bool) {

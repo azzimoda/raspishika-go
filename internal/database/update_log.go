@@ -3,6 +3,8 @@ package database
 import (
 	"fmt"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type UpdateLog struct {
@@ -47,14 +49,14 @@ func (r *Repository) InsertUpdateLog(log *UpdateLog) error {
 	return err
 }
 
-type DistributionElement struct {
+type DistItem struct {
 	Name  string `db:"name"`
 	Value int    `db:"value"`
 }
 
-func (r *Repository) GetDistribution(dataKind, periodKind string, dur time.Duration) ([]DistributionElement, error) {
+func (r *Repository) GetDist(dataKind, periodKind string, dur time.Duration) ([]DistItem, error) {
 	nameQuery :=
-		`CASE strftime('%w', created_at)
+		`CASE strftime('%w', datetime(created_at, 'localtime'))
 			WHEN '0' THEN '7'
 			WHEN '1' THEN '1'
 			WHEN '2' THEN '2'
@@ -64,27 +66,27 @@ func (r *Repository) GetDistribution(dataKind, periodKind string, dur time.Durat
 			WHEN '6' THEN '6'
 		END`
 	switch periodKind {
-	case "day":
-		nameQuery = "strftime('%H:00', created_at)"
-	// case "week":
-	// 	// Default
-	case "month":
-		nameQuery = "strftime('%y-%m-%d', created_at)"
-	case "year":
-		nameQuery = "strftime('%y-%m', created_at)"
+	case "h": //Hours for day
+		nameQuery = "strftime('%H:00', datetime(created_at, 'localtime'))"
+	case "d": // Days of month
+		nameQuery = "strftime('%y-%m-%d', datetime(created_at, 'localtime'))"
+	case "m": // Months of year
+		nameQuery = "strftime('%y-%m', datetime(created_at, 'localtime'))"
+		// Default: Week days
 	}
 
 	period := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
 
+	// TODO: Come up with variants for dataKind.
 	switch dataKind {
-	case "activity":
-		var elements []DistributionElement
+	case "a":
+		var items []DistItem
 		if err := r.db.Select(
-			&elements,
+			&items,
 			`SELECT `+nameQuery+` AS name,
 				COUNT(*) AS value
 			FROM update_logs
-			WHERE created_at > datetime('now', ?)
+			WHERE created_at > datetime('now', 'localtime', ?)
 			GROUP BY name
 			ORDER BY name ASC`,
 			period,
@@ -92,8 +94,9 @@ func (r *Repository) GetDistribution(dataKind, periodKind string, dur time.Durat
 			return nil, err
 		}
 
-		return elements, nil
+		return items, nil
 	default:
+		log.Warn().Str("dataKind", dataKind).Msg("Unsupported dataKind")
 		return nil, nil
 	}
 }
