@@ -59,12 +59,6 @@ func (sm *SendingManager) SchedulePairSending() error {
 	return nil
 }
 
-type sendingResult struct {
-	chatsNum  int
-	errs      []error
-	failedAll bool
-}
-
 // handleTelegramAPIError handles errors returned by Telegram API.
 // Returns an error if the error is not recoverable.
 func handleTelegramAPIError(services *services.Services, chat *database.Chat, err error) error {

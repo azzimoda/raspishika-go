@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/azzimoda/raspishika-go/internal/browser"
@@ -74,7 +73,7 @@ func (*ScheduleManager) scrapeSchedule(
 
 	url := ScheduleURL(config, departmentIDs)
 	if config.Group != nil {
-		return ScrapeSchedule(viper.GetString("cache.dir"), url, config)
+		return ScrapeSchedule(url, config)
 	} else if config.Teacher != nil {
 		return ScrapeScheduleWithBrowser(browser, url, config)
 	} else {

@@ -123,7 +123,6 @@ func FetchDepartmentGroups(
 }
 
 func checkGroups(repo *database.Repository, ttl time.Duration) ([]database.Group, error) {
-	log.Trace().Dur("groupTTLDur", ttl).Float64("hours", ttl.Hours()).Send()
 	groups, err := repo.GetGroups()
 	if err != nil {
 		return nil, err
