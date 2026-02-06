@@ -44,7 +44,7 @@ func (a *App) Run() error {
 
 	sendingManager := sendings.NewSendingManager(a.MainBot, a.Services)
 
-	if viper.GetBool("features.daily_sending") {
+	if viper.GetBool("features.sending.daily") {
 		if err := sendingManager.ScheduleDailySending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
 		} else {
@@ -52,7 +52,7 @@ func (a *App) Run() error {
 		}
 	}
 
-	if viper.GetBool("features.pair_sending") {
+	if viper.GetBool("features.sending.pair") {
 		if err := sendingManager.SchedulePairSending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
 		} else {

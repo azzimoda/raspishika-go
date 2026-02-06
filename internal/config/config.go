@@ -35,11 +35,11 @@ var Defaults = map[string]any{
 	"logger.dir":   "storage/logs",
 
 	"features.admin_bot":     false,
-	"features.daily_sending": false,
-	"features.pair_sending":  false,
+	"features.sending.daily": false,
+	"features.sending.pair":  false,
 
-	"pair_sending.notification_ttl": 90, // minutes
 	"sending.workers":               20,
+	"sending.pair.notification_ttl": 90, // minutes
 
 	"adminbot.new_chat_report": true,
 
@@ -173,7 +173,7 @@ func GroupTTLDur() time.Duration {
 }
 
 func PairNotificationTTLDur() time.Duration {
-	return viper.GetDuration("pair_sending.notification_ttl") * time.Minute
+	return viper.GetDuration("sending.pair.notification_ttl") * time.Minute
 }
 
 func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
