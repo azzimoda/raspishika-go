@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/pkg/logger"
+	"github.com/azzimoda/raspishika-go/internal/logger"
 )
 
 // InitPaths initializes the paths for the tests. Should be called before any other function in this package.

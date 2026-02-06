@@ -7,7 +7,7 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/pkg/logger"
+	"github.com/azzimoda/raspishika-go/internal/logger"
 )
 
 func Test_commandMatchFunction(t *testing.T) {

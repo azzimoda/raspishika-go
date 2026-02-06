@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/azzimoda/raspishika-go/pkg/logger"
+	"github.com/azzimoda/raspishika-go/internal/logger"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
