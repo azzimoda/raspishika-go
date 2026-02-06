@@ -33,7 +33,7 @@ docker build -t raspishika .
 docker run --rm \
     -v ./.env:/app/.env \
     -v ./configs:/app/configs \
-    -v ./database:/app/database \
+    -v ./database/db.sqlite3:/app/database/db.sqlite3 \
     raspishika # --help
 ```
 
