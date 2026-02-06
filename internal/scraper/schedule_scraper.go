@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
-
 	"github.com/PuerkitoBio/goquery"
 	"github.com/playwright-community/playwright-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"golang.org/x/net/html"
+
+	"github.com/azzimoda/raspishika-go/internal/browser"
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 var (

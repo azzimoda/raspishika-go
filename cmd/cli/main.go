@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	logger.SetupLogger("debug", "")
+	logger.SetupLogger("trace", "")
 
 	if err := config.Load(); err != nil {
 		log.Panic().Err(err).Msg("Failed to load configuration")

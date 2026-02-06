@@ -26,18 +26,18 @@ func InitPaths() {
 
 func InitConfig(t *testing.T, testsDir string) {
 	viper.Set("env", filepath.Join(viper.GetString("root"), ".env"))
-	if err := config.Load(); err != nil {
-		t.Fatalf("could not load config: %v", err)
-	}
-
 	viper.Set("database.file", filepath.Join(testsDir, "database/test.sqlite3"))
 	viper.Set("browser.screenshot_dir", filepath.Join(testsDir, "storage/screenshots"))
 	viper.Set("cache.dir", filepath.Join(testsDir, "storage/cache"))
 	viper.Set("logger.dir", "")
 
+	if err := config.Load(); err != nil {
+		t.Fatalf("could not load config: %v", err)
+	}
+
 	logger.SetupLogger("trace", "")
 
-	if err := config.EnsureDirs(); err != nil {
+	if err := config.MkDirs(); err != nil {
 		t.Fatalf("could not ensure dirs: %v", err)
 	}
 }

@@ -1,0 +1,10 @@
+services:
+  raspishika:
+    image: raspishika
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./.env:/app/.env
+      - ./database/db.sqlite3:/app/database/db.sqlite3
+      - ./configs:/app/configs

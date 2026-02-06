@@ -60,7 +60,7 @@ func Load() (err error) {
 		return err
 	}
 
-	if err := EnsureDirs(); err != nil {
+	if err := MkDirs(); err != nil {
 		return err
 	}
 
@@ -140,7 +140,7 @@ func LoadFiles() error {
 	return nil
 }
 
-func EnsureDirs() error {
+func MkDirs() error {
 	dirs := []string{
 		filepath.Dir(viper.GetString("database.file")),
 		viper.GetString("browser.screenshot_dir"),
