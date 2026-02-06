@@ -20,8 +20,10 @@ features:
   daily_sending: false
   pair_sending: false
 
-sendings:
-  pair_notification_ttl: 90
+pair_sending:
+  notification_ttl: 90 # minutes
+sending:
+  workers: 20
 
 schedule_template_file: storage/schedule_template.html
 admin_config_file: configs/admin.json

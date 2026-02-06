@@ -20,13 +20,21 @@
 
 ## Использование
 
+### Минимальная конфигурация
+
+Для работоспособности основного бота как минимум необходимо задать его API-токен в `.env` файле:
+
+```sh
+RASPISHIKA_TELEGRAM_TOKEN="your_token"
+```
+
 ### Docker
 
 ```sh
 docker-compose run --rm raspishika # --help
 ```
 
-Или
+или
 
 ```sh
 docker build -t raspishika .
@@ -43,19 +51,44 @@ docker run --rm \
    ```sh
    go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.0 install --with-deps
    ```
-2. Отредактируйте конфигурацию [`configs/config.yml`](https://github.com/azzimoda/raspishika-go/blob/main/configs/config.yml), и создайте файл `.env`:
-   ```sh
-   RASPISHIKA_TELEGRAM_TOKEN=YOUR-TOKEN       # Токен основного бота
-   RASPISHIKA_TELEGRAM_ADMIN_TOKEN=YOUR-TOKEN # Токен бота администратора
-   RASPISHIKA_TELEGRAM_ADMIN_ID=YOUR-CHAT-ID  # Ваш `chat_id` для доступа к боту администратора
-   ```
-3. Скомпилируйте и запустите:
+2. Скомпилируйте и запустите:
    ```sh
    go build -o ./raspishika ./cmd/cli/main.go
    ./raspishika
    ```
 
-Все опции CLI доступы по команде `./raspishika -help`.
+## Конфигурация
+
+Приоритетность конфигурации:
+
+1. CLI аргументы,
+2. переменные окружения,
+3. файлы.
+
+### Файлы
+
+Используемые файлы конфигурации:
+
+- `configs/config.yml` — основная конфигурация (по умолчанию);
+- `configs/commands.yml` — команды ботов (`my_commands`);
+- `.env` — секреты: API-токены и `chat_id` админа.
+
+По умолчанию все дополнительные `features` отключены.
+
+### Переменные окружения
+
+Используемые переменные окружения:
+
+- `RASPISHIKA_TELEGRAM_TOKEN` — API-токен основного бота;
+- `RASPISHIKA_TELEGRAM_ADMIN_TOKEN` — API-токен бота администратора;
+- `RASPISHIKA_TELEGRAM_ADMIN_CHAT_ID` — `chat_id` администратора;
+- `RASPISHIKA_CONFIG_FILE` — путь к файлу конфигурации;
+- `RASPISHIKA_COMMANDS_FILE` — путь к файлу команд ботов.
+
+### CLI
+
+Также доступны CLI аргументы для некоторых настроек, список которых доступен по флагу `--help`.
+
 
 ---
 
