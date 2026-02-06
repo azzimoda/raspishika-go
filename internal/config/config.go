@@ -52,13 +52,9 @@ func Load() (err error) {
 		viper.SetDefault(key, value)
 	}
 
-	if err := ConfigEnv(); err != nil {
-		return err
-	}
+	ConfigEnv()
 	ConfigFlags()
-	if err := LoadFiles(); err != nil {
-		return err
-	}
+	LoadFiles()
 
 	if err := MkDirs(); err != nil {
 		return err
@@ -74,9 +70,10 @@ func Load() (err error) {
 	return nil
 }
 
-func ConfigEnv() error {
-	if err := godotenv.Load(viper.GetString("env")); err != nil {
-		return fmt.Errorf("failed to load .env file: %w", err)
+func ConfigEnv() {
+	dotenvPath := viper.GetString("env")
+	if err := godotenv.Load(dotenvPath); err != nil {
+		log.Warn().Err(err).Str("dotenvPath", dotenvPath).Msg("Failed to load .env file")
 	}
 
 	viper.SetEnvPrefix("raspishika")
@@ -87,8 +84,6 @@ func ConfigEnv() error {
 	viper.BindEnv("telegram_admin_token")
 	viper.BindEnv("telegram_admin_id")
 	viper.AutomaticEnv()
-
-	return nil
 }
 
 func ConfigFlags() {
@@ -123,21 +118,20 @@ func ConfigFlags() {
 	viper.BindPFlag("logger.dir", pflag.CommandLine.Lookup("log-dir"))
 }
 
-func LoadFiles() error {
+func LoadFiles() {
 	filename := viper.GetString("config_file")
 	log.Debug().Str("filename", filename).Msg("Loading base config...")
 	viper.SetConfigFile(filename)
 	if err := viper.ReadInConfig(); err != nil {
-		return fmt.Errorf("failed to read base config file: %w", err)
+		log.Error().Err(err).Msg("Failed to load main config file! Default values are used.")
 	}
 
 	filename = viper.GetString("commands_file")
 	log.Debug().Str("filename", filename).Msg("Loading commands config...")
 	viper.SetConfigFile(filename)
 	if err := viper.MergeInConfig(); err != nil {
-		return fmt.Errorf("failed to read commands config file: %w", err)
+		log.Error().Err(err).Msg("Failed to load commands config file! Bot's command will be empty!")
 	}
-	return nil
 }
 
 func MkDirs() error {
