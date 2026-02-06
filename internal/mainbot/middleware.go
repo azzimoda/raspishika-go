@@ -304,7 +304,12 @@ func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *models.Updat
 
 	chatMember, err := b.GetChatMember(ctx, &bot.GetChatMemberParams{ChatID: chatID, UserID: userID})
 	if err != nil {
-		return false, fmt.Errorf("failed to get chat member: %w", err)
+		log.Warn().Err(err).Msg("Failed to get chat member; retrying...")
+		// Retry once
+		chatMember, err = b.GetChatMember(ctx, &bot.GetChatMemberParams{ChatID: chatID, UserID: userID})
+		if err != nil {
+			return false, fmt.Errorf("failed to get chat member with retry: %w", err)
+		}
 	}
 
 	return chatMember.Type == models.ChatMemberTypeAdministrator || chatMember.Type == models.ChatMemberTypeOwner, nil
