@@ -6,7 +6,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/database"
+	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -39,7 +39,7 @@ func (a *App) SendNotification(s string) {
 	log.Info().Int("okCount", okCount).Int("errCount", len(chats)-okCount).Msg("Notification sent")
 }
 
-func sendNotification(b *bot.Bot, chat *database.Chat, text string) error {
+func sendNotification(b *bot.Bot, chat *repository.Chat, text string) error {
 	_, err := b.SendMessage(context.Background(), &bot.SendMessageParams{ChatID: chat.TgChatID, Text: text})
 	return err
 }

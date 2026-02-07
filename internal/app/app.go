@@ -11,10 +11,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/internal/adminbot"
-	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
-	"github.com/azzimoda/raspishika-go/internal/mainbot"
-	"github.com/azzimoda/raspishika-go/internal/mainbot/sendings"
+	adminbot "github.com/azzimoda/raspishika-go/internal/bots/admin"
+	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
+	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
+	"github.com/azzimoda/raspishika-go/internal/bots/main/sendings"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 

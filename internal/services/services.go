@@ -3,16 +3,17 @@ package services
 import (
 	"fmt"
 
-	"github.com/azzimoda/raspishika-go/internal/adminbot/reporter"
-	"github.com/azzimoda/raspishika-go/internal/browser"
-	"github.com/azzimoda/raspishika-go/internal/cache"
-	"github.com/azzimoda/raspishika-go/internal/database"
-	"github.com/azzimoda/raspishika-go/internal/scraper"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
+	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/services/browser"
+	"github.com/azzimoda/raspishika-go/internal/services/cache"
+	"github.com/azzimoda/raspishika-go/internal/services/scraper"
 )
 
 type Services struct {
-	Repo            *database.Repository
+	Repo            *repository.Repository
 	Browser         *browser.BrowserService
 	Cache           *cache.Cache
 	ScheduleManager *scraper.ScheduleManager
@@ -25,7 +26,7 @@ func NewServices() (s *Services, err error) {
 		ScheduleManager: scraper.NewScheduleManager(),
 	}
 
-	s.Repo, err = database.New()
+	s.Repo, err = repository.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {

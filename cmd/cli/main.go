@@ -10,7 +10,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/app"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/logger"
+	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
 func main() {
