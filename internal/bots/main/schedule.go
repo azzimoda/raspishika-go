@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/repository"
-	"github.com/azzimoda/raspishika-go/internal/services/scraper"
+	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
 func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.Update) {

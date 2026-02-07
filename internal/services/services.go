@@ -9,21 +9,21 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/azzimoda/raspishika-go/internal/services/cache"
-	"github.com/azzimoda/raspishika-go/internal/services/scraper"
+	smanager "github.com/azzimoda/raspishika-go/internal/services/schedule/manager"
 )
 
 type Services struct {
 	Repo            *repository.Repository
 	Browser         *browser.BrowserService
 	Cache           *cache.Cache
-	ScheduleManager *scraper.ScheduleManager
+	ScheduleManager *smanager.ScheduleManager
 	Reporter        reporter.Reporter
 }
 
 func NewServices() (s *Services, err error) {
 	s = &Services{
 		Cache:           cache.New(),
-		ScheduleManager: scraper.NewScheduleManager(),
+		ScheduleManager: smanager.NewScheduleManager(),
 	}
 
 	s.Repo, err = repository.New()

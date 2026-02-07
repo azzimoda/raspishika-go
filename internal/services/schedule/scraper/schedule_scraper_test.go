@@ -5,7 +5,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/bots/main/utils"
 	"github.com/azzimoda/raspishika-go/internal/services"
-	"github.com/azzimoda/raspishika-go/internal/services/scraper"
+	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
 var debugConfigFile string
