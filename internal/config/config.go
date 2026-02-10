@@ -141,6 +141,7 @@ func MkDirs() error {
 		viper.GetString("cache.dir"),
 		viper.GetString("logger.dir"),
 	}
+	log.Trace().Strs("dirs", dirs).Msg("Ensuring directories...")
 	for _, dir := range dirs {
 		if dir == "" {
 			continue
