@@ -1,5 +1,6 @@
 .*
 !.gitignore
+!.dockerignore
 
 storage/cache/
 storage/screenshots/
@@ -7,3 +8,4 @@ storage/screenshots/
 *.sqlite3
 *.bak
 *.log
+*.json
