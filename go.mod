@@ -1,6 +1,6 @@
 module github.com/azzimoda/raspishika-go
 
-go 1.25.4
+go 1.25.7
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.3
@@ -20,7 +20,7 @@ require gopkg.in/natefinch/lumberjack.v2 v2.2.1
 require golang.org/x/sync v0.17.0
 
 require (
-	github.com/go-telegram/bot v1.17.0
+	github.com/go-telegram/bot v1.18.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0

@@ -7,6 +7,9 @@ WORKDIR /app
 RUN go run github.com/playwright-community/playwright-go/cmd/playwright@v0.5200.0 install chromium chromium-headless-shell --with-deps
 RUN rm -rf /var/lib/apt/lists/*
 
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
 RUN go build -o raspishika ./cmd/cli/main.go
 
