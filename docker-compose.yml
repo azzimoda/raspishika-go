@@ -6,5 +6,5 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./.env:/app/.env
-      - ./database/db.sqlite3:/app/database/db.sqlite3
+      - ./database:/app/database
       - ./configs:/app/configs

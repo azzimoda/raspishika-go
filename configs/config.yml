@@ -1,7 +1,7 @@
 ---
 database:
   file: database/db.sqlite3
-  migrations: database/migrations
+  migrations: migrations
 browser:
   headless: true
   timeout: 30 # seconds
