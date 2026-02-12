@@ -59,15 +59,12 @@ type BrowserService struct {
 }
 
 func (b *BrowserService) Close() error {
+	b.chromedpCancel()
 	browserErr := b.pwBrowser.Close()
 	pwErr := b.pw.Stop()
-
-	if browserErr != nil || pwErr != nil {
-		return fmt.Errorf("Browser services closed with errors: %w", errors.Join(browserErr, pwErr))
+	if err := errors.Join(browserErr, pwErr); err != nil {
+		return fmt.Errorf("Browser services closed with errors: %w", err)
 	}
-
-	b.chromedpCancel()
-
 	return nil
 }
 
