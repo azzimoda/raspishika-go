@@ -21,7 +21,7 @@ var Defaults = map[string]any{
 	"database.file":       "database/db.sqlite3",
 	"database.migrations": "migrations",
 
-	"browser.headless":       false,
+	"browser.headless":       true,
 	"browser.timeout":        30, // seconds
 	"browser.max_retries":    10,
 	"browser.screenshot_dir": "storage/cache/screenshots",
@@ -48,9 +48,7 @@ var Defaults = map[string]any{
 
 func Load() (err error) {
 	// Set defaults.
-	for key, value := range Defaults {
-		viper.SetDefault(key, value)
-	}
+	SetDefaults()
 
 	ConfigEnv()
 	ConfigFlags()
@@ -68,6 +66,12 @@ func Load() (err error) {
 	viper.Set("schedule_template", string(data))
 
 	return nil
+}
+
+func SetDefaults() {
+	for key, value := range Defaults {
+		viper.SetDefault(key, value)
+	}
 }
 
 func ConfigEnv() {

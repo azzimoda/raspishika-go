@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/ninetwentyfour/go-wkhtmltoimage"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -92,18 +93,44 @@ func (mb *MainBot) PrepareWeekScheduleData(
 	}
 
 	html := schedule.HTML(viper.GetString("schedule_template"))
-	imageFilename = path.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
-	if err = mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
-		err = errors.Join(chatActionErr, fmt.Errorf("failed taking screenshot: %w", err))
-		return
-	}
 
-	imageData, err = os.ReadFile(imageFilename)
+	imageFilename, imageData, err = mb.htmlToImage(scheduleCfg, html)
 	if err != nil {
-		err = errors.Join(chatActionErr, fmt.Errorf("failed reading screenshot: %w", err))
-		return
+		return "", nil, err
 	}
 	return imageFilename, imageData, chatActionErr
+}
+
+func (mb *MainBot) htmlToImage(
+	scheduleCfg scraper.ScheduleConfig,
+	html string,
+) (string, []byte, error) {
+	imageFilename := path.Join(
+		viper.GetString("browser.screenshot_dir"),
+		scheduleScreenshotFileName(scheduleCfg),
+	)
+	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
+		return "", nil, err
+	}
+
+	imageData, err := os.ReadFile(imageFilename)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read screenshot: %w", err)
+	}
+	return imageFilename, imageData, nil
+}
+
+func htmlToImage(scheduleCfg scraper.ScheduleConfig, html, imageFilename string) (imageDage []byte, err error) {
+	htmlFilename, err := scraper.SaveScheduleHTML(scheduleCfg, html)
+	if err != nil {
+		return nil, err
+	}
+
+	return wkhtmltoimage.GenerateImage(&wkhtmltoimage.ImageOptions{
+		Input:  htmlFilename,
+		Format: "png",
+		Output: imageFilename,
+	})
 }
 
 func (*MainBot) SendWeekScheduleMessages(

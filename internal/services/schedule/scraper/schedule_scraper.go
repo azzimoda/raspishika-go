@@ -49,21 +49,27 @@ func ScrapeSchedule(url string, config ScheduleConfig) (*RawSchedule, error) {
 	}
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
-		filename := "schedule_temp.html"
-		if config.Group != nil {
-			filename = fmt.Sprintf("schedule_group_%s_%s.html", config.Group.DepartmentName, config.Group.GroupName)
-		} else if config.Teacher != nil {
-			filename = fmt.Sprintf("schedule_teacher_%s.html", config.Teacher.Name)
-		}
-		filename = path.Join(viper.GetString("cache.dir"), filename)
-		if err := os.WriteFile(filename, []byte(fixedEncoding), 0644); err != nil {
-			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
-		} else {
-			log.Trace().Msgf("Saved schedule HTML to file %s", filename)
-		}
+		SaveScheduleHTML(config, fixedEncoding)
 	}
 
 	return parseSchedule(fixedEncoding, config)
+}
+
+func SaveScheduleHTML(config ScheduleConfig, html string) (filename string, err error) {
+	filename = "schedule_temp.html"
+	if config.Group != nil {
+		filename = fmt.Sprintf("schedule_group_%s_%s.html", config.Group.DepartmentName, config.Group.GroupName)
+	} else if config.Teacher != nil {
+		filename = fmt.Sprintf("schedule_teacher_%s.html", config.Teacher.Name)
+	}
+	filename = path.Join(viper.GetString("cache.dir"), filename)
+	if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
+		log.Error().Err(err).Msg("Failed to save schedule HTML to file")
+		return "", err
+	} else {
+		log.Trace().Msgf("Saved schedule HTML to file %s", filename)
+	}
+	return filename, nil
 }
 
 func ScrapeScheduleWithBrowser(
