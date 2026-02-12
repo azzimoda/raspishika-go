@@ -1,6 +1,6 @@
 FROM golang:1.25-bookworm
 
-RUN apt-get update && apt-get install -y nodejs
+RUN apt-get update && apt-get install -y nodejs chromium
 
 WORKDIR /app
 
@@ -11,6 +11,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o raspishika ./cmd/cli/main.go
+RUN go build -v -o raspishika ./cmd/cli/main.go
 
 ENTRYPOINT ["/app/raspishika"]
