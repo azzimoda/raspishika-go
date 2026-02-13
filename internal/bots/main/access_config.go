@@ -7,20 +7,20 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
-func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Access handler")
 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -54,10 +54,10 @@ func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *models
 	}
 }
 
-func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Set access handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -80,10 +80,10 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 		log.Error().Err(err).Msg("Failed to parse access level; fallback to 0")
 		chat.Access = 0
 	} else {
-		chat.Access = repository.ChatAccessLevel(accessLevel)
+		chat.Access = models.ChatAccessLevel(accessLevel)
 	}
 
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -110,8 +110,8 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *mod
 	addContextHandlerError(ctx, err)
 }
 
-func accessMenuInlineMarkup(accessLevel repository.ChatAccessLevel) *models.InlineKeyboardMarkup {
-	keyboard := [][]models.InlineKeyboardButton{
+func accessMenuInlineMarkup(accessLevel models.ChatAccessLevel) *tgmodels.InlineKeyboardMarkup {
+	keyboard := [][]tgmodels.InlineKeyboardButton{
 		{},
 		{{Text: "Закрыть", CallbackData: "delete_config"}},
 	}
@@ -120,10 +120,10 @@ func accessMenuInlineMarkup(accessLevel repository.ChatAccessLevel) *models.Inli
 		if i == int(accessLevel) {
 			text = fmt.Sprintf("[%d]", i)
 		}
-		keyboard[0] = append(keyboard[0], models.InlineKeyboardButton{
+		keyboard[0] = append(keyboard[0], tgmodels.InlineKeyboardButton{
 			Text:         text,
 			CallbackData: fmt.Sprintf("set_access\n%d", i),
 		})
 	}
-	return &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	return &tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }

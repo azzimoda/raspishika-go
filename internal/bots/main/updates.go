@@ -10,22 +10,23 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
-func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update group handler")
 
 	message := update.CallbackQuery.Message.Message
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := command.Arg(0)
 
-	group, err := mb.services.Repo.GetGroupByName(groupName)
+	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -75,19 +76,19 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *m
 	_, err = b.EditMessageMedia(ctx, &bot.EditMessageMediaParams{
 		ChatID:      message.Chat.ID,
 		MessageID:   message.ID,
-		Media:       &models.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
+		Media:       &tgmodels.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
 		ReplyMarkup: updateInlineMarkup("group", groupName),
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update teacher handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	teacherID := command.Arg(0)
 
-	teacher, err := mb.services.Repo.GetTeacherByTeacherID(teacherID)
+	teacher, err := models.GetTeacherByTeacherID(mb.services.Repo.DB, teacherID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -139,19 +140,19 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	_, err = b.EditMessageMedia(ctx, &bot.EditMessageMediaParams{
 		ChatID:      message.Chat.ID,
 		MessageID:   message.ID,
-		Media:       &models.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
+		Media:       &tgmodels.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
 		ReplyMarkup: updateInlineMarkup("teacher", teacherID),
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update tomorrow handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := command.Arg(0)
 
-	group, err := mb.services.Repo.GetGroupByName(groupName)
+	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -191,7 +192,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        tomorrow.String(),
-		ParseMode:   models.ParseModeMarkdown,
+		ParseMode:   tgmodels.ParseModeMarkdown,
 		ReplyMarkup: updateInlineMarkup("tomorrow", groupName),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {
@@ -206,13 +207,13 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update left handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := command.Arg(0)
 
-	group, err := mb.services.Repo.GetGroupByName(groupName)
+	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -257,7 +258,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *mo
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        text,
-		ParseMode:   models.ParseModeMarkdown,
+		ParseMode:   tgmodels.ParseModeMarkdown,
 		ReplyMarkup: updateInlineMarkup("left", groupName),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {

@@ -6,18 +6,18 @@ import (
 	"strconv"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
-func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Settings handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -36,13 +36,13 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *mode
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       models.ParseModeHTML,
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup:     replyMarkup,
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config group handler")
 
 	message := update.CallbackQuery.Message.Message
@@ -52,11 +52,11 @@ func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *m
 	mb.sendGroupMenu(ctx, b, message.MessageThreadID)
 }
 
-func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily off callback handler")
 	message := update.CallbackQuery.Message.Message
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -68,7 +68,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.DailySendingTime = nil
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -81,13 +81,13 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	updateSettingsMenu(ctx, b, update, chat)
 }
 
-func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config reminder handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -99,7 +99,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.PairSending = command.Arg(0) == "true"
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -112,13 +112,13 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	updateSettingsMenu(ctx, b, update, chat)
 }
 
-func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config access handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -140,10 +140,10 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 		log.Error().Err(err).Msg("Failed to parse access level; fallback to 0")
 		chat.Access = 0
 	} else {
-		chat.Access = repository.ChatAccessLevel(accessLevel)
+		chat.Access = models.ChatAccessLevel(accessLevel)
 	}
 
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -156,7 +156,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 	updateSettingsMenu(ctx, b, update, chat)
 }
 
-func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *models.Update, chat *repository.Chat) {
+func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *tgmodels.Update, chat *models.Chat) {
 	log.Trace().Msg("Update settings menu")
 
 	text, markup := settingsMessageParams(chat)
@@ -164,13 +164,13 @@ func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *models.Update, 
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        text,
-		ParseMode:   models.ParseModeHTML,
+		ParseMode:   tgmodels.ParseModeHTML,
 		ReplyMarkup: markup,
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func settingsMessageParams(chat *repository.Chat) (string, *models.InlineKeyboardMarkup) {
+func settingsMessageParams(chat *models.Chat) (string, *tgmodels.InlineKeyboardMarkup) {
 	// Text
 	dailyTime := "выключено"
 	if chat.DailySendingTime != nil {
@@ -192,29 +192,29 @@ func settingsMessageParams(chat *repository.Chat) (string, *models.InlineKeyboar
 	}
 
 	// Keyboard
-	keyboard := make([][]models.InlineKeyboardButton, 0)
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Изменить группу", CallbackData: "config_group"}})
+	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Изменить группу", CallbackData: "config_group"}})
 	if chat.DailySendingTime == nil {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Включить ежедневную рассылку", CallbackData: "config_daily_time"},
 		})
 	} else {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Изменить время", CallbackData: "config_daily_time"},
 			{Text: "Выключить рассылку", CallbackData: "daily_off"},
 		})
 	}
 	if chat.PairSending {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Выключить напоминания", CallbackData: "config_reminder\nfalse"},
 		})
 	} else {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Включить напоминания", CallbackData: "config_reminder\ntrue"},
 		})
 	}
 	if !chat.IsPrivate() {
-		row := []models.InlineKeyboardButton{
+		row := []tgmodels.InlineKeyboardButton{
 			{Text: "0", CallbackData: "set_access\n0"},
 			{Text: "1", CallbackData: "set_access\n1"},
 			{Text: "2", CallbackData: "set_access\n2"},
@@ -226,7 +226,7 @@ func settingsMessageParams(chat *repository.Chat) (string, *models.InlineKeyboar
 		}
 		keyboard = append(keyboard, row)
 	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete_config"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete_config"}})
 
-	return text, &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	return text, &tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }

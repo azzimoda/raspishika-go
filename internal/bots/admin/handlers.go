@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
@@ -28,7 +28,7 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
 }
 
-func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Debug().Msgf("Received update: %v", update)
 
 	if update.Message != nil {
@@ -37,7 +37,7 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *mode
 			bothelpers.DeleteMessageSafely(ctx, b, update.Message)
 		}
 
-		if _, err := ab.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
+		if _, err := models.ValidateGroupName(ab.services.Repo.DB, update.Message.Text); err == nil {
 			ab.groupHandler(ctx, b, update)
 			return
 		}
@@ -46,21 +46,21 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *mode
 	}
 }
 
-func (ab *AdminBot) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) startHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Welcome back, Master!",
 	})
 }
 
-func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	_, args := bothelpers.ParseCommand(update.Message.Text)
 
 	tgChatID, err := strconv.ParseInt(args, 10, 64)
-	var chat *repository.Chat
+	var chat *models.Chat
 	if err != nil {
 		// Get last chat from database.
-		chats, err := ab.services.Repo.GetChats()
+		chats, err := models.GetChats(ab.services.Repo.DB)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chats")
 			return
@@ -72,7 +72,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *models.
 
 		chat = &chats[len(chats)-1]
 	} else {
-		chat, err = ab.services.Repo.GetChatByTgChatID(tgChatID)
+		chat, err = models.GetChatByTgChatID(ab.services.Repo.DB, tgChatID)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chat by chat ID")
 			return
@@ -82,10 +82,10 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *models.
 	ab.sendChatReport(chat, b, ctx, update)
 }
 
-func (ab *AdminBot) sendChatReport(chat *repository.Chat, b *bot.Bot, ctx context.Context, update *models.Update) {
-	recentTeachers, err := ab.services.Repo.GetTeacherByChatID(chat.ID)
+func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Context, update *tgmodels.Update) {
+	recentTeachers, err := models.GetTeacherByChatID(ab.services.Repo.DB, chat.ID)
 	if err != nil {
-		recentTeachers = []repository.Teacher{}
+		recentTeachers = []models.Teacher{}
 		ab.services.Reporter.Report().Err(err).Msgf("Failed to get recent teachers for chat %d", chat.ID)
 	}
 	recentTeachersNames := make([]string, len(recentTeachers))
@@ -93,10 +93,10 @@ func (ab *AdminBot) sendChatReport(chat *repository.Chat, b *bot.Bot, ctx contex
 		recentTeachersNames[i] = t.Name
 	}
 
-	recentUpdates, err := ab.services.Repo.GetRecentChatUpdateLogs(chat.ID, 48*time.Hour)
+	recentUpdates, err := models.GetRecentChatUpdateLogs(ab.services.Repo.DB, chat.ID, 48*time.Hour)
 	if err != nil {
 		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
-		recentUpdates = []repository.UpdateLog{}
+		recentUpdates = []models.UpdateLog{}
 	}
 	recentUpdatesStr := ""
 	for i := len(recentUpdates) - 1; i >= 0 && i >= len(recentUpdates)-5; i-- {
@@ -135,23 +135,23 @@ Recent updates:
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text,
-		ParseMode: models.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 }
 
-func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	group := update.Message.Text // For default handler
 	if strings.HasPrefix(update.Message.Text, "/") {
 		_, group = bothelpers.ParseCommand(update.Message.Text) // For /group command
 	}
 
-	group, err := ab.services.Repo.ValidateGroupName(update.Message.Text)
+	group, err := models.ValidateGroupName(ab.services.Repo.DB, update.Message.Text)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return
 	}
 
-	chats, err := ab.services.Repo.GetChatsByGroup(group)
+	chats, err := models.GetChatsByGroup(ab.services.Repo.DB, group)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats by group")
 		return
@@ -171,24 +171,24 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *models
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text.String(),
-		ParseMode: models.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 }
 
-func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	dailyTimes, err := ab.services.Repo.GetChatGroupedByDailySendingTime()
+func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+	dailyTimes, err := models.GetChatGroupedByDailySendingTime(ab.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats grouped by daily sending time")
 		return
 	}
 
-	dailyEnabledCount, err := ab.services.Repo.GetChatCountWithDailySendingEnabled()
+	dailyEnabledCount, err := models.GetChatCountWithDailySendingEnabled(ab.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with daily sending time enabled")
 		return
 	}
 
-	pairEnabledCount, err := ab.services.Repo.GetChatCountWithPairSendingEnabled()
+	pairEnabledCount, err := models.GetChatCountWithPairSendingEnabled(ab.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		return
@@ -209,24 +209,24 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *model
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text,
-		ParseMode: models.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 }
 
-func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	_, args := bothelpers.ParseCommand(update.Message.Text)
 	duration, ok := parsePeriod(args)
 	if !ok {
 		duration = 24 * time.Hour
 	}
 
-	totalChats, err := ab.services.Repo.GetChatCount()
+	totalChats, err := models.GetChatCount(ab.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chat count")
 		return
 	}
 
-	privateChatCount, err := ab.services.Repo.GetPrivateChatCount()
+	privateChatCount, err := models.GetPrivateChatCount(ab.services.Repo.DB)
 	groupChatCount := totalChats - privateChatCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get private chat count")
@@ -234,7 +234,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *models
 		groupChatCount = 0
 	}
 
-	inactiveCount, err := ab.services.Repo.GetInactiveChatCount(duration)
+	inactiveCount, err := models.GetInactiveChatCount(ab.services.Repo.DB, duration)
 	activeChatCount := totalChats - inactiveCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get inactive chat count")
@@ -242,9 +242,13 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *models
 		activeChatCount = 0
 	}
 
-	newChats, err := ab.services.Repo.GetNewChatCount(duration)
+	newChats, err := models.GetNewChatCount(ab.services.Repo.DB, duration)
+	if err != nil {
+		ab.Report().Log().Err(err).Msg("Failed to get new chats count")
+		return
+	}
 
-	updateLogs, err := ab.services.Repo.GetUpdateLogsByPeriod(time.Now().Add(-duration), time.Now())
+	updateLogs, err := models.GetUpdateLogsByPeriod(ab.services.Repo.DB, time.Now().Add(-duration), time.Now())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update logs by period")
 		return
@@ -297,7 +301,7 @@ Callbacks: %d`,
 	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
 }
 
-func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("distHandler")
 	command, args := bothelpers.ParseCommand(update.Message.Text)
 
@@ -330,7 +334,7 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *models.
 	log.Trace().Dur("dur", dur).Send()
 
 	log.Trace().Msg("Fetching distribution...")
-	distribution, err := ab.services.Repo.GetDist(dataKind, distPeriod, dur)
+	distribution, err := models.GetDist(ab.services.Repo.DB, dataKind, distPeriod, dur)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get distribution")
 		return
@@ -349,7 +353,7 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *models.
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text.String(),
-		ParseMode: models.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 	if err != nil {
 		log.Error().Err(err).Send()

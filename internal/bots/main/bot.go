@@ -7,13 +7,13 @@ import (
 	"os/signal"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
@@ -55,7 +55,7 @@ func New(
 
 type MainBot struct {
 	Bot      *bot.Bot
-	Me       *models.User
+	Me       *tgmodels.User
 	services *services.Services
 }
 
@@ -93,13 +93,13 @@ func (mb *MainBot) Report() reporter.ReportConfig {
 // When given group name is not found in database, it fetches group from the website and
 // updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
 // When any other error occurs, it returns the error.
-func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*repository.Group, error) {
+func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*models.Group, error) {
 	groupName, err := utils.ValidateGroupNameFormat(name)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrWrongGroupNameFormat, err)
 	}
 
-	if groupName, err = mb.services.Repo.ValidateGroupNameCase(groupName); err != nil {
+	if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
 		log.Warn().Err(err).Msg("Updating groups")
 		// Try to update groups.
 		if _, err := scraper.FetchGroups(mb.services.Repo, mb.services.Browser, mb.services.Cache); err != nil {
@@ -107,7 +107,7 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*repository.Grou
 		}
 
 		// Try again.
-		if groupName, err = mb.services.Repo.ValidateGroupNameCase(groupName); err != nil {
+		if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
 		}
 	} else {
@@ -117,7 +117,7 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*repository.Grou
 	}
 
 	// Group found.
-	group, err := mb.services.Repo.GetGroupByName(groupName)
+	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
 	}

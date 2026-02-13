@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
@@ -19,7 +19,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	timeStr := t.Format("15:04")
 
 	// Get chats daily sending configured to current time
-	chats, err := sm.services.Repo.GetChatsByDailySendingTime(timeStr)
+	chats, err := models.GetChatsByDailySendingTime(sm.services.Repo.DB, timeStr)
 	if err != nil {
 		log.Error().Err(err).Time("time", t).Msg("Failed to get chats by daily sending time")
 		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats by daily sending time")
@@ -34,10 +34,10 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	log.Info().Time("time", t).Int("chatCount", chatsCount).Msg("Processing daily sending...")
 
 	// Group chats by configured group
-	groupedChats := make(map[string][]*repository.Chat)
+	groupedChats := make(map[string][]*models.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
-			groupedChats[*chat.GroupName] = []*repository.Chat{}
+			groupedChats[*chat.GroupName] = []*models.Chat{}
 		}
 		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
 	}
@@ -59,8 +59,8 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 		Dur("elapsedPerGroup", time.Duration(elapsedPerGroup)).Send()
 
 	if chatsCount > 0 {
-		if err := sm.services.Repo.InsertSendingLog(repository.SendingLog{
-			Kind:    repository.DailySendingLog,
+		if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
+			Kind:    models.DailySendingLog,
 			Chats:   chatsCount,
 			Groups:  groupsCount,
 			Elapsed: int(elapsedTime.Milliseconds()),
@@ -113,7 +113,7 @@ type sendingResult struct {
 // sendDailyNotificationToGroups sends daily notifications to each chat in each group in parallel.
 //
 // Returns a slice of errors and the total number of failed chats.
-func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string][]*repository.Chat) ([]error, int) {
+func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string][]*models.Chat) ([]error, int) {
 	var wg sync.WaitGroup
 	results := make(chan sendingResult, 64)
 	workers := viper.GetInt("sending.workers") // TODO: Add this for pair sending.
@@ -160,7 +160,7 @@ func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string]
 	return errs, errCount
 }
 
-func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*repository.Chat) ([]error, bool) {
+func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*models.Chat) ([]error, bool) {
 	// Prepare schedule
 	log.Trace().Str("group", groupName).Msg("Preparing schedule for group...")
 
@@ -172,7 +172,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*rep
 	var errors []error
 	var doReturn = false
 	elapsedFetchGroupSchedule := measureTime(func() {
-		group, err := sm.services.Repo.GetGroupByName(groupName)
+		group, err := models.GetGroupByName(sm.services.Repo.DB, groupName)
 		if err != nil {
 			errors = []error{fmt.Errorf("failed to get group by name %s", groupName)}
 			doReturn = true

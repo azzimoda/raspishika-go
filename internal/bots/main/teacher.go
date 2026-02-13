@@ -5,32 +5,32 @@ import (
 	"fmt"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
-func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Teacher handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
 		return
 	}
 
-	teachers, err := mb.services.Repo.GetTeacherByChatID(chat.ID)
+	teachers, err := models.GetTeacherByChatID(mb.services.Repo.DB, chat.ID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		teachers = []repository.Teacher{}
+		teachers = []models.Teacher{}
 	}
 
-	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, repository.ChatStateSelectingTeacher); err != nil {
+	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTeacher); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
 		return
@@ -45,7 +45,7 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *model
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text teacher name handler")
 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
@@ -67,7 +67,7 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 		names[i] = t.Name
 	}
 	matchedNames := utils.MatchStrings(names, update.Message.Text, 5)
-	matchedTeachers := make([]repository.Teacher, len(matchedNames))
+	matchedTeachers := make([]models.Teacher, len(matchedNames))
 	for i, name := range matchedNames {
 		for _, t := range teachers {
 			if t.Name == name {
@@ -79,7 +79,7 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 
 	if len(matchedTeachers) == 1 {
 		// Try to send schedule for the selected teacher.
-		chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			addContextHandlerError(ctx, fmt.Errorf("could not send teacher schedule: %w", ErrNoChatContext))
 			// If failed, reask user to select teacher manually.
@@ -97,31 +97,31 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 	})
 }
 
-func teachersInlineMarkup(teachers []repository.Teacher) models.InlineKeyboardMarkup {
-	keyboard := make([][]models.InlineKeyboardButton, 0)
+func teachersInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMarkup {
+	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for _, teacher := range teachers {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
 			Text:         teacher.Name,
 			CallbackData: "select_teacher\n" + teacher.TeacherID,
 		}})
 	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete"}})
-	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete"}})
+	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
-func teacherInlineMarkup(teachers []repository.Teacher) models.InlineKeyboardMarkup {
-	keyboard := make([][]models.InlineKeyboardButton, 0)
+func teacherInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMarkup {
+	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for _, teacher := range teachers {
-		keyboard = append(keyboard, []models.InlineKeyboardButton{{
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
 			Text:         teacher.Name,
 			CallbackData: "select_teacher\n" + teacher.TeacherID,
 		}})
 	}
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
-	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
+	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
-func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Select teacher handler")
 	message := update.CallbackQuery.Message.Message
 
@@ -130,7 +130,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -140,7 +140,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	teacher, err := mb.services.Repo.GetTeacherByTeacherID(command.Arg(0))
+	teacher, err := models.GetTeacherByTeacherID(mb.services.Repo.DB, command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -157,16 +157,16 @@ func (mb *MainBot) sendTeacherSchedule(
 	ctx context.Context,
 	b *bot.Bot,
 	messageThreadID int,
-	chat *models.Chat,
-	localChat *repository.Chat,
-	teacher *repository.Teacher,
+	chat *tgmodels.Chat,
+	localChat *models.Chat,
+	teacher *models.Teacher,
 ) {
-	err := mb.services.Repo.AddChatRecentTeacher(localChat.ID, teacher.ID)
+	err := models.AddChatRecentTeacher(mb.services.Repo.DB, localChat.ID, teacher.ID)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to add recent teacher: %w", err))
 	}
 
-	if err := mb.services.Repo.UpdateChatState(localChat.TgChatID, repository.ChatStateDefault); err != nil {
+	if err := models.UpdateChatState(mb.services.Repo.DB, localChat.TgChatID, models.ChatStateDefault); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotUpdateData})
 	}

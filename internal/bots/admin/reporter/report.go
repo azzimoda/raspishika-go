@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -72,7 +72,7 @@ func (r ReportConfig) Temp() ReportConfig {
 func (r ReportConfig) Chat(chatOrID any) ReportConfig {
 	if tgChatID, ok := chatOrID.(int64); ok {
 		r = r.withValue(chatIDKey, tgChatID)
-	} else if chat, ok := chatOrID.(*repository.Chat); ok {
+	} else if chat, ok := chatOrID.(*models.Chat); ok {
 		r = r.withValue(chatIDKey, chat.TgChatID).withValue(usernameKey, utils.DerefOrTypeDefault(chat.UserName))
 	} else {
 		log.Error().Type("type", chatOrID).Any("arg", chatOrID).Msg("Wrong type of chat argument")
@@ -99,7 +99,7 @@ func (r ReportConfig) withValue(key any, value any) ReportConfig {
 }
 
 // Msg sends a message to the recipient chat with the report information and the given text.
-func (rc ReportConfig) Msg(text string) (*models.Message, error) {
+func (rc ReportConfig) Msg(text string) (*Report, error) {
 	_, file, line, ok := runtime.Caller(1)
 	caller := "unknown"
 	if ok {
@@ -166,9 +166,14 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID:    rc.recipientChatID,
 		Text:      msgText,
-		ParseMode: models.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 	if err != nil {
+		rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
+			ChatID:    rc.recipientChatID,
+			Text:      fmt.Sprintf("Failed to send report:\n```\n%s\n```", err),
+			ParseMode: tgmodels.ParseModeMarkdown,
+		})
 		log.Error().Err(err).Str("text", msgText).Msg("Failed to send report message")
 	}
 	if err == nil && isTemp {
@@ -183,16 +188,30 @@ func (rc ReportConfig) Msg(text string) (*models.Message, error) {
 		}()
 	}
 
-	return msg, err
+	return &Report{rc, msg}, err
 }
 
 // Msgf sends a message to the recipient chat with the report information and the given text.
-func (r ReportConfig) Msgf(format string, a ...any) (*models.Message, error) {
+func (r ReportConfig) Msgf(format string, a ...any) (*Report, error) {
 	return r.Msg(fmt.Sprintf(format, a...))
 }
 
 // Send sends a message to the recipient chat with the report information and an empty text.
 // It is a shorthand for Msg("").
-func (r ReportConfig) Send() (*models.Message, error) {
+func (r ReportConfig) Send() (*Report, error) {
 	return r.Msg("")
+}
+
+type Report struct {
+	ReportConfig
+	Message *tgmodels.Message
+}
+
+func (r *Report) RemoveMessage() (isDeleted bool, err error) {
+	isDeleted, err = r.bot.DeleteMessage(context.Background(), &bot.DeleteMessageParams{
+		ChatID:    r.recipientChatID,
+		MessageID: r.Message.ID,
+	})
+	log.Trace().Msgf("The report message is deleted")
+	return
 }

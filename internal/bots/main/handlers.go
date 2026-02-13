@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	database "github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
@@ -84,15 +84,15 @@ func (mb *MainBot) registerHandlers() {
 
 		mb.registerTextMessageHandler("преподаватель", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
-		mb.Bot.RegisterHandlerMatchFunc(func(update *models.Update) bool {
+		mb.Bot.RegisterHandlerMatchFunc(func(update *tgmodels.Update) bool {
 			return update.Message != nil && strings.ToLower(update.Message.Text) == "отмена"
 		}, mb.textCancelHandler, mb.checkRegularAccessMiddleware)
 
-		mb.registerChatStateHandler(database.ChatStateSelectingGroup, mb.textGroupHandler,
+		mb.registerChatStateHandler(models.ChatStateSelectingGroup, mb.textGroupHandler,
 			mb.checkConfigAccessMiddleware)
-		mb.registerChatStateHandler(database.ChatStateSelectingTime, mb.textTimeHandler,
+		mb.registerChatStateHandler(models.ChatStateSelectingTime, mb.textTimeHandler,
 			mb.checkConfigAccessMiddleware)
-		mb.registerChatStateHandler(database.ChatStateSelectingTeacher, mb.textTeacherNameHandler,
+		mb.registerChatStateHandler(models.ChatStateSelectingTeacher, mb.textTeacherNameHandler,
 			mb.checkRegularAccessMiddleware)
 	}
 
@@ -141,12 +141,12 @@ func (mb *MainBot) registerCommandHandler(pattern string, f bot.HandlerFunc, m .
 
 func commandMatchFunction(pattern string, username string) bot.MatchFunc {
 	re := regexp.MustCompile(fmt.Sprintf(`^/%s(@\w+)?(\s[\s\S]+)?$`, pattern))
-	return func(update *models.Update) bool {
+	return func(update *tgmodels.Update) bool {
 		return matchUpdatePatternUsername(update, pattern, username, re)
 	}
 }
 
-func matchUpdatePatternUsername(update *models.Update, pattern string, username string, re *regexp.Regexp) bool {
+func matchUpdatePatternUsername(update *tgmodels.Update, pattern string, username string, re *regexp.Regexp) bool {
 	if update.Message == nil || update.Message.Text == "" {
 		return false // Not a text message.
 	}
@@ -165,7 +165,7 @@ func matchUpdatePatternUsername(update *models.Update, pattern string, username 
 	}
 	log.Trace().Str("text", text).Strs("submatches", submatches).Send()
 
-	if update.Message.Chat.Type == models.ChatTypeGroup || update.Message.Chat.Type == models.ChatTypeSupergroup {
+	if update.Message.Chat.Type == tgmodels.ChatTypeGroup || update.Message.Chat.Type == tgmodels.ChatTypeSupergroup {
 		log.Trace().Str("text", text).Msg("Command in group chat")
 
 		if submatches[1] == "" {
@@ -195,11 +195,11 @@ func (mb *MainBot) registerTextMessageHandler(pattern string, f bot.HandlerFunc,
 }
 
 func (mb *MainBot) registerChatStateHandler(
-	chatState database.ChatState,
+	chatState models.ChatState,
 	f bot.HandlerFunc,
 	m ...bot.Middleware,
 ) string {
-	matchFunc := func(update *models.Update) bool {
+	matchFunc := func(update *tgmodels.Update) bool {
 		if update.Message == nil {
 			return false
 		}
@@ -220,12 +220,13 @@ func callbackDataRegexp(command string) *regexp.Regexp {
 
 // Basic handlers
 
-func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+// TODO: Move this out of here into separate handler. It should not be here.
+func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Default handler")
 
 	if update.Message != nil {
 		log.Trace().Str("message", update.Message.Text).Msg("Unhandled message")
-		if groupName, err := mb.services.Repo.ValidateGroupName(update.Message.Text); err == nil {
+		if groupName, err := models.ValidateGroupName(mb.services.Repo.DB, update.Message.Text); err == nil {
 			mb.sendQuickGroupSchedule(ctx, groupName, update, b)
 		} // Else just ignore message
 
@@ -246,16 +247,16 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *model
 	*notLogFlag = true
 }
 
-func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string, update *models.Update, b *bot.Bot) {
+func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string, update *tgmodels.Update, b *bot.Bot) {
 	log.Trace().Str("groupName", groupName).Msg("Sending quick group week schedule")
 
-	chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
+	chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, update.Message.Chat.ID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chat from DB")
 		return
 	}
 
-	group, err := mb.services.Repo.GetGroupByName(groupName)
+	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
 		log.Error().Str("groupName", groupName).Err(err).
 			Msg("Failed get group from DB for quick group week schedule")
@@ -288,7 +289,7 @@ func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string,
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Start handler")
 	_, err := mb.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
@@ -298,7 +299,7 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.
 	addContextHandlerError(ctx, err)
 
 	if err == nil {
-		chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
+		chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, update.Message.Chat.ID)
 		if err != nil {
 			// Error: failed to get chat by chat ID: %!w(<nil>)
 			errFormatted := fmt.Errorf("failed to get chat by chat ID: %w", err)
@@ -310,7 +311,7 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *models.
 	}
 }
 
-func (mb *MainBot) helpHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) helpHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Help handler")
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
@@ -320,10 +321,10 @@ func (mb *MainBot) helpHandler(ctx context.Context, b *bot.Bot, update *models.U
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Stop handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -334,7 +335,7 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.U
 		return
 	}
 
-	if err := mb.services.Repo.DeleteChat(chat.ID); err != nil {
+	if err := models.DeleteChat(mb.services.Repo.DB, chat.ID); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to delete chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -348,20 +349,20 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *models.U
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            "Рассылки остановлены и ваши данные удалены. Спасибо, что пользовались нашим ботом!",
-		ReplyMarkup:     models.ReplyKeyboardRemove{RemoveKeyboard: true},
+		ReplyMarkup:     tgmodels.ReplyKeyboardRemove{RemoveKeyboard: true},
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Delete handler")
 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.CallbackQuery.Message.Message)
 	addContextHandlerError(ctx, err)
 
-	if repoErr := mb.services.Repo.UpdateChatState(
+	if repoErr := models.UpdateChatState(mb.services.Repo.DB,
 		update.CallbackQuery.Message.Message.Chat.ID,
-		database.ChatStateDefault,
+		models.ChatStateDefault,
 	); repoErr != nil {
 		mb.services.Reporter.Report().Log().Err(repoErr).Chat(update.CallbackQuery.Message.Message.Chat.ID).
 			Msg("Error in deleteHandler")
@@ -370,21 +371,21 @@ func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *models
 	}
 }
 
-func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text cancel handler")
 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
-	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		mb.services.Reporter.Report().Log().Err(fmt.Errorf("failed to get chat from context")).
 			Chat(update.Message.Chat.ID).Msg("Error in textCancelHandler")
 		return
 	}
 
-	chat.State = database.ChatStateDefault
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	chat.State = models.ChatStateDefault
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(update.Message.Chat.ID).Msg("Error in textCancelHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		return

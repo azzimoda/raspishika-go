@@ -1,8 +1,10 @@
-package repository
+package models
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type RecentTeacher struct {
@@ -12,9 +14,9 @@ type RecentTeacher struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) GetChatRecentTeachers(ID int) ([]RecentTeacher, error) {
+func GetChatRecentTeachers(db *sqlx.DB, ID int) ([]RecentTeacher, error) {
 	var rt []RecentTeacher
-	err := r.db.Select(&rt, `SELECT * FROM recent_teachers WHERE chat_id = ? ORDER BY created_at ASC`, ID)
+	err := db.Select(&rt, `SELECT * FROM recent_teachers WHERE chat_id = ? ORDER BY created_at ASC`, ID)
 	return rt, err
 }
 
@@ -24,8 +26,8 @@ func (r *Repository) GetChatRecentTeachers(ID int) ([]RecentTeacher, error) {
 // Args:
 // chatID is ID field of struct Chat;
 // teacherID is ID field of struct Teacher.
-func (r *Repository) AddChatRecentTeacher(chatID, teacherID int) error {
-	tx, err := r.db.Beginx()
+func AddChatRecentTeacher(db *sqlx.DB, chatID, teacherID int) error {
+	tx, err := db.Beginx()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}
@@ -37,7 +39,7 @@ func (r *Repository) AddChatRecentTeacher(chatID, teacherID int) error {
 		return fmt.Errorf("failed to delete same recent teachers (%d) of chat (%d): %w", teacherID, chatID, err)
 	}
 
-	rt, err := r.GetChatRecentTeachers(chatID)
+	rt, err := GetChatRecentTeachers(db, chatID)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to get recent teachers (%d) of chat (%d): %w", teacherID, chatID, err)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/azzimoda/raspishika-go/internal/bots/main/utils"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
@@ -29,7 +30,7 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 		t.Fatalf("Failed to fetch groups: %v", err)
 	}
 
-	departmentIDs, err := srvs.Repo.GetDepartmentIDs()
+	departmentIDs, err := models.GetDepartmentIDs(srvs.Repo.DB)
 	if err != nil {
 		t.Fatalf("Failed to get department IDs: %v", err)
 	}

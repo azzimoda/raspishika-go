@@ -65,7 +65,7 @@ func main() {
 
 	// Send notification if the option provided.
 	if text := viper.GetString("notify"); text != "" {
-		app.SendNotification(text)
+		app.Notify(text)
 		os.Exit(0)
 	}
 

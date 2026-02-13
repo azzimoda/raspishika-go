@@ -1,9 +1,10 @@
-package repository
+package models
 
 import (
 	"fmt"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,26 +23,26 @@ func (ul *UpdateLog) IsOk() bool {
 	return ul.Error == nil || *ul.Error == ""
 }
 
-func (r *Repository) GetUpdateLogByChatID(ID int) ([]UpdateLog, error) {
+func GetUpdateLogByChatID(db *sqlx.DB, ID int) ([]UpdateLog, error) {
 	var logs []UpdateLog
-	err := r.db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ?", ID)
+	err := db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ?", ID)
 	return logs, err
 }
 
-func (r *Repository) GetUpdateLogsByPeriod(start, end time.Time) ([]UpdateLog, error) {
+func GetUpdateLogsByPeriod(db *sqlx.DB, start, end time.Time) ([]UpdateLog, error) {
 	var logs []UpdateLog
-	err := r.db.Select(&logs, "SELECT * FROM update_logs WHERE created_at >= ? AND created_at <= ?", start, end)
+	err := db.Select(&logs, "SELECT * FROM update_logs WHERE created_at >= ? AND created_at <= ?", start, end)
 	return logs, err
 }
 
-func (r *Repository) GetRecentChatUpdateLogs(ID int, dur time.Duration) ([]UpdateLog, error) {
+func GetRecentChatUpdateLogs(db *sqlx.DB, ID int, dur time.Duration) ([]UpdateLog, error) {
 	var logs []UpdateLog
-	err := r.db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ? AND created_at > ?", ID, time.Now().Add(-dur))
+	err := db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ? AND created_at > ?", ID, time.Now().Add(-dur))
 	return logs, err
 }
 
-func (r *Repository) InsertUpdateLog(log *UpdateLog) error {
-	_, err := r.db.NamedExec(
+func InsertUpdateLog(db *sqlx.DB, log *UpdateLog) error {
+	_, err := db.NamedExec(
 		`INSERT INTO update_logs (chat_id, kind, message_id, data, handling_time, error)
 		VALUES (:chat_id, :kind, :message_id, :data, :handling_time, :error)`,
 		log,
@@ -50,11 +51,11 @@ func (r *Repository) InsertUpdateLog(log *UpdateLog) error {
 }
 
 type DistItem struct {
-	Name  string `db:"name"`
-	Value int    `db:"value"`
+	Name  string `DB:"name"`
+	Value int    `DB:"value"`
 }
 
-func (r *Repository) GetDist(dataKind, periodKind string, dur time.Duration) ([]DistItem, error) {
+func GetDist(db *sqlx.DB, dataKind, periodKind string, dur time.Duration) ([]DistItem, error) {
 	nameQuery :=
 		`CASE strftime('%w', datetime(created_at, 'localtime'))
 			WHEN '0' THEN '7'
@@ -81,7 +82,7 @@ func (r *Repository) GetDist(dataKind, periodKind string, dur time.Duration) ([]
 	switch dataKind {
 	case "a":
 		var items []DistItem
-		if err := r.db.Select(
+		if err := db.Select(
 			&items,
 			`SELECT `+nameQuery+` AS name,
 				COUNT(*) AS value

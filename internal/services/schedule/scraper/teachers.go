@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/playwright-community/playwright-go"
@@ -12,7 +13,7 @@ import (
 
 const TeachersPageURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1247&Itemid=304"
 
-func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService) ([]repository.Teacher, error) {
+func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService) ([]models.Teacher, error) {
 	if teachers, err := checkTeachers(repo); err == nil && len(teachers) > 0 {
 		log.Debug().Msg("Using cached teachers")
 		return teachers, nil
@@ -24,14 +25,14 @@ func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService)
 		return nil, err
 	}
 
-	if err := repo.UpdateTeachers(teachers); err != nil {
+	if err := models.UpdateTeachers(repo.DB, teachers); err != nil {
 		return nil, err
 	}
 	return teachers, nil
 }
 
-func checkTeachers(repo *repository.Repository) ([]repository.Teacher, error) {
-	teachers, err := repo.GetTeachers()
+func checkTeachers(repo *repository.Repository) ([]models.Teacher, error) {
+	teachers, err := models.GetTeachers(repo.DB)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +45,7 @@ func checkTeachers(repo *repository.Repository) ([]repository.Teacher, error) {
 	return nil, fmt.Errorf("all teachers are outdated")
 }
 
-func scrapeTeachers(browser *browser.BrowserService) (teachers []repository.Teacher, err error) {
+func scrapeTeachers(browser *browser.BrowserService) (teachers []models.Teacher, err error) {
 	err = browser.WithPage(func(p playwright.Page) error {
 		if _, err := p.Goto(TeachersPageURL); err != nil {
 			return fmt.Errorf("failed to goto teachers page: %w", err)
@@ -68,7 +69,7 @@ func scrapeTeachers(browser *browser.BrowserService) (teachers []repository.Teac
 				continue
 			}
 
-			teachers = append(teachers, repository.Teacher{TeacherID: opt["value"].(string), Name: opt["text"].(string)})
+			teachers = append(teachers, models.Teacher{TeacherID: opt["value"].(string), Name: opt["text"].(string)})
 		}
 		return nil
 	})

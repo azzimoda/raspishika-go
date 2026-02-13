@@ -47,9 +47,7 @@ var Defaults = map[string]any{
 }
 
 func Load() (err error) {
-	// Set defaults.
 	SetDefaults()
-
 	ConfigEnv()
 	ConfigFlags()
 	LoadFiles()
@@ -141,6 +139,7 @@ func LoadFiles() {
 func MkDirs() error {
 	dirs := []string{
 		filepath.Dir(viper.GetString("database.file")),
+		viper.GetString("database.migrations"),
 		viper.GetString("browser.screenshot_dir"),
 		viper.GetString("cache.dir"),
 		viper.GetString("logger.dir"),

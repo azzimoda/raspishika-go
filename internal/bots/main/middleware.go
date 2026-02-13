@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/singleflight"
 
-	database "github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
 type contextKey string
@@ -30,7 +30,7 @@ var (
 //
 // Use it as global middleware.
 func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Msg("Middleware: ensureChatMiddleware")
 
 		chat, err := mb.ensureChat(b, update)
@@ -48,7 +48,7 @@ func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	}
 }
 
-func (mb *MainBot) ensureChat(b *bot.Bot, update *models.Update) (*database.Chat, error) {
+func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*models.Chat, error) {
 	var chatID int64
 	var username string
 	if update.Message != nil {
@@ -61,9 +61,9 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *models.Update) (*database.Chat
 		return nil, ErrUnknownUpdateType
 	}
 
-	chat, created, err := mb.services.Repo.CreateOrUpdateChat(chatID, username)
+	chat, created, err := models.CreateOrUpdateChat(mb.services.Repo.DB, chatID, username)
 	if err != nil {
-		mb.services.Reporter.Report().Log().Err(err).Chat(database.Chat{TgChatID: chatID, UserName: &username}).
+		mb.services.Reporter.Report().Log().Err(err).Chat(models.Chat{TgChatID: chatID, UserName: &username}).
 			Msg("Failed to create or update chat")
 		return nil, fmt.Errorf("failed to create or update chat: %w", err)
 	}
@@ -76,19 +76,24 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *models.Update) (*database.Chat
 
 // sendNewChatReport sends a report to the admin chat when a new user chat is registered.
 // It also sends a message to the admin chat if the user chat has a group configured.
-func (mb *MainBot) sendNewChatReport(chat *database.Chat, err error, tgChatID int64, b *bot.Bot) {
-	msg, sentErr := mb.services.Reporter.Report().Chat(chat).Msg("New chat registered")
+func (mb *MainBot) sendNewChatReport(chat *models.Chat, err error, tgChatID int64, b *bot.Bot) {
+	report, sentErr := mb.services.Reporter.Report().Chat(chat).Msg("New chat registered")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send report")
 	}
 
-	time.Sleep(20 * time.Second)
-	if chat, err := mb.services.Repo.GetChatByTgChatID(tgChatID); err == nil && chat.GroupName != nil {
-		if sentErr == nil {
-			b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
-		}
+	msg := report.Message
+	for range 5 {
+		time.Sleep(20 * time.Second)
 
-		mb.services.Reporter.Report().Chat(chat).Msgf("Chat configured group %s", *chat.GroupName)
+		if chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, tgChatID); err == nil && chat.GroupName != nil {
+			if sentErr == nil {
+				b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
+			}
+
+			mb.services.Reporter.Report().Chat(chat).Msgf("Chat configured group %s", *chat.GroupName)
+			break
+		}
 	}
 }
 
@@ -96,7 +101,7 @@ func (mb *MainBot) sendNewChatReport(chat *database.Chat, err error, tgChatID in
 //
 // Use it as global middleware.
 func (mb *MainBot) ignoreOldMessagesMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Msg("Middleware: ignoreOldMessagesMiddleware")
 
 		if update.Message == nil || time.Unix(int64(update.Message.Date), 0).After(time.Now().Add(-10*time.Minute)) {
@@ -113,7 +118,7 @@ var callbackSF = singleflight.Group{}
 //
 // Use it as global middleware.
 func (mb *MainBot) callbackQuerySingleFlightMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Msg("Middleware: callbackQuerySingleFlightMiddleware")
 
 		if update.CallbackQuery == nil {
@@ -140,7 +145,7 @@ func (mb *MainBot) callbackQuerySingleFlightMiddleware(next bot.HandlerFunc) bot
 //
 // Use it as last global middleware.
 func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, bot *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, bot *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Any("update", update).Msg("Received update")
 
 		var handlerErrs []error
@@ -159,7 +164,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 			return
 		}
 
-		chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			mb.services.Reporter.Report().Log().Msg("Failed to get chat from context")
 			return
@@ -212,7 +217,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 				Msg("Handler error")
 		}
 
-		mb.services.Repo.InsertUpdateLog(&database.UpdateLog{
+		models.InsertUpdateLog(mb.services.Repo.DB, &models.UpdateLog{
 			ChatID:       chat.ID,
 			Kind:         updateKind,
 			MessageID:    messageID,
@@ -227,10 +232,10 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 //
 // Use it as middleware for config command and callback query handlers.
 func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Msg("Middleware: checkConfigAccessMiddleware")
 
-		chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			mb.services.Reporter.Report().Log().Msg("Failed to get chat from context")
 			return
@@ -245,7 +250,7 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 
 		// User can use a config command only if chat access is ChatAccessAll, or the user is admin.
 		logEvent := log.Trace().Bool("admin", isAdmin).Int("access", int(chat.Access))
-		if chat.Access == database.ChatAccessAll || isAdmin {
+		if chat.Access == models.ChatAccessAll || isAdmin {
 			logEvent.Msg("User is allowed to use config commands")
 			next(ctx, b, update)
 
@@ -266,10 +271,10 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 //
 // Use it as middleware for regular command handlers.
 func (mb *MainBot) checkRegularAccessMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		log.Trace().Msg("Middleware: checkRegularAccessMiddleware")
 
-		chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			mb.services.Reporter.Report().Log().Msg("Failed to get chat from context")
 			return
@@ -284,7 +289,7 @@ func (mb *MainBot) checkRegularAccessMiddleware(next bot.HandlerFunc) bot.Handle
 
 		// User can use a regular command only if chat access is not ChatAccessAdminOnly, or the user is admin.
 		logEvent := log.Trace().Bool("admin", isAdmin).Int("access", int(chat.Access))
-		if chat.Access != database.ChatAccessAdminOnly || isAdmin {
+		if chat.Access != models.ChatAccessAdminOnly || isAdmin {
 			logEvent.Msg("User is allowed to use regular commands")
 			next(ctx, b, update)
 		}
@@ -292,7 +297,7 @@ func (mb *MainBot) checkRegularAccessMiddleware(next bot.HandlerFunc) bot.Handle
 	}
 }
 
-func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *models.Update) (bool, error) {
+func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *tgmodels.Update) (bool, error) {
 	var chatID, userID int64
 	if update.Message != nil {
 		chatID = update.Message.Chat.ID
@@ -312,7 +317,7 @@ func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *models.Updat
 		}
 	}
 
-	return chatMember.Type == models.ChatMemberTypeAdministrator || chatMember.Type == models.ChatMemberTypeOwner, nil
+	return chatMember.Type == tgmodels.ChatMemberTypeAdministrator || chatMember.Type == tgmodels.ChatMemberTypeOwner, nil
 }
 
 func shortenText(text string, maxLength int) string {

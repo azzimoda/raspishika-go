@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
@@ -21,7 +21,7 @@ const (
 	ErrMsgSelectGroupAgain     = "Не удалось найти группу, выберите группу ещё раз"
 )
 
-func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Group handler")
 
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
@@ -31,7 +31,7 @@ func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *models.
 }
 
 func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadID int) {
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	chatID := chat.TgChatID
 
 	if !ok {
@@ -57,8 +57,8 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	chat.State = repository.ChatStateSelectingDepartment
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	chat.State = models.ChatStateSelectingDepartment
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -82,22 +82,22 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	addContextHandlerError(ctx, err)
 }
 
-func departmentSelectionMarkup(departments []scraper.Department) models.InlineKeyboardMarkup {
-	keyboard := make([][]models.InlineKeyboardButton, 0)
+func departmentSelectionMarkup(departments []scraper.Department) tgmodels.InlineKeyboardMarkup {
+	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for i := 0; i < len(departments); i += 2 {
-		row := make([]models.InlineKeyboardButton, 0)
+		row := make([]tgmodels.InlineKeyboardButton, 0)
 		for j := i; j < len(departments) && j < i+2; j++ {
-			row = append(row, models.InlineKeyboardButton{Text: departments[j].Name,
+			row = append(row, tgmodels.InlineKeyboardButton{Text: departments[j].Name,
 				CallbackData: fmt.Sprintf("%s\n%s", "select_department", departments[j].Name)})
 		}
 		keyboard = append(keyboard, row)
 	}
 
-	keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete_config"}})
-	return models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete_config"}})
+	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
-func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Select department handler")
 
 	callbackCommand := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
@@ -121,7 +121,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 		})
 	}
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -134,8 +134,8 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 		return
 	}
 
-	chat.State = repository.ChatStateSelectingGroup
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	chat.State = models.ChatStateSelectingGroup
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -154,16 +154,16 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	addContextHandlerError(ctx, err)
 }
 
-func groupsReplyMarkup(groups []repository.Group) models.ReplyKeyboardMarkup {
-	keyboard := [][]models.KeyboardButton{{{Text: "Отмена"}}}
+func groupsReplyMarkup(groups []models.Group) tgmodels.ReplyKeyboardMarkup {
+	keyboard := [][]tgmodels.KeyboardButton{{{Text: "Отмена"}}}
 	for i := 0; i < len(groups); i += 2 {
-		row := make([]models.KeyboardButton, 0)
+		row := make([]tgmodels.KeyboardButton, 0)
 		for j := i; j < len(groups) && j < i+2; j++ {
-			row = append(row, models.KeyboardButton{Text: groups[j].GroupName})
+			row = append(row, tgmodels.KeyboardButton{Text: groups[j].GroupName})
 		}
 		keyboard = append(keyboard, row)
 	}
-	return models.ReplyKeyboardMarkup{
+	return tgmodels.ReplyKeyboardMarkup{
 		Keyboard:        keyboard,
 		ResizeKeyboard:  true,
 		OneTimeKeyboard: true,
@@ -171,7 +171,7 @@ func groupsReplyMarkup(groups []repository.Group) models.ReplyKeyboardMarkup {
 	}
 }
 
-func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text group handler")
 
 	group, err := mb.FetchGroupByNameWithValidation(update.Message.Text)
@@ -199,7 +199,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *mod
 		return
 	}
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -211,10 +211,10 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *mod
 			Msg("Error in textGroupHandler")
 		return
 	}
-	chat.State = repository.ChatStateDefault
+	chat.State = models.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

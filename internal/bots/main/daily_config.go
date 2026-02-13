@@ -6,19 +6,19 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
 // Commands
 
-func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily time handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -29,7 +29,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *mod
 		return
 	}
 
-	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, repository.ChatStateSelectingTime); err != nil {
+	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -51,18 +51,18 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *mod
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       models.ParseModeMarkdown,
-		ReplyMarkup: models.InlineKeyboardMarkup{
-			InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete_config"}}},
+		ParseMode:       tgmodels.ParseModeMarkdown,
+		ReplyMarkup: tgmodels.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete_config"}}},
 		},
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily off handler")
 
-	chat, err := mb.services.Repo.GetChatByTgChatID(update.Message.Chat.ID)
+	chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, update.Message.Chat.ID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -74,7 +74,7 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *mode
 	}
 
 	chat.DailySendingTime = nil
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -94,10 +94,10 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *mode
 
 // Text messages
 
-func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text time handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -114,15 +114,15 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *mode
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Неправильный вормат времени, попробуйте ещё раз: `19:00`",
-			ParseMode:       models.ParseModeMarkdown,
+			ParseMode:       tgmodels.ParseModeMarkdown,
 		})
 		return
 	}
 	timeStr := t.Format("15:04")
 
-	chat.State = repository.ChatStateDefault
+	chat.State = models.ChatStateDefault
 	chat.DailySendingTime = &timeStr
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -142,14 +142,14 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *mode
 
 // Callback queries
 
-func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config daily time handler")
 
 	message := update.CallbackQuery.Message.Message
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -159,7 +159,7 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		})
 		return
 	}
-	if err := mb.services.Repo.UpdateChatState(chat.TgChatID, repository.ChatStateSelectingTime); err != nil {
+	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -179,8 +179,8 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		ChatID:          message.Chat.ID,
 		MessageThreadID: message.MessageThreadID,
 		Text:            text,
-		ParseMode:       models.ParseModeMarkdown,
-		ReplyMarkup:     models.InlineKeyboardMarkup{InlineKeyboard: [][]models.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
+		ParseMode:       tgmodels.ParseModeMarkdown,
+		ReplyMarkup:     tgmodels.InlineKeyboardMarkup{InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
 	})
 	addContextHandlerError(ctx, err)
 }

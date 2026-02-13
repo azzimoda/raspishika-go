@@ -6,15 +6,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
+	"github.com/playwright-community/playwright-go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/azzimoda/raspishika-go/internal/services/cache"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
-
-	"github.com/PuerkitoBio/goquery"
-	"github.com/playwright-community/playwright-go"
-	"github.com/rs/zerolog/log"
 )
 
 const DepartmentsURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1582&Itemid=247"
@@ -59,7 +60,8 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 	return departments, nil
 }
 
-func FetchDepartmentIDs(repo *repository.Repository,
+func FetchDepartmentIDs(
+	repo *repository.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,
 ) ([]string, error) {
@@ -68,14 +70,14 @@ func FetchDepartmentIDs(repo *repository.Repository,
 		return nil, err
 	}
 
-	return repo.GetDepartmentIDs()
+	return models.GetDepartmentIDs(repo.DB)
 }
 
 func FetchGroups(
 	repo *repository.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,
-) ([]repository.Group, error) {
+) ([]models.Group, error) {
 	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
 		log.Debug().Msg("Using cached groups")
 		return groups, nil
@@ -87,7 +89,7 @@ func FetchGroups(
 		return nil, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
-	groups := make([]repository.Group, 0)
+	groups := make([]models.Group, 0)
 	for _, department := range departments {
 		departmentGroups, err := scrapeDepartmentGroups(browser, department)
 		if err != nil {
@@ -97,7 +99,7 @@ func FetchGroups(
 	}
 	log.Trace().Int("groupsCount", len(groups)).Msg("Fetched groups")
 
-	if err := repo.UpdateGroups(groups); err != nil {
+	if err := models.UpdateGroups(repo.DB, groups); err != nil {
 		log.Error().Err(err).Msg("Failed to update groups")
 		return nil, fmt.Errorf("failed to update groups: %w", err)
 	}
@@ -107,13 +109,13 @@ func FetchGroups(
 
 func FetchDepartmentGroups(
 	repo *repository.Repository, browser *browser.BrowserService, cache *cache.Cache, departmentName string,
-) ([]repository.Group, error) {
+) ([]models.Group, error) {
 	groups, err := FetchGroups(repo, browser, cache)
 	if err != nil {
 		return nil, err
 	}
 
-	departmentGroups := make([]repository.Group, 0)
+	departmentGroups := make([]models.Group, 0)
 	for _, group := range groups {
 		if group.DepartmentName == departmentName {
 			departmentGroups = append(departmentGroups, group)
@@ -122,8 +124,8 @@ func FetchDepartmentGroups(
 	return departmentGroups, nil
 }
 
-func checkGroups(repo *repository.Repository, ttl time.Duration) ([]repository.Group, error) {
-	groups, err := repo.GetGroups()
+func checkGroups(repo *repository.Repository, ttl time.Duration) ([]models.Group, error) {
+	groups, err := models.GetGroups(repo.DB)
 	if err != nil {
 		return nil, err
 	}
@@ -142,11 +144,11 @@ func checkGroups(repo *repository.Repository, ttl time.Duration) ([]repository.G
 	return nil, fmt.Errorf("more than 50%% groups are outdated")
 }
 
-func scrapeDepartmentGroups(browser *browser.BrowserService, department Department) ([]repository.Group, error) {
+func scrapeDepartmentGroups(browser *browser.BrowserService, department Department) ([]models.Group, error) {
 	log.Trace().Str("departmentName", department.Name).Str("departmentURL", department.URL).
 		Msg("Scraping department groups")
 
-	groups := make([]repository.Group, 0)
+	groups := make([]models.Group, 0)
 	err := browser.WithPage(func(p playwright.Page) error {
 		log.Trace().Msg("Navigating to department page")
 
@@ -184,7 +186,7 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department Departme
 				continue
 			}
 
-			groups = append(groups, repository.Group{
+			groups = append(groups, models.Group{
 				GroupID:        opt["value"].(string),
 				DepartmentID:   opt["sid"].(string),
 				GroupName:      opt["text"].(string),

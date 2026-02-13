@@ -3,15 +3,17 @@ package adminbot
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -26,7 +28,7 @@ func (b *AdminBot) API() *bot.Bot {
 	return b.bot
 }
 
-func (b *AdminBot) Start(ctx context.Context) {
+func (b *AdminBot) Start() {
 	log.Info().Msg("Starting admin bot...")
 	myCommands, ok := config.AssertMyCommands(viper.Get("adminbot_commands"))
 	if !ok {
@@ -40,6 +42,10 @@ func (b *AdminBot) Start(ctx context.Context) {
 	if !success {
 		log.Error().Msg("Failed to set my commands")
 	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	b.bot.Start(ctx)
 }
 
@@ -48,7 +54,7 @@ func (b *AdminBot) Report() reporter.ReportConfig {
 	return reporter.NewReportConfig(b.bot, viper.GetInt64("telegram.admin_id"))
 }
 
-func (b *AdminBot) ReportNewChat(chat *repository.Chat) {
+func (b *AdminBot) ReportNewChat(chat *models.Chat) {
 	if !viper.GetBool("adminbot.new_chat_report") {
 		log.Trace().Msg("New chat report is disabled.")
 		return
@@ -77,7 +83,7 @@ func New(services *services.Services) (*AdminBot, error) {
 }
 
 func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
-	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		if update.Message != nil {
 			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != viper.GetInt64("telegram.admin_id") {
 				log.Trace().Msgf("Ignoring update from chat %d", update.Message.Chat.ID)

@@ -1,4 +1,4 @@
-package repository
+package models
 
 import (
 	"errors"
@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
+
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 type Group struct {
@@ -21,30 +23,30 @@ type Group struct {
 	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
 }
 
-func (r *Repository) GetGroups() ([]Group, error) {
+func GetGroups(db *sqlx.DB) ([]Group, error) {
 	var groups []Group
-	if err := r.db.Select(&groups, "SELECT * FROM groups"); err != nil {
+	if err := db.Select(&groups, "SELECT * FROM groups"); err != nil {
 		return nil, err
 	}
 	return groups, nil
 }
 
-func (r *Repository) GetGroupByName(name string) (*Group, error) {
+func GetGroupByName(db *sqlx.DB, name string) (*Group, error) {
 	var group Group
-	err := r.db.Get(&group, "SELECT * FROM groups WHERE group_name = ?", name)
+	err := db.Get(&group, "SELECT * FROM groups WHERE group_name = ?", name)
 	return &group, err
 }
 
-func (r *Repository) GetDepartmentIDs() (departmentIDs []string, err error) {
-	err = r.db.Select(&departmentIDs, "SELECT DISTINCT department_id FROM groups")
+func GetDepartmentIDs(db *sqlx.DB) (departmentIDs []string, err error) {
+	err = db.Select(&departmentIDs, "SELECT DISTINCT department_id FROM groups")
 	return
 }
 
 // ValidateGroupNameCase validates group name case. Argument value must has valid format.
-func (r *Repository) ValidateGroupNameCase(name string) (string, error) {
+func ValidateGroupNameCase(db *sqlx.DB, name string) (string, error) {
 	nameLower := strings.ToLower(name)
 
-	groups, err := r.GetGroups()
+	groups, err := GetGroups(db)
 	if err != nil {
 		log.Debug().Err(err).Msg("Failed to get groups from DB")
 		return name, err
@@ -60,18 +62,18 @@ func (r *Repository) ValidateGroupNameCase(name string) (string, error) {
 }
 
 // ValidateGroupName validate group name format and case.
-func (r *Repository) ValidateGroupName(name string) (string, error) {
+func ValidateGroupName(db *sqlx.DB, name string) (string, error) {
 	validatedFormat, err := utils.ValidateGroupNameFormat(name)
 	if err != nil {
 		return name, err
 	}
-	return r.ValidateGroupNameCase(validatedFormat)
+	return ValidateGroupNameCase(db, validatedFormat)
 }
 
-func (r *Repository) UpdateGroups(groups []Group) error {
+func UpdateGroups(db *sqlx.DB, groups []Group) error {
 	log.Trace().Msg("Updating groups")
 
-	tx, err := r.db.Beginx()
+	tx, err := db.Beginx()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}

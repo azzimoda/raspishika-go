@@ -1,8 +1,10 @@
-package repository
+package models
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Teacher struct {
@@ -13,20 +15,20 @@ type Teacher struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }
 
-func (r *Repository) GetTeacherByTeacherID(teacherID string) (*Teacher, error) {
+func GetTeacherByTeacherID(db *sqlx.DB, teacherID string) (*Teacher, error) {
 	var t Teacher
-	err := r.db.Get(&t, `SELECT * FROM teachers WHERE teacher_id = ?`, teacherID)
+	err := db.Get(&t, `SELECT * FROM teachers WHERE teacher_id = ?`, teacherID)
 	return &t, err
 }
 
-func (r *Repository) GetTeachers() (teachers []Teacher, err error) {
-	err = r.db.Select(&teachers, "SELECT * FROM teachers")
+func GetTeachers(db *sqlx.DB) (teachers []Teacher, err error) {
+	err = db.Select(&teachers, "SELECT * FROM teachers")
 	return
 }
 
-func (r *Repository) GetTeacherByChatID(ID int) ([]Teacher, error) {
+func GetTeacherByChatID(db *sqlx.DB, ID int) ([]Teacher, error) {
 	var teachers []Teacher
-	err := r.db.Select(&teachers,
+	err := db.Select(&teachers,
 		`SELECT t.id, t.teacher_id, t.name, t.created_at, t.updated_at
 		FROM recent_teachers rt JOIN teachers t ON rt.teacher_id = t.id
 		WHERE rt.chat_id = ?`,
@@ -35,8 +37,8 @@ func (r *Repository) GetTeacherByChatID(ID int) ([]Teacher, error) {
 	return teachers, err
 }
 
-func (r *Repository) UpdateTeachers(teachers []Teacher) error {
-	tx, err := r.db.Beginx()
+func UpdateTeachers(db *sqlx.DB, teachers []Teacher) error {
+	tx, err := db.Beginx()
 	if err != nil {
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}

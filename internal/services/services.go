@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -11,14 +12,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/services/cache"
 	smanager "github.com/azzimoda/raspishika-go/internal/services/schedule/manager"
 )
-
-type Services struct {
-	Repo            *repository.Repository
-	Browser         *browser.BrowserService
-	Cache           *cache.Cache
-	ScheduleManager *smanager.ScheduleManager
-	Reporter        reporter.Reporter
-}
 
 func NewServices() (s *Services, err error) {
 	s = &Services{
@@ -41,4 +34,16 @@ func NewServices() (s *Services, err error) {
 	}
 
 	return s, nil
+}
+
+type Services struct {
+	Repo            *repository.Repository
+	Browser         *browser.BrowserService
+	Cache           *cache.Cache
+	ScheduleManager *smanager.ScheduleManager
+	Reporter        reporter.Reporter
+}
+
+func (s *Services) Close() error {
+	return errors.Join(s.Repo.Close(), s.Browser.Close())
 }

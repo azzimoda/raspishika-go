@@ -10,19 +10,19 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/ninetwentyfour/go-wkhtmltoimage"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
-func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Week handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
@@ -83,7 +83,7 @@ func (mb *MainBot) PrepareWeekScheduleData(
 	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{
 		ChatID:          chatID,
 		MessageThreadID: messageThreadID,
-		Action:          models.ChatActionTyping,
+		Action:          tgmodels.ChatActionTyping,
 	})
 
 	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
@@ -133,46 +133,63 @@ func htmlToImage(scheduleCfg scraper.ScheduleConfig, html, imageFilename string)
 	})
 }
 
-func (*MainBot) SendWeekScheduleMessages(
+func (mb *MainBot) SendWeekScheduleMessages(
 	ctx context.Context,
 	b *bot.Bot,
 	messageThreadID int,
-	chat *repository.Chat,
+	chat *models.Chat,
 	scheduleCfg scraper.ScheduleConfig,
 	imageFilename string,
 	imageData []byte,
 ) error {
 	var errs []error
 
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+	if _, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
 		Text:            scheduleCfg.FormatMarkdown() + ":",
-		ParseMode:       models.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeMarkdown,
 		ReplyMarkup:     mainMenuReplyMarkup(chat.IsPrivate()),
-	})
-	errs = append(errs, err)
+	}); err != nil {
+		errs = append(errs, err)
+	}
 
-	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
+	if _, err := b.SendChatAction(ctx, &bot.SendChatActionParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
-		Action:          models.ChatActionUploadPhoto,
-	})
-	errs = append(errs, err)
+		Action:          tgmodels.ChatActionUploadPhoto,
+	}); err != nil {
+		errs = append(errs, err)
+	}
 
-	_, err = b.SendPhoto(ctx, &bot.SendPhotoParams{
-		ChatID:          chat.TgChatID,
-		MessageThreadID: messageThreadID,
-		Photo:           &models.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
-		ReplyMarkup:     weekScheduleMarkup(scheduleCfg),
-	})
-	errs = append(errs, err)
+	replyMarkup := weekScheduleMarkup(scheduleCfg)
+	if err := mb.sendSchedulePhoto(ctx, b, chat, messageThreadID, imageFilename, imageData, replyMarkup); err != nil {
+		errs = append(errs, err)
+	}
 
 	return errors.Join(errs...)
 }
 
-func weekScheduleMarkup(config scraper.ScheduleConfig) models.ReplyMarkup {
-	var button models.InlineKeyboardButton
+func (mb *MainBot) sendSchedulePhoto(
+	ctx context.Context,
+	b *bot.Bot,
+	chat *models.Chat,
+	messageThreadID int,
+	imageFilename string,
+	imageData []byte,
+	replyMarkup tgmodels.ReplyMarkup,
+) error {
+	_, err := b.SendPhoto(ctx, &bot.SendPhotoParams{
+		ChatID:          chat.TgChatID,
+		MessageThreadID: messageThreadID,
+		Photo:           &tgmodels.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
+		ReplyMarkup:     replyMarkup,
+	})
+	return err
+}
+
+func weekScheduleMarkup(config scraper.ScheduleConfig) tgmodels.ReplyMarkup {
+	var button tgmodels.InlineKeyboardButton
 	if config.Group != nil {
 		button = updateInlineButton("group", config.Group.GroupName)
 	} else if config.Teacher != nil {
@@ -180,14 +197,14 @@ func weekScheduleMarkup(config scraper.ScheduleConfig) models.ReplyMarkup {
 	} else {
 		return nil
 	}
-	markup := models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{{button}},
+	markup := tgmodels.InlineKeyboardMarkup{
+		InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{button}},
 	}
 	return markup
 }
 
-func updateInlineButton(kind, value string) models.InlineKeyboardButton {
-	return models.InlineKeyboardButton{
+func updateInlineButton(kind, value string) tgmodels.InlineKeyboardButton {
+	return tgmodels.InlineKeyboardButton{
 		Text:         "Обновить",
 		CallbackData: fmt.Sprintf("update_%s\n%s", kind, value),
 	}
@@ -204,12 +221,12 @@ func scheduleScreenshotFileName(config scraper.ScheduleConfig) string {
 	}
 }
 
-func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Tomorrow handler")
 
 	chatID := update.Message.Chat.ID
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -259,16 +276,16 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *mode
 		ChatID:          chatID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       models.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeMarkdown,
 		ReplyMarkup:     updateInlineMarkup("tomorrow", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Left handler")
 
-	chat, ok := ctx.Value(chatContextKey).(*repository.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -328,24 +345,24 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *models.U
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       models.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeMarkdown,
 		ReplyMarkup:     updateInlineMarkup("left", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)
 }
 
-func updateInlineMarkup(kind, value string) models.InlineKeyboardMarkup {
-	return models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{{updateInlineButton(kind, value)}},
+func updateInlineMarkup(kind, value string) tgmodels.InlineKeyboardMarkup {
+	return tgmodels.InlineKeyboardMarkup{
+		InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{updateInlineButton(kind, value)}},
 	}
 }
 
 func (mb *MainBot) tryGetGroup(
 	ctx context.Context,
 	b *bot.Bot,
-	update *models.Update,
-	chat *repository.Chat,
-) (*repository.Group, bool, error) {
+	update *tgmodels.Update,
+	chat *models.Chat,
+) (*models.Group, bool, error) {
 	group, err := mb.FetchGroupByNameWithValidation(*chat.GroupName)
 	if err == nil {
 		return group, false, nil
@@ -359,7 +376,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := mb.services.Repo.UpdateChat(chat); err != nil {
+		if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,
@@ -379,7 +396,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := mb.services.Repo.UpdateChat(chat); err != nil {
+		if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,

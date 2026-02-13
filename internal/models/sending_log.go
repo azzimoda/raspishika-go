@@ -1,8 +1,10 @@
-package repository
+package models
 
 import (
 	"fmt"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type SendingLog struct {
@@ -25,8 +27,8 @@ const (
 	PairSendingLog  SendingLogKind = "pair"
 )
 
-func (r *Repository) InsertSendingLog(log SendingLog) error {
-	if _, err := r.db.NamedExec(
+func InsertSendingLog(db *sqlx.DB, log SendingLog) error {
+	if _, err := db.NamedExec(
 		`INSERT INTO sending_logs (kind, chats, groups, elapsed, fails, errors)
 	VALUES (:kind, :chats, :groups, :elapsed, :fails, :errors)`,
 		log,
@@ -36,7 +38,7 @@ func (r *Repository) InsertSendingLog(log SendingLog) error {
 	return nil
 }
 
-func (r *Repository) GetSendingLogsForPeriod(kind SendingLogKind, start, end time.Time) ([]SendingLog, error) {
+func GetSendingLogsForPeriod(db *sqlx.DB, kind SendingLogKind, start, end time.Time) ([]SendingLog, error) {
 	query := ""
 	switch kind {
 	case AnySendingLog:
@@ -47,13 +49,13 @@ func (r *Repository) GetSendingLogsForPeriod(kind SendingLogKind, start, end tim
 		query = "SELECT * FROM sending_logs WHERE type = 'pair' AND datetime(created_at, 'localtime') BETWEEN ? AND ?"
 	}
 	var logs []SendingLog
-	if err := r.db.Select(&logs, query, start, end); err != nil {
+	if err := db.Select(&logs, query, start, end); err != nil {
 		return nil, fmt.Errorf("failed to get sending logs for period: %w", err)
 	}
 	return logs, nil
 }
 
-func (r *Repository) GetSendingLogs(kind SendingLogKind, dur time.Duration) ([]SendingLog, error) {
+func GetSendingLogs(db *sqlx.DB, kind SendingLogKind, dur time.Duration) ([]SendingLog, error) {
 	query := ""
 	switch kind {
 	case AnySendingLog:
@@ -64,16 +66,16 @@ func (r *Repository) GetSendingLogs(kind SendingLogKind, dur time.Duration) ([]S
 		query = "SELECT * FROM sending_logs WHERE type = 'pair' AND created_at >= ?"
 	}
 	var logs []SendingLog
-	if err := r.db.Select(&logs, query, time.Now().Add(-dur)); err != nil {
+	if err := db.Select(&logs, query, time.Now().Add(-dur)); err != nil {
 		return nil, fmt.Errorf("failed to get sending logs for duration: %w", err)
 	}
 	return logs, nil
 }
 
-func (r *Repository) GetDailySendingLogs(dur time.Duration) ([]SendingLog, error) {
-	return r.GetSendingLogs(DailySendingLog, dur)
+func GetDailySendingLogs(db *sqlx.DB, dur time.Duration) ([]SendingLog, error) {
+	return GetSendingLogs(db, DailySendingLog, dur)
 }
 
-func (r *Repository) GetPairSendingLogsForPair(dur time.Duration) ([]SendingLog, error) {
-	return r.GetSendingLogs(PairSendingLog, dur)
+func GetPairSendingLogsForPair(db *sqlx.DB, dur time.Duration) ([]SendingLog, error) {
+	return GetSendingLogs(db, PairSendingLog, dur)
 }

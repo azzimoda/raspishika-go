@@ -8,7 +8,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -27,8 +27,8 @@ const (
 )
 
 type ScheduleConfig struct {
-	Group   *repository.Group
-	Teacher *repository.Teacher
+	Group   *models.Group
+	Teacher *models.Teacher
 }
 
 func (sc *ScheduleConfig) FormatMarkdown() string {
@@ -331,10 +331,10 @@ type Schedule struct {
 	Days   []ScheduleDay  `json:"days"`
 }
 
-func GroupScheduleConfig(group *repository.Group) ScheduleConfig {
+func GroupScheduleConfig(group *models.Group) ScheduleConfig {
 	return ScheduleConfig{Group: group}
 }
 
-func TeacherScheduleConfig(teacher *repository.Teacher) ScheduleConfig {
+func TeacherScheduleConfig(teacher *models.Teacher) ScheduleConfig {
 	return ScheduleConfig{Teacher: teacher}
 }

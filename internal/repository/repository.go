@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/viper"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
+
+	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
 func New() (*Repository, error) {
@@ -23,7 +24,7 @@ func New() (*Repository, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	r := &Repository{db: db}
+	r := &Repository{DB: db}
 	if err := r.applyMigrations(); err != nil {
 		return nil, err
 	}
@@ -31,16 +32,16 @@ func New() (*Repository, error) {
 }
 
 type Repository struct {
-	db *sqlx.DB
+	DB *sqlx.DB
 }
 
 func (r *Repository) Close() error {
-	return r.db.Close()
+	return r.DB.Close()
 }
 
 func (r *Repository) applyMigrations() error {
 	log.Trace().Msg("Applying migrations...")
-	if err := r.ensureMigrationsTable(); err != nil {
+	if err := models.EnsureMigrationsTable(r.DB); err != nil {
 		return fmt.Errorf("failed to ensure migrations table: %w", err)
 	}
 
@@ -54,8 +55,8 @@ func (r *Repository) applyMigrations() error {
 	for _, file := range files {
 		name := file.name
 		sql := file.sql
-		if err := r.checkMigration(name); err != nil {
-			if err := r.applyMigration(name, sql); err != nil {
+		if err := models.CheckMigration(r.DB, name); err != nil {
+			if err := models.ApplyMigration(r.DB, name, sql); err != nil {
 				log.Error().Err(err).Str("name", name).Msg("Failed to apply migration")
 				return fmt.Errorf("failed to apply migration %s: %w", name, err)
 			}

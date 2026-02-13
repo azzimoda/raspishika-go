@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
 	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -23,7 +23,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	timeStr := pairTime.Format("15:04")
 	log.Trace().Msgf("Processing pair sending for time %s", timeStr)
 
-	chats, err := sm.services.Repo.GetChatsWithPairSendingEnabled()
+	chats, err := models.GetChatsWithPairSendingEnabled(sm.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats with pair sending enabled")
@@ -36,10 +36,10 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	}
 	log.Debug().Msgf("Processing pair sending for time %s to %d chats", timeStr, len(chats))
 
-	groupedChats := make(map[string][]*repository.Chat)
+	groupedChats := make(map[string][]*models.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
-			groupedChats[*chat.GroupName] = []*repository.Chat{}
+			groupedChats[*chat.GroupName] = []*models.Chat{}
 		}
 
 		groupedChats[*chat.GroupName] = append(groupedChats[*chat.GroupName], &chat)
@@ -80,7 +80,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 func (sm *SendingManager) sendPairNotificationToGroup(
 	groupName string,
 	pairTime time.Time,
-	chats []*repository.Chat,
+	chats []*models.Chat,
 ) ([]error, bool) {
 	log.Trace().Msgf("Sending pair notification to group %s (%d chats)", groupName, len(chats))
 
@@ -92,7 +92,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		for _, chat := range chats {
 			chat.GroupName = nil
 			chat.DepartmentName = nil
-			if err := sm.services.Repo.UpdateChat(chat); err != nil {
+			if err := models.UpdateChat(sm.services.Repo.DB, chat); err != nil {
 				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
 				bothelpers.SendTempMessage(context.Background(), sm.bot.Bot, 5*time.Minute, &bot.SendMessageParams{
@@ -133,13 +133,13 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 			bot.EscapeMarkdown(utils.DerefOrTypeDefault(pair.Teacher)))
 	}
 
-	messagesToDelete := make([]*models.Message, 0)
+	messagesToDelete := make([]*tgmodels.Message, 0)
 	errs := make([]error, 0)
 	for _, chat := range chats {
 		if msg, err := sm.bot.Bot.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID:    chat.TgChatID,
 			Text:      text,
-			ParseMode: models.ParseModeMarkdown,
+			ParseMode: tgmodels.ParseModeMarkdown,
 		}); err != nil {
 			if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
 				continue

@@ -5,28 +5,28 @@ import (
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
-	database "github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
-func (mb *MainBot) reminderOnHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) reminderOnHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Reminder on handler")
 	mb.setReminderHelper(ctx, b, update, true)
 }
 
-func (mb *MainBot) reminderOffHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+func (mb *MainBot) reminderOffHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Reminder off handler")
 	mb.setReminderHelper(ctx, b, update, false)
 }
 
-func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *models.Update, on bool) {
+func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tgmodels.Update, on bool) {
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
-	chat, ok := ctx.Value(chatContextKey).(*database.Chat)
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -38,7 +38,7 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *mo
 	}
 
 	chat.PairSending = on
-	if err := mb.services.Repo.UpdateChat(chat); err != nil {
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

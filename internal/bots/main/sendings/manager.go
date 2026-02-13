@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
-	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
@@ -61,7 +61,7 @@ func (sm *SendingManager) SchedulePairSending() error {
 
 // handleTelegramAPIError handles errors returned by Telegram API.
 // Returns an error if the error is not recoverable.
-func handleTelegramAPIError(services *services.Services, chat *repository.Chat, err error) error {
+func handleTelegramAPIError(services *services.Services, chat *models.Chat, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -79,7 +79,7 @@ func handleTelegramAPIError(services *services.Services, chat *repository.Chat, 
 		log.Warn().Err(err).Msg("Telegram API error: Forbidden; deactivating sendings for chat...")
 		chat.DailySendingTime = nil
 		chat.PairSending = false
-		if err := services.Repo.UpdateChat(chat); err != nil {
+		if err := models.UpdateChat(services.Repo.DB, chat); err != nil {
 			return fmt.Errorf("failed to deactivate forbidden sendings for chat: %w", err)
 		}
 		return nil
@@ -101,16 +101,16 @@ func handleTelegramAPIError(services *services.Services, chat *repository.Chat, 
 			Int("migrate_to_chat_id", migrateErr.MigrateToChatID).
 			Msg("Telegram API error: MigrateError")
 
-		if c, err := services.Repo.GetChatByTgChatID(int64(migrateErr.MigrateToChatID)); err == nil {
+		if c, err := models.GetChatByTgChatID(services.Repo.DB, int64(migrateErr.MigrateToChatID)); err == nil {
 			log.Warn().
 				Int64("tgChatID", chat.TgChatID).
 				Int64("migrateToChatID", int64(migrateErr.MigrateToChatID)).
 				Msg("Chat already exists, deleting old chat...")
-			if err := services.Repo.DeleteChat(c.ID); err != nil {
+			if err := models.DeleteChat(services.Repo.DB, c.ID); err != nil {
 				return fmt.Errorf("failed to delete old chat: %w", err)
 			}
 		} else {
-			if err := services.Repo.UpdateChatTgChatID(chat.ID, int64(migrateErr.MigrateToChatID)); err != nil {
+			if err := models.UpdateChatTgChatID(services.Repo.DB, chat.ID, int64(migrateErr.MigrateToChatID)); err != nil {
 				log.Error().
 					Err(err).
 					Int64("tgChatID", chat.TgChatID).
