@@ -3,7 +3,7 @@ package scraper_test
 import (
 	"testing"
 
-	"github.com/azzimoda/raspishika-go/internal/bots/main/utils"
+	tests "github.com/azzimoda/raspishika-go/internal/bots/main/tests"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
@@ -13,12 +13,13 @@ var debugConfigFile string
 var templateFile string
 
 func init() {
-	utils.InitPaths()
+	tests.InitPaths()
 }
 
 func TestScrapeScheduleWithBrowser(t *testing.T) {
 	testsDir := t.TempDir()
-	utils.InitConfig(t, testsDir)
+	tests.InitConfig(t, testsDir)
+	defer tests.Cleanup(t, testsDir)
 
 	srvs, err := services.NewServices()
 	if err != nil {
@@ -74,6 +75,4 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 			}
 		})
 	}
-
-	utils.Cleanup(t, testsDir)
 }
