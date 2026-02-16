@@ -18,6 +18,8 @@ var Defaults = map[string]any{
 	"config_file":   "configs/config.yml",
 	"commands_file": "configs/commands.yml",
 
+	"telegram.workers": 1,
+
 	"database.file":       "database/db.sqlite3",
 	"database.migrations": "migrations",
 

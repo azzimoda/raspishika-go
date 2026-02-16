@@ -1,4 +1,6 @@
 ---
+telegram:
+  workers: 1
 database:
   file: database/db.sqlite3
   migrations: migrations

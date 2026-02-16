@@ -34,6 +34,7 @@ func New(
 			mb.ensureChatMiddleware,
 			mb.logMiddleware,
 		),
+		bot.WithWorkers(viper.GetInt("telegram.workers")),
 		bot.WithDefaultHandler(mb.defaultHandler),
 		// bot.WithErrorsHandler(mb.errorsHandler),
 	}
