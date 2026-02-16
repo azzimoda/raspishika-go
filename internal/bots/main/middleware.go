@@ -320,9 +320,3 @@ func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *tgmodels.Upd
 	return chatMember.Type == tgmodels.ChatMemberTypeAdministrator || chatMember.Type == tgmodels.ChatMemberTypeOwner, nil
 }
 
-func shortenText(text string, maxLength int) string {
-	if len(text) > maxLength {
-		return text[:maxLength-2] + "…"
-	}
-	return text
-}

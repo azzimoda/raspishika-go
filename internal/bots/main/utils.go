@@ -45,3 +45,10 @@ func sendErrorMessage(ctx context.Context, b *bot.Bot, params *bot.SendMessagePa
 	}
 	return err
 }
+
+func shortenText(text string, maxLength int) string {
+	if len(text) > maxLength {
+		return text[:maxLength-2] + "…"
+	}
+	return text
+}

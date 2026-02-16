@@ -13,16 +13,12 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
-type ScheduleManagerProvider interface {
-	ScheduleManager() *ScheduleManager
+func NewScheduleManager() *ScheduleManager {
+	return &ScheduleManager{sf: singleflight.Group{}}
 }
 
 type ScheduleManager struct {
 	sf singleflight.Group
-}
-
-func NewScheduleManager() *ScheduleManager {
-	return &ScheduleManager{singleflight.Group{}}
 }
 
 // Get returns the schedule for the given config and uses cache if available.

@@ -222,7 +222,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 
 	totalChats, err := models.GetChatCount(ab.services.Repo.DB)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chat count")
+		ab.Report().Log().Err(err).Msg("Failed to get chat count")
 		return
 	}
 
@@ -230,16 +230,16 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	groupChatCount := totalChats - privateChatCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get private chat count")
-		privateChatCount = 0
-		groupChatCount = 0
+		privateChatCount = -1
+		groupChatCount = -1
 	}
 
 	inactiveCount, err := models.GetInactiveChatCount(ab.services.Repo.DB, duration)
 	activeChatCount := totalChats - inactiveCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get inactive chat count")
-		inactiveCount = 0
-		activeChatCount = 0
+		inactiveCount = -1
+		activeChatCount = -1
 	}
 
 	newChats, err := models.GetNewChatCount(ab.services.Repo.DB, duration)
