@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -56,6 +57,7 @@ type BrowserService struct {
 	pwBrowser      playwright.Browser
 	chromedpCtx    context.Context
 	chromedpCancel context.CancelFunc
+	mu             sync.Mutex
 }
 
 func (b *BrowserService) Close() error {
@@ -91,6 +93,9 @@ func (b *BrowserService) WithPage(f func(playwright.Page) error) error {
 }
 
 func (b *BrowserService) TakeScreenshotHTML(html, outputFilename string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	var ctx context.Context = b.chromedpCtx
 	var imageData []byte
 	screenshotElement := chromedp.Tasks{chromedp.Navigate("about:blank"), chromedp.ActionFunc(func(ctx context.Context) error {
