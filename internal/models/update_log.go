@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -51,8 +50,8 @@ func InsertUpdateLog(db *sqlx.DB, log *UpdateLog) error {
 }
 
 type DistItem struct {
-	Name  string `DB:"name"`
-	Value int    `DB:"value"`
+	Name  string `db:"name"`
+	Value int    `db:"value"`
 }
 
 func GetDist(db *sqlx.DB, dataKind, periodKind string, dur time.Duration) ([]DistItem, error) {
@@ -76,8 +75,6 @@ func GetDist(db *sqlx.DB, dataKind, periodKind string, dur time.Duration) ([]Dis
 		// Default: Week days
 	}
 
-	period := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
-
 	// TODO: Come up with variants for dataKind.
 	switch dataKind {
 	case "a":
@@ -90,7 +87,7 @@ func GetDist(db *sqlx.DB, dataKind, periodKind string, dur time.Duration) ([]Dis
 			WHERE created_at > datetime('now', 'localtime', ?)
 			GROUP BY name
 			ORDER BY name ASC`,
-			period,
+			sqlPeriod(dur),
 		); err != nil {
 			return nil, err
 		}

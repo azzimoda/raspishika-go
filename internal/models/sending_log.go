@@ -61,22 +61,21 @@ func GetSendingLogsCount(
 	kind SendingLogKind,
 	dur time.Duration,
 ) (total int, ok int, fails int, err error) {
-	query := ""
+	query :=
+		`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs
+		WHERE created_at >= date('now', 'localtime', ?)`
 	switch kind {
 	case AnySendingLog:
-		query = `SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE created_at >= ?`
 	case DailySendingLog:
-		query =
-			`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'daily' AND created_at >= ?`
+		query += ` AND kind = 'daily'`
 	case PairSendingLog:
-		query =
-			`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'pair' AND created_at >= ?`
+		query += ` AND kind = 'pair'`
 	}
 	var data struct {
 		Total sql.NullInt32 `db:"total"`
 		Fails sql.NullInt32 `db:"fails"`
 	}
-	if err := db.Get(&data, query, time.Now().Add(-dur)); err != nil {
+	if err := db.Get(&data, query, sqlPeriod(dur)); err != nil {
 		return -1, -1, -1, fmt.Errorf("failed to get sending logs count for duration: %w", err)
 	}
 	return int(data.Total.Int32), int(data.Total.Int32 - data.Fails.Int32), int(data.Fails.Int32), nil

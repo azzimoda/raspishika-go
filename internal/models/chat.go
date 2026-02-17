@@ -220,7 +220,7 @@ func sqlPeriod(dur time.Duration) string {
 // and have disabled all sendings or don't have group configured.
 func GetInactiveChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 	var count int
-	period := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
+	period := sqlPeriod(dur)
 	if err := db.Get(&count,
 		`SELECT count(*) FROM (
 			SELECT c.id, c.tg_chat_id, c.username, c."group", c.daily_sending_time, c.pair_sending, c.updated_at,
