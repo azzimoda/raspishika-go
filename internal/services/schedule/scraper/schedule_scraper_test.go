@@ -12,10 +12,6 @@ import (
 var debugConfigFile string
 var templateFile string
 
-func init() {
-	tests.InitPaths()
-}
-
 func TestScrapeScheduleWithBrowser(t *testing.T) {
 	testsDir := t.TempDir()
 	tests.InitConfig(t, testsDir)

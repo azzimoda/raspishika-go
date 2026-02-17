@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -35,17 +36,17 @@ const (
 )
 
 type Chat struct {
-	ID               int             `db:"id" json:"id"`
-	TgChatID         int64           `db:"tg_chat_id" json:"tg_chat_id"`
-	UserName         *string         `db:"username" json:"username"`
-	State            ChatState       `db:"state" json:"state"`
-	DepartmentName   *string         `db:"department" json:"department"`
-	GroupName        *string         `db:"group" json:"group"`
-	DailySendingTime *string         `db:"daily_sending_time" json:"daily_sending_time"`
-	PairSending      bool            `db:"pair_sending" json:"pair_sending"`
-	Access           ChatAccessLevel `db:"access" json:"access"`
-	CreatedAt        time.Time       `db:"created_at" json:"created_at"`
-	UpdatedAt        time.Time       `db:"updated_at" json:"updated_at"`
+	ID               int             `db:"id" `
+	TgChatID         int64           `db:"tg_chat_id" `
+	UserName         *string         `db:"username" `
+	State            ChatState       `db:"state" `
+	DepartmentName   *string         `db:"department" `
+	GroupName        *string         `db:"group" `
+	DailySendingTime *string         `db:"daily_sending_time" `
+	PairSending      bool            `db:"pair_sending" `
+	Access           ChatAccessLevel `db:"access" `
+	CreatedAt        time.Time       `db:"created_at" `
+	UpdatedAt        time.Time       `db:"updated_at" `
 }
 
 func (c *Chat) IsPrivate() bool {
@@ -124,12 +125,12 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 		return chat, false, err
 	}
 
-	// Return existing chat.
+	// Return existing chat
 	log.Trace().Int64("tgChatID", tgChatID).Msg("Chat already exists")
 	return &chat, false, nil
 }
 
-// TODO: Make it as method of Chat
+// TODO: Make it as method of Chat.
 func UpdateChat(db *sqlx.DB, chat *Chat) error {
 	chat.UpdatedAt = time.Now()
 	_, err := db.NamedExec(
@@ -181,11 +182,36 @@ func GetNewChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 	var count int
 	if err := db.Get(&count,
 		`SELECT COUNT(*) FROM chats WHERE created_at > datetime('now', ?)`,
-		fmt.Sprintf("-%d seconds", int(dur.Seconds())),
+		sqlPeriod(dur),
 	); err != nil {
 		return 0, err
 	}
 	return count, nil
+}
+
+type ChatsGroupedItem struct {
+	Group string `db:"group"`
+	Count int    `db:"count"`
+}
+
+func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) ([]ChatsGroupedItem, error) {
+	var count []ChatsGroupedItem
+	if err := db.Select(
+		&count,
+		`SELECT "group", COUNT(*) AS count FROM chats WHERE created_at > datetime('now', ?) GROUP BY "group" ORDER BY "group"`,
+		sqlPeriod(dur),
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return count, nil
+}
+
+func sqlPeriod(dur time.Duration) string {
+	sqlPeriod := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
+	return sqlPeriod
 }
 
 // GetInactiveChatCount returns the number of inactive chats.

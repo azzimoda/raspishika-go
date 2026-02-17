@@ -12,10 +12,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
-func init() {
-	tests.InitPaths()
-}
-
 func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 

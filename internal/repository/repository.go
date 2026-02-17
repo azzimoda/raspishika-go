@@ -15,6 +15,14 @@ import (
 
 func New() (*Repository, error) {
 	file := viper.GetString("database.file")
+	if _, err := os.Stat(file); err != nil {
+		log.Warn().Str("file", file).Msg("Database file or its directore doesn't exist")
+		if err := os.MkdirAll(filepath.Dir(file), os.ModePerm); err != nil {
+			return nil, fmt.Errorf("failed to create database directory %s: %w", file, err)
+		}
+		log.Debug().Msg("Database directory created")
+	}
+
 	log.Debug().Str("file", file).Msg("Creating database repository")
 	db, err := sqlx.Open("sqlite3", file)
 	if err != nil {
@@ -72,9 +80,18 @@ func (r *Repository) applyMigrations() error {
 }
 
 func migrationFiles() ([]migrationFile, error) {
-	migrationsDir := viper.GetString("database.migrations")
-	log.Trace().Str("migrationsDir", migrationsDir).Send()
-	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
+	dir := viper.GetString("database.migrations")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		log.Warn().Str("dir", dir).Msg("Migrations directory doesn't exist")
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, fmt.Errorf("failed to create migrations directory %s: %w", dir, err)
+		}
+		log.Debug().Msg("Created migrations directory")
+		return make([]migrationFile, 0), nil // That means the directory is empty
+	}
+
+	log.Trace().Str("migrationsDir", dir).Send()
+	files, err := filepath.Glob(filepath.Join(dir, "*.sql"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load migration files: %w", err)
 	}

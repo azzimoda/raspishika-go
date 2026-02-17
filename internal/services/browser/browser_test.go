@@ -4,15 +4,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 )
 
 func BenchmarkBrowserService_TakeScreenshotHTML(b *testing.B) {
 	html := "<html><body><h1>Benchmark Test</h1></body></html>"
 	tempDir := b.TempDir()
-
-	config.SetDefaults()
 
 	bs, err := browser.New()
 	if err != nil {

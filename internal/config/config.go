@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var Defaults = map[string]any{
+var defaults = map[string]any{
 	"env":           ".env",
 	"config_file":   "configs/config.yml",
 	"commands_file": "configs/commands.yml",
@@ -48,13 +48,18 @@ var Defaults = map[string]any{
 	"schedule_template_file": "storage/schedule_template.html",
 }
 
+func init() {
+	for key, value := range defaults {
+		viper.SetDefault(key, value)
+	}
+}
+
 func Load() (err error) {
-	SetDefaults()
 	ConfigEnv()
 	ConfigFlags()
 	LoadFiles()
 
-	if err := MkDirs(); err != nil {
+	if err := mkDirs(); err != nil {
 		return err
 	}
 
@@ -69,7 +74,7 @@ func Load() (err error) {
 }
 
 func SetDefaults() {
-	for key, value := range Defaults {
+	for key, value := range defaults {
 		viper.SetDefault(key, value)
 	}
 }
@@ -138,10 +143,9 @@ func LoadFiles() {
 	}
 }
 
-func MkDirs() error {
+func mkDirs() error {
 	dirs := []string{
 		filepath.Dir(viper.GetString("database.file")),
-		viper.GetString("database.migrations"),
 		viper.GetString("browser.screenshot_dir"),
 		viper.GetString("cache.dir"),
 		viper.GetString("logger.dir"),
@@ -166,17 +170,11 @@ func PrintUsage() bool {
 	return false
 }
 
-func DefaultTTLDur() time.Duration {
-	return viper.GetDuration("cache.default_ttl") * time.Minute
-}
+func DefaultTTLDur() time.Duration { return viper.GetDuration("cache.default_ttl") * time.Minute }
 
-func ScheduleTTLDur() time.Duration {
-	return viper.GetDuration("cache.schedule_ttl") * time.Minute
-}
+func ScheduleTTLDur() time.Duration { return viper.GetDuration("cache.schedule_ttl") * time.Minute }
 
-func GroupTTLDur() time.Duration {
-	return viper.GetDuration("cache.group_ttl") * 24 * time.Hour
-}
+func GroupTTLDur() time.Duration { return viper.GetDuration("cache.group_ttl") * 24 * time.Hour }
 
 func PairNotificationTTLDur() time.Duration {
 	return viper.GetDuration("sending.pair.notification_ttl") * time.Minute

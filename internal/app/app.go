@@ -64,7 +64,7 @@ func (a *App) Run() error {
 		go a.adminBot.Start()
 	}
 
-	a.Report().Log().Temp().Msg("Starting application...")
+	report, err := a.Report().Log().Temp().Msg("Starting application...")
 
 	go a.mainBot.Start()
 
@@ -86,8 +86,9 @@ func (a *App) Run() error {
 		}
 	}
 
-	sendingManager.Start()
-
+	if err == nil {
+		report.RemoveMessage()
+	}
 	a.Report().Log().Msg("Application started.")
 
 	sigChan := make(chan os.Signal, 1)

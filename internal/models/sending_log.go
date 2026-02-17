@@ -38,32 +38,15 @@ func InsertSendingLog(db *sqlx.DB, log SendingLog) error {
 	return nil
 }
 
-func GetSendingLogsForPeriod(db *sqlx.DB, kind SendingLogKind, start, end time.Time) ([]SendingLog, error) {
-	query := ""
-	switch kind {
-	case AnySendingLog:
-		query = "SELECT * FROM sending_logs WHERE datetime(created_at, 'localtime') BETWEEN ? AND ?"
-	case DailySendingLog:
-		query = "SELECT * FROM sending_logs WHERE type = 'daily' AND datetime(created_at, 'localtime') BETWEEN ? AND ?"
-	case PairSendingLog:
-		query = "SELECT * FROM sending_logs WHERE type = 'pair' AND datetime(created_at, 'localtime') BETWEEN ? AND ?"
-	}
-	var logs []SendingLog
-	if err := db.Select(&logs, query, start, end); err != nil {
-		return nil, fmt.Errorf("failed to get sending logs for period: %w", err)
-	}
-	return logs, nil
-}
-
 func GetSendingLogs(db *sqlx.DB, kind SendingLogKind, dur time.Duration) ([]SendingLog, error) {
 	query := ""
 	switch kind {
 	case AnySendingLog:
 		query = "SELECT * FROM sending_logs WHERE created_at >= ?"
 	case DailySendingLog:
-		query = "SELECT * FROM sending_logs WHERE type = 'daily' AND created_at >= ?"
+		query = "SELECT * FROM sending_logs WHERE kind = 'daily' AND created_at >= ?"
 	case PairSendingLog:
-		query = "SELECT * FROM sending_logs WHERE type = 'pair' AND created_at >= ?"
+		query = "SELECT * FROM sending_logs WHERE kind = 'pair' AND created_at >= ?"
 	}
 	var logs []SendingLog
 	if err := db.Select(&logs, query, time.Now().Add(-dur)); err != nil {
@@ -72,10 +55,26 @@ func GetSendingLogs(db *sqlx.DB, kind SendingLogKind, dur time.Duration) ([]Send
 	return logs, nil
 }
 
-func GetDailySendingLogs(db *sqlx.DB, dur time.Duration) ([]SendingLog, error) {
-	return GetSendingLogs(db, DailySendingLog, dur)
-}
-
-func GetPairSendingLogsForPair(db *sqlx.DB, dur time.Duration) ([]SendingLog, error) {
-	return GetSendingLogs(db, PairSendingLog, dur)
+func GetSendingLogsCount(
+	db *sqlx.DB,
+	kind SendingLogKind,
+	dur time.Duration,
+) (total int, ok int, fails int, err error) {
+	query := ""
+	switch kind {
+	case AnySendingLog:
+		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE created_at >= ?"
+	case DailySendingLog:
+		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'daily' AND created_at >= ?"
+	case PairSendingLog:
+		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'pair' AND created_at >= ?"
+	}
+	var count struct {
+		Total int `db:"total"`
+		Fails int `db:"fails"`
+	}
+	if err := db.Get(&count, query, time.Now().Add(-dur)); err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to get sending logs count for duration: %w", err)
+	}
+	return count.Total, count.Total - count.Fails, count.Fails, nil
 }

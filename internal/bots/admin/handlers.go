@@ -3,8 +3,6 @@ package adminbot
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,12 +18,13 @@ import (
 
 func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, ab.startHandler)
+
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
+	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 }
 
 func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -173,219 +172,4 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		Text:      text.String(),
 		ParseMode: tgmodels.ParseModeMarkdown,
 	})
-}
-
-func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	dailyTimes, err := models.GetChatGroupedByDailySendingTime(ab.services.Repo.DB)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chats grouped by daily sending time")
-		return
-	}
-
-	dailyEnabledCount, err := models.GetChatCountWithDailySendingEnabled(ab.services.Repo.DB)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chats with daily sending time enabled")
-		return
-	}
-
-	pairEnabledCount, err := models.GetChatCountWithPairSendingEnabled(ab.services.Repo.DB)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
-		return
-	}
-
-	timeKeys := make([]string, 0, len(dailyTimes))
-	for k := range dailyTimes {
-		timeKeys = append(timeKeys, k)
-	}
-	sort.Strings(timeKeys)
-
-	text := fmt.Sprintf("Pair enabled: %d\nDaily enabled: %d\nTimes:\n```\n", pairEnabledCount, dailyEnabledCount)
-	for _, t := range timeKeys {
-		text += fmt.Sprintf("\\- %s: %3d\n", t, dailyTimes[t])
-	}
-	text += "```\n"
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text,
-		ParseMode: tgmodels.ParseModeMarkdown,
-	})
-}
-
-func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	_, args := bothelpers.ParseCommand(update.Message.Text)
-	duration, ok := parsePeriod(args)
-	if !ok {
-		duration = 24 * time.Hour
-	}
-
-	totalChats, err := models.GetChatCount(ab.services.Repo.DB)
-	if err != nil {
-		ab.Report().Log().Err(err).Msg("Failed to get chat count")
-		return
-	}
-
-	privateChatCount, err := models.GetPrivateChatCount(ab.services.Repo.DB)
-	groupChatCount := totalChats - privateChatCount
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get private chat count")
-		privateChatCount = -1
-		groupChatCount = -1
-	}
-
-	inactiveCount, err := models.GetInactiveChatCount(ab.services.Repo.DB, duration)
-	activeChatCount := totalChats - inactiveCount
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get inactive chat count")
-		inactiveCount = -1
-		activeChatCount = -1
-	}
-
-	newChats, err := models.GetNewChatCount(ab.services.Repo.DB, duration)
-	if err != nil {
-		ab.Report().Log().Err(err).Msg("Failed to get new chats count")
-		return
-	}
-
-	updateLogs, err := models.GetUpdateLogsByPeriod(ab.services.Repo.DB, time.Now().Add(-duration), time.Now())
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get update logs by period")
-		return
-	}
-
-	totalUpdates := len(updateLogs)
-	errorCount := 0
-	scheduleCommandCount := 0
-	callbackCount := 0
-	for _, log := range updateLogs {
-		if log.Error != nil && *log.Error != "" {
-			errorCount += 1
-		}
-
-		if log.Kind == "message" &&
-			(log.Data == "/week" || log.Data == "Неделя" ||
-				log.Data == "/tomorrow" || log.Data == "Завтра" ||
-				log.Data == "/left" || log.Data == "Сегодня") {
-			scheduleCommandCount += 1
-		}
-
-		if log.Kind == "callback_query" && strings.Contains(log.Data, "update_") {
-			callbackCount += 1
-		}
-	}
-
-	// TODO: Collect metrics...
-
-	text := fmt.Sprintf(
-		`MONTHLY STATISTICS
-
-Total: %d
-Private/Group: %d / %d
-Active/Inactive: %d / %d
-New reigstered: %d
-
-Updates: %d
-Success/Fail: %d / %d
-Schedule: %d
-Callbacks: %d`,
-		totalChats,
-		privateChatCount, groupChatCount,
-		activeChatCount, inactiveCount,
-		newChats,
-		totalUpdates,
-		totalUpdates-errorCount, errorCount,
-		scheduleCommandCount, callbackCount,
-	)
-
-	b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
-}
-
-func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	log.Trace().Msg("distHandler")
-	command, args := bothelpers.ParseCommand(update.Message.Text)
-
-	log.Trace().Msg("Parsing parameters...")
-	dataKind := "a"   // Variants: a, ...
-	distPeriod := "w" // Variants: w - week days, h - hours of day
-	parts := strings.Split(command, "_")
-	if len(parts) == 2 {
-		suffix := parts[1]
-		if len(suffix) >= 1 {
-			switch suffix[0] {
-			case 'a':
-				dataKind = string(suffix[0])
-			}
-		}
-		if len(suffix) >= 2 {
-			switch suffix[1] {
-			case 'w', 'h':
-				distPeriod = string(suffix[1])
-			}
-		}
-	}
-	log.Trace().Str("dataKind", dataKind).Str("distPeriod", distPeriod).Send()
-
-	log.Trace().Msg("Parsing period parameter...")
-	dur, ok := parsePeriod(args)
-	if !ok {
-		dur = 30 * 24 * time.Hour // Default: month
-	}
-	log.Trace().Dur("dur", dur).Send()
-
-	log.Trace().Msg("Fetching distribution...")
-	distribution, err := models.GetDist(ab.services.Repo.DB, dataKind, distPeriod, dur)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get distribution")
-		return
-	}
-	log.Trace().Int("len(distribution)", len(distribution)).Send()
-
-	log.Trace().Msg("Building message text...")
-	var text strings.Builder
-	text.WriteString("```\n")
-	for _, s := range distribution {
-		fmt.Fprintf(&text, "%s: %d\n", s.Name, s.Value)
-	}
-	text.WriteString("\n```")
-
-	log.Trace().Msg("Sending message...")
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text.String(),
-		ParseMode: tgmodels.ParseModeMarkdown,
-	})
-	if err != nil {
-		log.Error().Err(err).Send()
-	}
-	log.Trace().Msg("distHandler: Done!")
-}
-
-func parsePeriod(str string) (time.Duration, bool) {
-	if str == "" {
-		return 0, false
-	}
-
-	re := regexp.MustCompile(`^(\d+)\s*(h|d|w|m|y)?$`)
-	matches := re.FindStringSubmatch(str)
-	multiplier := time.Hour
-	switch matches[2] {
-	// case "h":
-	// 	multiplier = time.Hour
-	case "d":
-		multiplier = 24 * time.Hour
-	case "w":
-		multiplier = 7 * 24 * time.Hour
-	case "m":
-		multiplier = 30 * 24 * time.Hour
-	case "y":
-		multiplier = 365 * 24 * time.Hour
-		// Defualt is hours
-	}
-
-	num, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0, false
-	}
-	return time.Duration(multiplier * time.Duration(num)), true
 }
