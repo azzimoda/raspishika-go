@@ -133,7 +133,7 @@ type generalReport struct {
 	chatsActive     int
 	chatsInactive   int
 	chatsNew        int
-	chatsNewGrouped []models.ChatsGroupedItem // Department -> Group -> Count
+	chatsNewGrouped map[string]int // Group -> Count
 
 	updatesTotal    int
 	updatesSuccess  int
@@ -151,8 +151,8 @@ type generalReport struct {
 func (gr generalReport) make() string {
 	log.Warn().Any("groupedChats", gr.chatsNewGrouped).Send()
 	var textNewChatsGrouped strings.Builder
-	for _, item := range gr.chatsNewGrouped {
-		fmt.Fprintf(&textNewChatsGrouped, "\n• `%s`: %d", item.Group, item.Count)
+	for group, count := range gr.chatsNewGrouped {
+		fmt.Fprintf(&textNewChatsGrouped, "\n• `%s`: %d", group, count)
 	}
 
 	return fmt.Sprintf(`STATISTICS FOR LAST %s

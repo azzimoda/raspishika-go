@@ -189,15 +189,13 @@ func GetNewChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 	return count, nil
 }
 
-type ChatsGroupedItem struct {
-	Group string `db:"group"`
-	Count int    `db:"count"`
-}
-
-func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) ([]ChatsGroupedItem, error) {
-	var count []ChatsGroupedItem
+func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) (map[string]int, error) {
+	var data []struct {
+		Group *string `db:"group"`
+		Count int     `db:"count"`
+	}
 	if err := db.Select(
-		&count,
+		&data,
 		`SELECT "group", COUNT(*) AS count FROM chats WHERE created_at > datetime('now', ?) GROUP BY "group" ORDER BY "group"`,
 		sqlPeriod(dur),
 	); err != nil {
@@ -206,7 +204,14 @@ func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) ([]ChatsGroupedItem, err
 		}
 		return nil, err
 	}
-	return count, nil
+	groupedChats := make(map[string]int)
+	for _, item := range data {
+		if item.Group == nil {
+			item.Group = new(string) // Empty string
+		}
+		groupedChats[*item.Group] = item.Count
+	}
+	return groupedChats, nil
 }
 
 func sqlPeriod(dur time.Duration) string {
