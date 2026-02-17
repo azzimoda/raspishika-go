@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -63,18 +64,20 @@ func GetSendingLogsCount(
 	query := ""
 	switch kind {
 	case AnySendingLog:
-		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE created_at >= ?"
+		query = `SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE created_at >= ?`
 	case DailySendingLog:
-		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'daily' AND created_at >= ?"
+		query =
+			`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'daily' AND created_at >= ?`
 	case PairSendingLog:
-		query = "SELECT SUM(CHATS) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'pair' AND created_at >= ?"
+		query =
+			`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs WHERE kind = 'pair' AND created_at >= ?`
 	}
-	var count struct {
-		Total int `db:"total"`
-		Fails int `db:"fails"`
+	var data struct {
+		Total sql.NullInt32 `db:"total"`
+		Fails sql.NullInt32 `db:"fails"`
 	}
-	if err := db.Get(&count, query, time.Now().Add(-dur)); err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to get sending logs count for duration: %w", err)
+	if err := db.Get(&data, query, time.Now().Add(-dur)); err != nil {
+		return -1, -1, -1, fmt.Errorf("failed to get sending logs count for duration: %w", err)
 	}
-	return count.Total, count.Total - count.Fails, count.Fails, nil
+	return int(data.Total.Int32), int(data.Total.Int32 - data.Fails.Int32), int(data.Fails.Int32), nil
 }

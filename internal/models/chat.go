@@ -240,8 +240,8 @@ func GetInactiveChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 
 func GetChatGroupedByDailySendingTime(db *sqlx.DB) (map[string]int, error) {
 	var counts []struct {
-		Time  string `DB:"daily_sending_time"`
-		Count int    `DB:"count"`
+		Time  string `db:"daily_sending_time"`
+		Count int    `db:"count"`
 	}
 	if err := db.Select(&counts,
 		`SELECT daily_sending_time, COUNT(*) as count FROM chats
