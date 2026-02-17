@@ -85,6 +85,8 @@ func (a *App) Run() error {
 			log.Info().Msg("Pair sending scheduled")
 		}
 	}
+	
+	sendingManager.Start()
 
 	if err == nil {
 		report.RemoveMessage()
