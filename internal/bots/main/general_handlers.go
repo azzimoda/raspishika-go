@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
@@ -90,7 +89,7 @@ func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string,
 		return
 	}
 
-	scheduleCfg := scraper.GroupScheduleConfig(group)
+	scheduleCfg := models.GroupScheduleConfig(group)
 	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
 		ctx,
 		b,

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/azzimoda/raspishika-go/internal/services/cache"
@@ -26,13 +27,13 @@ func (sm *ScheduleManager) Get(
 	repo *repository.Repository,
 	browser *browser.BrowserService,
 	cache *cache.Cache,
-	scheduleCfg scraper.ScheduleConfig,
-) (*scraper.RawSchedule, error) {
+	scheduleCfg models.ScheduleConfig,
+) (*models.RawSchedule, error) {
 	// Check cache.
 	key := scheduleKey(scheduleCfg)
 	if rawScheduleCache, found := cache.C.Get(key); found {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
-		if rawSchedule, ok := rawScheduleCache.(*scraper.RawSchedule); ok {
+		if rawSchedule, ok := rawScheduleCache.(*models.RawSchedule); ok {
 			return rawSchedule, nil
 		} else {
 			cache.C.Delete(key)
@@ -54,12 +55,12 @@ func (sm *ScheduleManager) Get(
 	// Save cache.
 	cache.C.Set(key, result, config.ScheduleTTLDur())
 
-	return result.(*scraper.RawSchedule), nil
+	return result.(*models.RawSchedule), nil
 }
 
 func (*ScheduleManager) scrapeSchedule(
 	repo *repository.Repository,
-	config scraper.ScheduleConfig,
+	config models.ScheduleConfig,
 	cache *cache.Cache,
 	browser *browser.BrowserService,
 ) (any, error) {
@@ -78,7 +79,7 @@ func (*ScheduleManager) scrapeSchedule(
 	}
 }
 
-func scheduleKey(config scraper.ScheduleConfig) string {
+func scheduleKey(config models.ScheduleConfig) string {
 	if config.Group != nil {
 		return fmt.Sprintf("schedule_%s_%s", config.Group.DepartmentID, config.Group.GroupID)
 	} else if config.Teacher != nil {

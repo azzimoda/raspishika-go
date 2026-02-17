@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
@@ -37,7 +36,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 		return
 	}
 
-	scheduleCfg := scraper.GroupScheduleConfig(group)
+	scheduleCfg := models.GroupScheduleConfig(group)
 	schedule, err := mb.services.ScheduleManager.Get(
 		mb.services.Repo,
 		mb.services.Browser,
@@ -99,7 +98,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	scheduleCfg := scraper.TeacherScheduleConfig(teacher)
+	scheduleCfg := models.TeacherScheduleConfig(teacher)
 	schedule, err := mb.services.ScheduleManager.Get(
 		mb.services.Repo,
 		mb.services.Browser,
@@ -163,7 +162,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		return
 	}
 
-	scheduleCfg := scraper.GroupScheduleConfig(group)
+	scheduleCfg := models.GroupScheduleConfig(group)
 	rawSchedule, err := mb.services.ScheduleManager.Get(
 		mb.services.Repo,
 		mb.services.Browser,
@@ -181,7 +180,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	schedule := rawSchedule.Transform()
-	var tomorrow scraper.ScheduleDay
+	var tomorrow models.ScheduleDay
 	if time.Now().Weekday() == time.Sunday {
 		tomorrow = schedule.Days[0]
 	} else {
@@ -228,7 +227,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	if time.Now().Weekday() == time.Sunday {
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
-		scheduleCfg := scraper.GroupScheduleConfig(group)
+		scheduleCfg := models.GroupScheduleConfig(group)
 		rawSchedule, err := mb.services.ScheduleManager.Get(
 			mb.services.Repo,
 			mb.services.Browser,

@@ -1,4 +1,4 @@
-package scraper
+package models
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
@@ -27,8 +26,8 @@ const (
 )
 
 type ScheduleConfig struct {
-	Group   *models.Group
-	Teacher *models.Teacher
+	Group   *Group
+	Teacher *Teacher
 }
 
 func (sc *ScheduleConfig) FormatMarkdown() string {
@@ -331,10 +330,10 @@ type Schedule struct {
 	Days   []ScheduleDay  `json:"days"`
 }
 
-func GroupScheduleConfig(group *models.Group) ScheduleConfig {
+func GroupScheduleConfig(group *Group) ScheduleConfig {
 	return ScheduleConfig{Group: group}
 }
 
-func TeacherScheduleConfig(teacher *models.Teacher) ScheduleConfig {
+func TeacherScheduleConfig(teacher *Teacher) ScheduleConfig {
 	return ScheduleConfig{Teacher: teacher}
 }

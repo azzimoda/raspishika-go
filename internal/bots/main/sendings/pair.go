@@ -13,7 +13,6 @@ import (
 	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
@@ -106,7 +105,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 	}
 
 	rawSchedule, err := sm.services.ScheduleManager.Get(
-		sm.services.Repo, sm.services.Browser, sm.services.Cache, scraper.GroupScheduleConfig(group))
+		sm.services.Repo, sm.services.Browser, sm.services.Cache, models.GroupScheduleConfig(group))
 	if err != nil {
 		return []error{fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)}, true
 	}
@@ -121,8 +120,8 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 
 	text := ""
 	switch pair.Kind {
-	case scraper.PairKindEmpty, scraper.PairKindEvent, scraper.PairKindIGA, scraper.PairKindVacation,
-		scraper.PairKindPractice:
+	case models.PairKindEmpty, models.PairKindEvent, models.PairKindIGA, models.PairKindVacation,
+	models.PairKindPractice:
 
 		log.Trace().Str("kind", string(pair.Kind)).Msg("Pair is empty")
 		return nil, false

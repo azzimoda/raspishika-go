@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
 func (sm *SendingManager) processDailySending(t time.Time) {
@@ -166,7 +165,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 
 	ctx := context.Background()
 
-	var scheduleCfg scraper.ScheduleConfig
+	var scheduleCfg models.ScheduleConfig
 	var imageFilename string
 	var imageData []byte
 	var errors []error
@@ -178,7 +177,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 			doReturn = true
 			return
 		}
-		scheduleCfg = scraper.GroupScheduleConfig(group)
+		scheduleCfg = models.GroupScheduleConfig(group)
 
 		imageFilename, imageData, err = sm.bot.PrepareWeekScheduleData(
 			ctx,

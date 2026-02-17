@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/html"
 
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
@@ -27,7 +28,7 @@ var (
 	ErrParserPanicked = errors.New("parser panicked")
 )
 
-func ScrapeSchedule(url string, config ScheduleConfig) (*RawSchedule, error) {
+func ScrapeSchedule(url string, config models.ScheduleConfig) (*models.RawSchedule, error) {
 	log.Trace().Msg("Scraping schedule with HTTP")
 
 	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(url, 10)
@@ -55,7 +56,7 @@ func ScrapeSchedule(url string, config ScheduleConfig) (*RawSchedule, error) {
 	return parseSchedule(fixedEncoding, config)
 }
 
-func SaveScheduleHTML(config ScheduleConfig, html string) (filename string, err error) {
+func SaveScheduleHTML(config models.ScheduleConfig, html string) (filename string, err error) {
 	filename = "schedule_temp.html"
 	if config.Group != nil {
 		filename = fmt.Sprintf("schedule_group_%s_%s.html", config.Group.DepartmentName, config.Group.GroupName)
@@ -75,8 +76,8 @@ func SaveScheduleHTML(config ScheduleConfig, html string) (filename string, err 
 func ScrapeScheduleWithBrowser(
 	browser *browser.BrowserService,
 	url string,
-	config ScheduleConfig,
-) (*RawSchedule, error) {
+	config models.ScheduleConfig,
+) (*models.RawSchedule, error) {
 	log.Trace().Str("URL", url).Any("scheduleConfig", config).Msg("Scraping schedule with browser")
 
 	html, err := fetchSchedulePageWithBrowser(browser, url, config)
@@ -86,7 +87,7 @@ func ScrapeScheduleWithBrowser(
 	return parseSchedule(html, config)
 }
 
-func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, config ScheduleConfig) (string, error) {
+func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, config models.ScheduleConfig) (string, error) {
 	var lastErr error
 	var html string
 	for range viper.GetInt("browser.max_retries") {
@@ -147,7 +148,7 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, c
 	return html, nil
 }
 
-func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSchedule, err error) {
+func parseSchedule(sourceHTML string, config models.ScheduleConfig) (schedule *models.RawSchedule, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error().Err(fmt.Errorf("panic: %+v", r)).Msg("Parser panicked")
@@ -186,14 +187,14 @@ func parseSchedule(sourceHTML string, config ScheduleConfig) (schedule *RawSched
 		headers = append(headers, map[string]string{"date": parts[0], "weekday": parts[1], "week_kind": parts[2]})
 	})
 
-	var rows []RawScheduleRow
+	var rows []models.RawScheduleRow
 	table.Find("tr.para_num:not(:first-child)").Each(func(i int, s *goquery.Selection) {
 		rows = append(rows, parseScheduleRow(&config, headers, s))
 	})
-	return &RawSchedule{Config: config, Rows: rows}, nil
+	return &models.RawSchedule{Config: config, Rows: rows}, nil
 }
 
-func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSelection *goquery.Selection) RawScheduleRow {
+func parseScheduleRow(config *models.ScheduleConfig, headers []map[string]string, rowSelection *goquery.Selection) models.RawScheduleRow {
 	numberStr := rowSelection.Find("td:first-child").First().Text()
 	time_range := rowSelection.Find("td:nth-child(2)")
 
@@ -202,10 +203,10 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 		panic(err)
 	}
 
-	row := RawScheduleRow{
+	row := models.RawScheduleRow{
 		Number:    number,
 		TimeRange: time_range.First().Text(),
-		Days:      []RawScheduleDay{},
+		Days:      []models.RawScheduleDay{},
 	}
 	rowSelection.Find("td:nth-child(n+3)").Each(func(i int, daySelection *goquery.Selection) {
 		row.Days = append(row.Days, parseScheduleDay(config, headers[i], daySelection))
@@ -214,18 +215,27 @@ func parseScheduleRow(config *ScheduleConfig, headers []map[string]string, rowSe
 	return row
 }
 
-func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelection *goquery.Selection) RawScheduleDay {
-	day := RawScheduleDay{Date: header["date"], WeekDay: header["weekday"], WeekKind: header["week_kind"], Pair: Pair{}}
+func parseScheduleDay(
+	config *models.ScheduleConfig,
+	header map[string]string,
+	daySelection *goquery.Selection,
+) models.RawScheduleDay {
+	day := models.RawScheduleDay{
+		Date:     header["date"],
+		WeekDay:  header["weekday"],
+		WeekKind: header["week_kind"],
+		Pair:     models.Pair{},
+	}
 
 	day.Pair.Replaced = daySelection.Find("table").HasClass("zamena")
 	day.Pair.Kind = detectPairKind(daySelection)
 
 	switch day.Pair.Kind {
-	case PairKindSubject:
+	case models.PairKindSubject:
 		parseDisciplinePair(config, daySelection, &day.Pair)
-	case PairKindExam, PairKindConsultation:
+	case models.PairKindExam, models.PairKindConsultation:
 		parseExamConsultationPair(daySelection, &day.Pair)
-	case PairKindEmpty:
+	case models.PairKindEmpty:
 		// Nothing
 	default:
 		parseOtherPair(daySelection, &day.Pair)
@@ -234,7 +244,7 @@ func parseScheduleDay(config *ScheduleConfig, header map[string]string, daySelec
 	return day
 }
 
-func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection, pair *Pair) {
+func parseDisciplinePair(config *models.ScheduleConfig, daySelection *goquery.Selection, pair *models.Pair) {
 	// log.Trace().Str("text", daySelection.Text()).Msg("teacher found")
 	teacher := daySelection.Find(".prep").Text()
 	pair.Teacher = &teacher
@@ -272,7 +282,7 @@ func parseDisciplinePair(config *ScheduleConfig, daySelection *goquery.Selection
 	}
 }
 
-func parseExamConsultationPair(daySelection *goquery.Selection, pair *Pair) {
+func parseExamConsultationPair(daySelection *goquery.Selection, pair *models.Pair) {
 	pair.Title = daySelection.Find(".head_ekz").Text()
 	pair.Discipline = daySelection.Find(".disc").Text()
 	teacher := daySelection.Find(".prep").Text()
@@ -280,32 +290,32 @@ func parseExamConsultationPair(daySelection *goquery.Selection, pair *Pair) {
 	pair.Classroom = daySelection.Find(".cabs").Text()
 }
 
-func parseOtherPair(daySelection *goquery.Selection, pair *Pair) {
+func parseOtherPair(daySelection *goquery.Selection, pair *models.Pair) {
 	pair.Label = daySelection.Text()
 }
 
-func detectPairKind(daySelection *goquery.Selection) PairKind {
+func detectPairKind(daySelection *goquery.Selection) models.PairKind {
 	switch {
 	case strings.Contains(strings.ToLower(daySelection.Find(".disc").Text()), "снято"):
-		return PairKindEmpty
+		return models.PairKindEmpty
 	case daySelection.Find(".disc").Text() != "":
-		return PairKindSubject
+		return models.PairKindSubject
 	case daySelection.HasClass("head_urok_kanik"):
-		return PairKindVacation
+		return models.PairKindVacation
 	case daySelection.HasClass("event"):
-		return PairKindEvent
+		return models.PairKindEvent
 	case daySelection.HasClass("head_urok_praktik"):
-		return PairKindPractice
+		return models.PairKindPractice
 	case daySelection.HasClass("head_urok_session"):
-		return PairKindSession
+		return models.PairKindSession
 	case daySelection.HasClass("head_urok_iga"):
-		return PairKindIGA
+		return models.PairKindIGA
 	case daySelection.HasClass("zachet") || daySelection.HasClass("difzachet") || daySelection.HasClass("ekzamen"):
-		return PairKindExam
+		return models.PairKindExam
 	case daySelection.Find("table.consultation").Length() > 0:
-		return PairKindConsultation
+		return models.PairKindConsultation
 	default:
-		return PairKindEmpty
+		return models.PairKindEmpty
 	}
 }
 
@@ -313,7 +323,7 @@ func detectPairKind(daySelection *goquery.Selection) PairKind {
 // Parameter departmentIDs is used for teacher schedule page only and may be empty or nil for group.
 //
 // Returns empty string if config is invalid.
-func ScheduleURL(config ScheduleConfig, departmentIDs []string) string {
+func ScheduleURL(config models.ScheduleConfig, departmentIDs []string) string {
 	switch {
 	case config.Group != nil:
 		zFlag := "" // Заочное обучение?

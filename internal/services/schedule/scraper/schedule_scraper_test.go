@@ -39,7 +39,7 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 
 	teacher := teachers[42]
 	t.Log(teacher)
-	teacherScheduleConfig := scraper.TeacherScheduleConfig(&teacher)
+	teacherScheduleConfig := models.TeacherScheduleConfig(&teacher)
 	teacherScheduleURL := scraper.ScheduleURL(teacherScheduleConfig, departmentIDs)
 
 	// Test.
@@ -47,12 +47,12 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 		name string // description of this test case
 		// Named input parameters for target function.
 		url     string
-		config  scraper.ScheduleConfig
-		want    *scraper.RawSchedule
+		config  models.ScheduleConfig
+		want    *models.RawSchedule
 		wantErr bool
 	}{
 		{"scraper schedule of teacher", teacherScheduleURL, teacherScheduleConfig, nil, false},
-		{"scraper schedule of teacher with invalid URL", "https://example.com", scraper.ScheduleConfig{}, nil, true},
+		{"scraper schedule of teacher with invalid URL", "https://example.com", models.ScheduleConfig{}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

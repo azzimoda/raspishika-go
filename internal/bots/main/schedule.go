@@ -49,7 +49,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		return
 	}
 
-	scheduleCfg := scraper.GroupScheduleConfig(group)
+	scheduleCfg := models.GroupScheduleConfig(group)
 
 	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
 		ctx,
@@ -78,7 +78,7 @@ func (mb *MainBot) PrepareWeekScheduleData(
 	b *bot.Bot,
 	chatID int64,
 	messageThreadID int,
-	scheduleCfg scraper.ScheduleConfig,
+	scheduleCfg models.ScheduleConfig,
 ) (imageFilename string, imageData []byte, err error) {
 	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{
 		ChatID:          chatID,
@@ -102,7 +102,7 @@ func (mb *MainBot) PrepareWeekScheduleData(
 }
 
 func (mb *MainBot) htmlToImage(
-	scheduleCfg scraper.ScheduleConfig,
+	scheduleCfg models.ScheduleConfig,
 	html string,
 ) (string, []byte, error) {
 	imageFilename := path.Join(
@@ -120,7 +120,7 @@ func (mb *MainBot) htmlToImage(
 	return imageFilename, imageData, nil
 }
 
-func htmlToImage(scheduleCfg scraper.ScheduleConfig, html, imageFilename string) (imageDage []byte, err error) {
+func htmlToImage(scheduleCfg models.ScheduleConfig, html, imageFilename string) (imageDage []byte, err error) {
 	htmlFilename, err := scraper.SaveScheduleHTML(scheduleCfg, html)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (mb *MainBot) SendWeekScheduleMessages(
 	b *bot.Bot,
 	messageThreadID int,
 	chat *models.Chat,
-	scheduleCfg scraper.ScheduleConfig,
+	scheduleCfg models.ScheduleConfig,
 	imageFilename string,
 	imageData []byte,
 ) error {
@@ -188,7 +188,7 @@ func (mb *MainBot) sendSchedulePhoto(
 	return err
 }
 
-func weekScheduleMarkup(config scraper.ScheduleConfig) tgmodels.ReplyMarkup {
+func weekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
 	var button tgmodels.InlineKeyboardButton
 	if config.Group != nil {
 		button = updateInlineButton("group", config.Group.GroupName)
@@ -210,7 +210,7 @@ func updateInlineButton(kind, value string) tgmodels.InlineKeyboardButton {
 	}
 }
 
-func scheduleScreenshotFileName(config scraper.ScheduleConfig) string {
+func scheduleScreenshotFileName(config models.ScheduleConfig) string {
 	if config.Group != nil {
 		return fmt.Sprintf("schedule_%s.png", config.Group.GroupName)
 	} else if config.Teacher != nil {
@@ -252,7 +252,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	rawSchedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo, mb.services.Browser, mb.services.Cache, scraper.GroupScheduleConfig(group))
+		mb.services.Repo, mb.services.Browser, mb.services.Cache, models.GroupScheduleConfig(group))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -264,7 +264,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	schedule := rawSchedule.Transform()
-	var tomorrow scraper.ScheduleDay
+	var tomorrow models.ScheduleDay
 	if time.Now().Weekday() == time.Sunday {
 		tomorrow = schedule.Days[0]
 	} else {
@@ -319,7 +319,7 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 			mb.services.Repo,
 			mb.services.Browser,
 			mb.services.Cache,
-			scraper.GroupScheduleConfig(group),
+			models.GroupScheduleConfig(group),
 		)
 		if err != nil {
 			addContextHandlerError(ctx, err)

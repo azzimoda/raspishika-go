@@ -171,7 +171,7 @@ func (mb *MainBot) sendTeacherSchedule(
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotUpdateData})
 	}
 
-	schedueCfg := scraper.TeacherScheduleConfig(teacher)
+	schedueCfg := models.TeacherScheduleConfig(teacher)
 	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, chat.ID, messageThreadID, schedueCfg)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
