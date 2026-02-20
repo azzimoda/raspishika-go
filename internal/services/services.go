@@ -9,15 +9,11 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
-	"github.com/azzimoda/raspishika-go/internal/services/cache"
 	smanager "github.com/azzimoda/raspishika-go/internal/services/schedule/manager"
 )
 
-func NewServices() (s *Services, err error) {
-	s = &Services{
-		Cache:           cache.New(),
-		ScheduleManager: smanager.NewScheduleManager(),
-	}
+func New() (s *Services, err error) {
+	s = new(Services)
 
 	s.Repo, err = repository.New()
 	if err != nil {
@@ -39,11 +35,8 @@ func NewServices() (s *Services, err error) {
 type Services struct {
 	Repo            *repository.Repository
 	Browser         *browser.BrowserService
-	Cache           *cache.Cache
-	ScheduleManager *smanager.ScheduleManager
+	ScheduleManager smanager.ScheduleManager
 	Reporter        reporter.Reporter
 }
 
-func (s *Services) Close() error {
-	return errors.Join(s.Repo.Close(), s.Browser.Close())
-}
+func (s *Services) Close() error { return errors.Join(s.Repo.Close(), s.Browser.Close()) }

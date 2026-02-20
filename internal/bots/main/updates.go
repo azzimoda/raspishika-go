@@ -37,12 +37,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 	}
 
 	scheduleCfg := models.GroupScheduleConfig(group)
-	schedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo,
-		mb.services.Browser,
-		mb.services.Cache,
-		scheduleCfg,
-	)
+	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -99,12 +94,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	}
 
 	scheduleCfg := models.TeacherScheduleConfig(teacher)
-	schedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo,
-		mb.services.Browser,
-		mb.services.Cache,
-		scheduleCfg,
-	)
+	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -163,12 +153,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	scheduleCfg := models.GroupScheduleConfig(group)
-	rawSchedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo,
-		mb.services.Browser,
-		mb.services.Cache,
-		scheduleCfg,
-	)
+	rawSchedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -228,12 +213,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
 		scheduleCfg := models.GroupScheduleConfig(group)
-		rawSchedule, err := mb.services.ScheduleManager.Get(
-			mb.services.Repo,
-			mb.services.Browser,
-			mb.services.Cache,
-			scheduleCfg,
-		)
+		rawSchedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
 		if err != nil {
 			addContextHandlerError(ctx, err)
 			_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{

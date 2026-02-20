@@ -86,7 +86,7 @@ func (mb *MainBot) PrepareWeekScheduleData(
 		Action:          tgmodels.ChatActionTyping,
 	})
 
-	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, mb.services.Cache, scheduleCfg)
+	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
 	if err != nil {
 		err = errors.Join(chatActionErr, fmt.Errorf("failed loading schedule: %w", err))
 		return
@@ -252,7 +252,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	rawSchedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo, mb.services.Browser, mb.services.Cache, models.GroupScheduleConfig(group))
+		mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -318,7 +318,6 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		rawSchedule, err := mb.services.ScheduleManager.Get(
 			mb.services.Repo,
 			mb.services.Browser,
-			mb.services.Cache,
 			models.GroupScheduleConfig(group),
 		)
 		if err != nil {

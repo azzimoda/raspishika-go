@@ -103,7 +103,7 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*models.Group, e
 	if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
 		log.Warn().Err(err).Msg("Updating groups")
 		// Try to update groups.
-		if _, err := scraper.FetchGroups(mb.services.Repo, mb.services.Browser, mb.services.Cache); err != nil {
+		if _, err := scraper.FetchGroups(mb.services.Repo, mb.services.Browser); err != nil {
 			return nil, fmt.Errorf("failed to fetch groups: %w", err)
 		}
 

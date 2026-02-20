@@ -7,7 +7,6 @@ require (
 	github.com/corpix/uarand v0.2.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/playwright-community/playwright-go v0.5200.1
 	github.com/rs/zerolog v1.34.0
 	github.com/schollz/closestmatch v2.1.0+incompatible

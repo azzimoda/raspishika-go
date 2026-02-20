@@ -14,24 +14,26 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
-	"github.com/azzimoda/raspishika-go/internal/services/cache"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 const DepartmentsURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1582&Itemid=247"
 const BaseDepartmentPageURL = "https://mnokol.tyuiu.ru"
-const DepartmentsCacheKey = "departments"
 
 type Department struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
 }
 
-func FetchDepartments(cache *cache.Cache) ([]Department, error) {
-	if data, found := cache.C.Get(DepartmentsCacheKey); found {
-		return data.([]Department), nil
+func FetchDepartments(repo *repository.Repository) ([]models.Department, error) {
+	// Check cache
+	departments, err := models.GetDepartments(repo.DB)
+	ttl := config.GroupTTLDur()
+	if err != nil && utils.Every(departments, func(d *models.Department) bool { return d.IsActual(ttl) }) {
+		return departments, nil
 	}
 
+	// Update cache
 	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
 	if err != nil {
 		return nil, err
@@ -43,55 +45,47 @@ func FetchDepartments(cache *cache.Cache) ([]Department, error) {
 		return nil, err
 	}
 
-	var departments []Department
 	doc.Find("ul.mod-menu li.col-lg.col-md-6 a").Each(func(i int, s *goquery.Selection) {
 		name := s.Text()
 		if !strings.Contains(strings.ToLower(name), "отделение") && !strings.Contains(strings.ToLower(name), "заоч") {
 			return
 		}
 
-		departments = append(departments, Department{
-			Name: name,
-			URL:  BaseDepartmentPageURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&"),
-		})
+		url := BaseDepartmentPageURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&")
+		department := models.Department{Name: name, URL: url}
+		departments = append(departments, department)
+		if err := department.InsertOrUpdate(repo.DB); err != nil {
+			log.Error().Err(err).Msg("Failed to update department cache in DB")
+		}
 	})
 
-	cache.C.Set(DepartmentsCacheKey, departments, config.GroupTTLDur())
 	return departments, nil
 }
 
-func FetchDepartmentIDs(
-	repo *repository.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-) ([]string, error) {
+func FetchDepartmentIDs(repo *repository.Repository, browser *browser.BrowserService) ([]string, error) {
 	log.Trace().Msg("Fetching departments...")
-	if _, err := FetchGroups(repo, browser, cache); err != nil {
+	if _, err := FetchGroups(repo, browser); err != nil {
 		return nil, err
 	}
 
 	return models.GetDepartmentIDs(repo.DB)
 }
 
-func FetchGroups(
-	repo *repository.Repository,
-	browser *browser.BrowserService,
-	cache *cache.Cache,
-) ([]models.Group, error) {
+func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) ([]models.Group, error) {
 	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
 		log.Debug().Msg("Using cached groups")
 		return groups, nil
 	}
 	log.Debug().Msg("Fetching groups")
 
-	departments, err := FetchDepartments(cache)
+	departments, err := FetchDepartments(repo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch departments: %w", err)
 	}
 
 	groups := make([]models.Group, 0)
 	for _, department := range departments {
-		departmentGroups, err := scrapeDepartmentGroups(browser, department)
+		departmentGroups, err := scrapeDepartmentGroups(browser, &department)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scrape department (%s) groups: %w", department.Name, err)
 		}
@@ -108,9 +102,11 @@ func FetchGroups(
 }
 
 func FetchDepartmentGroups(
-	repo *repository.Repository, browser *browser.BrowserService, cache *cache.Cache, departmentName string,
+	repo *repository.Repository,
+	browser *browser.BrowserService,
+	departmentName string,
 ) ([]models.Group, error) {
-	groups, err := FetchGroups(repo, browser, cache)
+	groups, err := FetchGroups(repo, browser)
 	if err != nil {
 		return nil, err
 	}
@@ -144,9 +140,8 @@ func checkGroups(repo *repository.Repository, ttl time.Duration) ([]models.Group
 	return nil, fmt.Errorf("more than 50%% groups are outdated")
 }
 
-func scrapeDepartmentGroups(browser *browser.BrowserService, department Department) ([]models.Group, error) {
-	log.Trace().Str("departmentName", department.Name).Str("departmentURL", department.URL).
-		Msg("Scraping department groups")
+func scrapeDepartmentGroups(browser *browser.BrowserService, department *models.Department) ([]models.Group, error) {
+	log.Trace().Any("department", department).Msg("Scraping department groups...")
 
 	groups := make([]models.Group, 0)
 	err := browser.WithPage(func(p playwright.Page) error {

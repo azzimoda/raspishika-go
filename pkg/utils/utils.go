@@ -8,3 +8,12 @@ func DerefOrTypeDefault[T any](s *T) T {
 		return *s
 	}
 }
+
+func Every[T any](elems []T, predicate func(*T) bool) bool {
+	for _, elem := range elems {
+		if !predicate(&elem) {
+			return false
+		}
+	}
+	return true
+}

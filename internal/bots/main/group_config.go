@@ -46,7 +46,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	departments, err := scraper.FetchDepartments(mb.services.Cache)
+	departments, err := scraper.FetchDepartments(mb.services.Repo)
 	if err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
@@ -82,7 +82,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	addContextHandlerError(ctx, err)
 }
 
-func departmentSelectionMarkup(departments []scraper.Department) tgmodels.InlineKeyboardMarkup {
+func departmentSelectionMarkup(departments []models.Department) tgmodels.InlineKeyboardMarkup {
 	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for i := 0; i < len(departments); i += 2 {
 		row := make([]tgmodels.InlineKeyboardButton, 0)
@@ -106,12 +106,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	groups, err := scraper.FetchDepartmentGroups(
-		mb.services.Repo,
-		mb.services.Browser,
-		mb.services.Cache,
-		callbackCommand.Arg(0),
-	)
+	groups, err := scraper.FetchDepartmentGroups(mb.services.Repo, mb.services.Browser, callbackCommand.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{

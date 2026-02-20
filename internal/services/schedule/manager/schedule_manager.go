@@ -10,61 +10,79 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
-	"github.com/azzimoda/raspishika-go/internal/services/cache"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
-func NewScheduleManager() *ScheduleManager {
-	return &ScheduleManager{sf: singleflight.Group{}}
-}
-
-type ScheduleManager struct {
-	sf singleflight.Group
-}
+type ScheduleManager struct{ sf singleflight.Group }
 
 // Get returns the schedule for the given config and uses cache if available.
 func (sm *ScheduleManager) Get(
 	repo *repository.Repository,
 	browser *browser.BrowserService,
-	cache *cache.Cache,
 	scheduleCfg models.ScheduleConfig,
 ) (*models.RawSchedule, error) {
-	// Check cache.
+	// TODO NOW: STORE SCHEDULE CACHE IN DATABASE!!
+
 	key := scheduleKey(scheduleCfg)
-	if rawScheduleCache, found := cache.C.Get(key); found {
+	if rawSchedule, ok := sm.checkCache(repo, key); ok {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
-		if rawSchedule, ok := rawScheduleCache.(*models.RawSchedule); ok {
-			return rawSchedule, nil
-		} else {
-			cache.C.Delete(key)
-			log.Error().Type("cacheValueType", rawScheduleCache).Msgf("Invalid cache value type")
-			return nil, fmt.Errorf("invalid cache value type: %T", rawScheduleCache)
-		}
+		return rawSchedule, nil
 	}
+	log.Debug().Str("cacheKey", key).Msg("Cache miss")
 
-	// Update cache.
-	log.Debug().Str("cacheKey", key).Msg("Cache miss, scraping schedule")
-	result, err, _ := sm.sf.Do(key, func() (schedule any, err error) {
-		return sm.scrapeSchedule(repo, scheduleCfg, cache, browser)
-	})
-
+	// Update cache
+	rawSchedule, err := sm.UpdateCache(repo, browser, scheduleCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save cache.
-	cache.C.Set(key, result, config.ScheduleTTLDur())
+	return rawSchedule, nil
+}
 
-	return result.(*models.RawSchedule), nil
+func (sm *ScheduleManager) checkCache(
+	repo *repository.Repository,
+	key string,
+) (rawSchedule *models.RawSchedule, ok bool) {
+	scheduleCache, err := models.GetSchedule(repo.DB, key)
+	if err == nil && scheduleCache.IsActual(config.ScheduleTTLDur()) {
+		rawSchedule, err := scheduleCache.Unmarshal()
+		return rawSchedule, err == nil
+	} else if err != nil {
+		log.Error().Err(err).Msg("Failed to check schedule cache from DB")
+	}
+	return nil, false
+}
+
+func (sm *ScheduleManager) UpdateCache(
+	repo *repository.Repository,
+	browser *browser.BrowserService,
+	scheduleCfg models.ScheduleConfig,
+) (*models.RawSchedule, error) {
+	// Fetch schedule
+	key := scheduleKey(scheduleCfg)
+	log.Debug().Str("cacheKey", key).Msg("Cache miss, scraping schedule")
+	result, err, _ := sm.sf.Do(key, func() (any, error) {
+		return sm.scrapeSchedule(repo, scheduleCfg, browser)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to scrape schedule: %w", err)
+	}
+	rawSchedule := result.(*models.RawSchedule)
+
+	// Save cache
+	scheduleCache := models.NewSchedule(key, *rawSchedule)
+	if err := scheduleCache.InsertOrUpdate(repo.DB); err != nil {
+		return rawSchedule, fmt.Errorf("cache not updated: %w", err)
+	}
+	return rawSchedule, nil
 }
 
 func (*ScheduleManager) scrapeSchedule(
 	repo *repository.Repository,
 	config models.ScheduleConfig,
-	cache *cache.Cache,
 	browser *browser.BrowserService,
-) (any, error) {
-	departmentIDs, err := scraper.FetchDepartmentIDs(repo, browser, cache)
+) (*models.RawSchedule, error) {
+	departmentIDs, err := scraper.FetchDepartmentIDs(repo, browser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get department IDs: %w", err)
 	}

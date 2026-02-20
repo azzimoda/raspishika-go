@@ -70,8 +70,6 @@ github.com/ninetwentyfour/go-wkhtmltoimage v0.0.0-20150201222019-3ccfacb98ac2 h1
 github.com/ninetwentyfour/go-wkhtmltoimage v0.0.0-20150201222019-3ccfacb98ac2/go.mod h1:ZyvdvzRa/q9/2fuRXqrgtpW+5NEafEXXM8J0Qu2uZxw=
 github.com/orisano/pixelmatch v0.0.0-20230914042517-fa304d1dc785 h1:J1//5K/6QF10cZ59zLcVNFGmBfiSrH8Cho/lNrViK9s=
 github.com/orisano/pixelmatch v0.0.0-20230914042517-fa304d1dc785/go.mod h1:nZgzbfBr3hhjoZnS66nKrHmduYNpc34ny7RK4z5/HM0=
-github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
-github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=
 github.com/pelletier/go-toml/v2 v2.2.4/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

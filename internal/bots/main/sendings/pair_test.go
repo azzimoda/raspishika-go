@@ -18,7 +18,7 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	testDir := t.TempDir()
 	tests.InitConfig(t, testDir)
 
-	srvs, err := services.NewServices()
+	srvs, err := services.New()
 	if err != nil {
 		t.Fatal(err)
 	}

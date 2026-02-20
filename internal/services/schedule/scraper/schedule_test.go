@@ -17,13 +17,13 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 	tests.InitConfig(t, testsDir)
 	defer tests.Cleanup(t, testsDir)
 
-	srvs, err := services.NewServices()
+	srvs, err := services.New()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Prepare test data.
-	if _, err := scraper.FetchGroups(srvs.Repo, srvs.Browser, srvs.Cache); err != nil {
+	if _, err := scraper.FetchGroups(srvs.Repo, srvs.Browser); err != nil {
 		t.Fatalf("Failed to fetch groups: %v", err)
 	}
 

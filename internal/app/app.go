@@ -18,7 +18,7 @@ import (
 )
 
 func New() (*App, error) {
-	s, err := services.NewServices()
+	s, err := services.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}

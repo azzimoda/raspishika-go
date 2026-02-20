@@ -132,7 +132,6 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 
 // TODO: Make it as method of Chat.
 func UpdateChat(db *sqlx.DB, chat *Chat) error {
-	chat.UpdatedAt = time.Now()
 	_, err := db.NamedExec(
 		`UPDATE chats
 		SET username = :username,
@@ -142,7 +141,7 @@ func UpdateChat(db *sqlx.DB, chat *Chat) error {
 			daily_sending_time = :daily_sending_time,
 			pair_sending = :pair_sending,
 			access = :access,
-			updated_at = :updated_at
+			updated_at = CURRENT_TIMESTAMP
 		WHERE id = :id`,
 		chat,
 	)
