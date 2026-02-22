@@ -44,8 +44,8 @@ func (s *RawSchedule) Transform() ScheduleData {
 
 			pair.Number = s.Rows[ri].Number
 			parts := strings.Split(s.Rows[ri].TimeRange, "-")
-			pair.StartTime = parts[0]
-			pair.EndTime = parts[1]
+			pair.StartTime = strings.TrimSpace(parts[0])
+			pair.EndTime = strings.TrimSpace(parts[1])
 
 			day.Pairs = append(day.Pairs, pair)
 		}

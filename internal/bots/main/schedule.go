@@ -49,15 +49,17 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		return
 	}
 
-	scheduleCfg := models.GroupScheduleConfig(group)
+	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Action:          tgmodels.ChatActionTyping,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to send chat action")
+	}
 
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
-		ctx,
-		b,
-		update.Message.Chat.ID,
-		update.Message.MessageThreadID,
-		scheduleCfg,
-	)
+	conf := models.GroupScheduleConfig(group)
+	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -69,36 +71,28 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	}
 	log.Debug().Str("filename", imageFilename).Msg("Screenshot saved")
 
-	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, scheduleCfg, imageFilename, imageData)
+	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) PrepareWeekScheduleData(
-	ctx context.Context,
-	b *bot.Bot,
-	chatID int64,
-	messageThreadID int,
-	scheduleCfg models.ScheduleConfig,
-) (imageFilename string, imageData []byte, err error) {
-	_, chatActionErr := b.SendChatAction(ctx, &bot.SendChatActionParams{
-		ChatID:          chatID,
-		MessageThreadID: messageThreadID,
-		Action:          tgmodels.ChatActionTyping,
-	})
-
-	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
+func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (
+	imageFilename string,
+	imageData []byte,
+	err error,
+) {
+	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, conf)
 	if err != nil {
-		err = errors.Join(chatActionErr, fmt.Errorf("failed loading schedule: %w", err))
+		err = fmt.Errorf("failed loading schedule: %w", err)
 		return
 	}
 
 	html := schedule.HTML(viper.GetString("schedule_template"))
 
-	imageFilename, imageData, err = mb.htmlToImage(scheduleCfg, html)
+	imageFilename, imageData, err = mb.htmlToImage(conf, html)
 	if err != nil {
 		return "", nil, err
 	}
-	return imageFilename, imageData, chatActionErr
+	return imageFilename, imageData, nil
 }
 
 func (mb *MainBot) htmlToImage(
@@ -138,7 +132,7 @@ func (mb *MainBot) SendWeekScheduleMessages(
 	b *bot.Bot,
 	messageThreadID int,
 	chat *models.Chat,
-	scheduleCfg models.ScheduleConfig,
+	conf models.ScheduleConfig,
 	imageFilename string,
 	imageData []byte,
 ) error {
@@ -147,7 +141,7 @@ func (mb *MainBot) SendWeekScheduleMessages(
 	if _, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
-		Text:            scheduleCfg.FormatMarkdown() + ":",
+		Text:            conf.FormatMarkdown() + ":",
 		ParseMode:       tgmodels.ParseModeMarkdown,
 		ReplyMarkup:     mainMenuReplyMarkup(chat.IsPrivate()),
 	}); err != nil {
@@ -162,15 +156,15 @@ func (mb *MainBot) SendWeekScheduleMessages(
 		errs = append(errs, err)
 	}
 
-	replyMarkup := weekScheduleMarkup(scheduleCfg)
-	if err := mb.sendSchedulePhoto(ctx, b, chat, messageThreadID, imageFilename, imageData, replyMarkup); err != nil {
+	replyMarkup := WeekScheduleMarkup(conf)
+	if err := mb.SendSchedulePhoto(ctx, b, chat, messageThreadID, imageFilename, imageData, replyMarkup); err != nil {
 		errs = append(errs, err)
 	}
 
 	return errors.Join(errs...)
 }
 
-func (mb *MainBot) sendSchedulePhoto(
+func (mb *MainBot) SendSchedulePhoto(
 	ctx context.Context,
 	b *bot.Bot,
 	chat *models.Chat,
@@ -188,7 +182,7 @@ func (mb *MainBot) sendSchedulePhoto(
 	return err
 }
 
-func weekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
+func WeekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
 	var button tgmodels.InlineKeyboardButton
 	if config.Group != nil {
 		button = updateInlineButton("group", config.Group.GroupName)

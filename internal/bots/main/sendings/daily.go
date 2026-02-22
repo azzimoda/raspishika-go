@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-telegram/bot"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -160,32 +162,27 @@ func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string]
 }
 
 func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*models.Chat) ([]error, bool) {
-	// Prepare schedule
 	log.Trace().Str("group", groupName).Msg("Preparing schedule for group...")
-
 	ctx := context.Background()
+	var errors []error
 
-	var scheduleCfg models.ScheduleConfig
+	// Prepare schedule
+	group, err := models.GetGroupByName(sm.services.Repo.DB, groupName)
+	if err != nil {
+		errors = []error{fmt.Errorf("failed to get group by name %s", groupName)}
+		return errors, true
+	}
+	conf := models.GroupScheduleConfig(group)
 	var imageFilename string
 	var imageData []byte
-	var errors []error
 	var doReturn = false
 	elapsedFetchGroupSchedule := measureTime(func() {
-		group, err := models.GetGroupByName(sm.services.Repo.DB, groupName)
-		if err != nil {
-			errors = []error{fmt.Errorf("failed to get group by name %s", groupName)}
-			doReturn = true
-			return
-		}
-		scheduleCfg = models.GroupScheduleConfig(group)
-
-		imageFilename, imageData, err = sm.bot.PrepareWeekScheduleData(
-			ctx,
-			sm.bot.Bot,
-			chats[0].TgChatID,
-			0, // NOTE: By default bot sends daily sending to the general chat.
-			scheduleCfg,
-		)
+		_, err = sm.bot.Bot.SendChatAction(ctx, &bot.SendChatActionParams{
+			ChatID:          chats[0].TgChatID,
+			MessageThreadID: 0,
+			Action:          tgmodels.ChatActionTyping,
+		})
+		imageFilename, imageData, err = sm.bot.PrepareScheduleImage(conf)
 		if err != nil {
 			errors = []error{fmt.Errorf("failed preparing week schedule data: %w", err)}
 			doReturn = true
@@ -207,7 +204,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 			wg.Go(func() {
 				elapsed := measureTime(func() {
 					// NOTE: By default bot send dailt sending to general chat, so the message thread ID is 0.
-					err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, 0, chat, scheduleCfg, imageFilename, imageData)
+					err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, 0, chat, conf, imageFilename, imageData)
 					if err != nil {
 						log.Error().Err(err).Int64("chat_id", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
 						if err = handleTelegramAPIError(sm.services, chat, err); err == nil {

@@ -171,14 +171,23 @@ func (mb *MainBot) sendTeacherSchedule(
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotUpdateData})
 	}
 
-	schedueCfg := models.TeacherScheduleConfig(teacher)
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(ctx, b, chat.ID, messageThreadID, schedueCfg)
+	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID:          chat.ID,
+		MessageThreadID: messageThreadID,
+		Action:          tgmodels.ChatActionTyping,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to send chat action")
+	}
+
+	conf := models.TeacherScheduleConfig(teacher)
+	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
 
-	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, localChat, schedueCfg, imageFilename, imageData)
+	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, localChat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }

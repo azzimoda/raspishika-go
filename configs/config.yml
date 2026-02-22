@@ -22,10 +22,13 @@ features:
   sending:
     daily: false
     pair: false
+    updates: false
 
 sending:
   workers: 20
   pair:
     notification_ttl: 90 # minutes
+  updates:
+    interval: 20 # minutes
 
 schedule_template_file: storage/schedule_template.html

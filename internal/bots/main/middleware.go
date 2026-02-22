@@ -177,7 +177,6 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 		logEvent := log.Info().Dur("elapsed_time", elapsedTime)
 		if update.Message != nil {
 			message := update.Message
-			log.Trace().Bool("IsTopicMessage", message.IsTopicMessage).Int("MessageThreadID", message.MessageThreadID).Send()
 			updateKind = "message"
 			updateData = message.Text
 			logEvent.
@@ -319,4 +318,3 @@ func (mb *MainBot) isAdmin(ctx context.Context, b *bot.Bot, update *tgmodels.Upd
 
 	return chatMember.Type == tgmodels.ChatMemberTypeAdministrator || chatMember.Type == tgmodels.ChatMemberTypeOwner, nil
 }
-

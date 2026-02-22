@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -53,6 +54,8 @@ type App struct {
 }
 
 func (a *App) Run() error {
+	ctx := context.Background()
+
 	startTime := time.Now()
 	log.Info().Time("start", startTime).Msg("Starting application...")
 	defer func() {
@@ -68,6 +71,23 @@ func (a *App) Run() error {
 
 	go a.mainBot.Start()
 
+	a.startServices(ctx)
+
+	if err == nil {
+		report.RemoveMessage()
+	}
+	a.Report().Log().Msg("Application started.")
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	<-sigChan
+	a.Shutdown()
+
+	return nil
+}
+
+func (a *App) startServices(ctx context.Context) {
 	sendingManager := sendings.NewSendingManager(a.mainBot, a.services)
 
 	if viper.GetBool("features.sending.daily") {
@@ -85,21 +105,12 @@ func (a *App) Run() error {
 			log.Info().Msg("Pair sending scheduled")
 		}
 	}
-	
-	sendingManager.Start()
 
-	if err == nil {
-		report.RemoveMessage()
+	if viper.GetBool("features.sending.updates") {
+		go sendingManager.RunUpdatesNotifier(ctx)
 	}
-	a.Report().Log().Msg("Application started.")
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	<-sigChan
-	a.Shutdown()
-
-	return nil
+	sendingManager.Start()
 }
 
 func (a *App) Shutdown() {

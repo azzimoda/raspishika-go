@@ -1,6 +1,8 @@
 package schedulemanager
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -19,27 +21,35 @@ type ScheduleManager struct{ sf singleflight.Group }
 func (sm *ScheduleManager) Get(
 	repo *repository.Repository,
 	browser *browser.BrowserService,
-	scheduleCfg models.ScheduleConfig,
+	conf models.ScheduleConfig,
 ) (*models.RawSchedule, error) {
-	// TODO NOW: STORE SCHEDULE CACHE IN DATABASE!!
-
-	key := scheduleKey(scheduleCfg)
-	if rawSchedule, ok := sm.checkCache(repo, key); ok {
+	key := scheduleKey(conf)
+	if rawSchedule, ok := sm.CheckCache(repo, key); ok {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		return rawSchedule, nil
 	}
 	log.Debug().Str("cacheKey", key).Msg("Cache miss")
 
-	// Update cache
-	rawSchedule, err := sm.UpdateCache(repo, browser, scheduleCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return rawSchedule, nil
+	return sm.UpdateCache(repo, browser, conf)
 }
 
-func (sm *ScheduleManager) checkCache(
+var ErrNoCache = errors.New("no cache for the key")
+
+func (sm *ScheduleManager) GetCache(
+	repo *repository.Repository,
+	conf models.ScheduleConfig,
+) (*models.RawSchedule, error) {
+	scheduleCache, err := models.GetSchedule(repo.DB, scheduleKey(conf))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNoCache
+	}
+	if err != nil {
+		return nil, fmt.Errorf("fail to get cache: %w", err)
+	}
+	return scheduleCache.Unmarshal()
+}
+
+func (sm *ScheduleManager) CheckCache(
 	repo *repository.Repository,
 	key string,
 ) (rawSchedule *models.RawSchedule, ok bool) {
@@ -47,7 +57,8 @@ func (sm *ScheduleManager) checkCache(
 	if err == nil && scheduleCache.IsActual(config.ScheduleTTLDur()) {
 		rawSchedule, err := scheduleCache.Unmarshal()
 		return rawSchedule, err == nil
-	} else if err != nil {
+	}
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to check schedule cache from DB")
 	}
 	return nil, false

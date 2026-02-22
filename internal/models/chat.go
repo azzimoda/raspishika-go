@@ -36,17 +36,18 @@ const (
 )
 
 type Chat struct {
-	ID               int             `db:"id" `
-	TgChatID         int64           `db:"tg_chat_id" `
-	UserName         *string         `db:"username" `
-	State            ChatState       `db:"state" `
-	DepartmentName   *string         `db:"department" `
-	GroupName        *string         `db:"group" `
-	DailySendingTime *string         `db:"daily_sending_time" `
-	PairSending      bool            `db:"pair_sending" `
-	Access           ChatAccessLevel `db:"access" `
-	CreatedAt        time.Time       `db:"created_at" `
-	UpdatedAt        time.Time       `db:"updated_at" `
+	ID                 int             `db:"id"`
+	TgChatID           int64           `db:"tg_chat_id"`
+	UserName           *string         `db:"username"`
+	State              ChatState       `db:"state"`
+	DepartmentName     *string         `db:"department"`
+	GroupName          *string         `db:"group"`
+	DailySendingTime   *string         `db:"daily_sending_time"`
+	PairSending        bool            `db:"pair_sending"`
+	UpdateNotification bool            `db:"update_notification"`
+	Access             ChatAccessLevel `db:"access"`
+	CreatedAt          time.Time       `db:"created_at"`
+	UpdatedAt          time.Time       `db:"updated_at"`
 }
 
 func (c *Chat) IsPrivate() bool {
@@ -278,6 +279,17 @@ func GetChatCountWithPairSendingEnabled(db *sqlx.DB) (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+func GetMonitoredGroups(db *sqlx.DB) ([]Group, error) {
+	var groups []Group
+	if err := db.Select(&groups, `
+		SELECT G.* FROM groups g JOIN chats c ON g.group_name = c.group
+		WHERE "group" != '' AND "group" IS NOT NULL AND update_notification = 1
+	`); err != nil {
+		return nil, err
+	}
+	return groups, nil
 }
 
 func GetChat(db *sqlx.DB, id int64) (*Chat, error) {

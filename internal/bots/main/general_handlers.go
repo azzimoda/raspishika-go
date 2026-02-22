@@ -73,6 +73,7 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 	*notLogFlag = true
 }
 
+// TODO: Move this handler into separate file.
 func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string, update *tgmodels.Update, b *bot.Bot) {
 	log.Trace().Str("groupName", groupName).Msg("Sending quick group week schedule")
 
@@ -89,14 +90,17 @@ func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string,
 		return
 	}
 
-	scheduleCfg := models.GroupScheduleConfig(group)
-	imageFilename, imageData, err := mb.PrepareWeekScheduleData(
-		ctx,
-		b,
-		update.Message.Chat.ID,
-		update.Message.MessageThreadID,
-		scheduleCfg,
-	)
+	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
+		ChatID:          update.Message.Chat.ID,
+		MessageThreadID: update.Message.MessageThreadID,
+		Action:          tgmodels.ChatActionTyping,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to send chat action")
+	}
+
+	conf := models.GroupScheduleConfig(group)
+	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		log.Error().Any("group", group).Err(err).
 			Msg("Failed to prepare week schedule data for quick group schedule")
@@ -108,7 +112,7 @@ func (mb *MainBot) sendQuickGroupSchedule(ctx context.Context, groupName string,
 		b,
 		update.Message.MessageThreadID,
 		chat,
-		scheduleCfg,
+		conf,
 		imageFilename,
 		imageData,
 	)

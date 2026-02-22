@@ -36,11 +36,13 @@ var defaults = map[string]any{
 	"logger.level": "debug",
 	"logger.dir":   "storage/logs",
 
-	"features.admin_bot":     false,
-	"features.sending.daily": false,
-	"features.sending.pair":  false,
+	"features.admin_bot":       false,
+	"features.sending.daily":   false,
+	"features.sending.pair":    false,
+	"features.sending.updates": false,
 
 	"sending.workers":               20,
+	"sending.updates.interval":      30, // minutes
 	"sending.pair.notification_ttl": 90, // minutes
 
 	"adminbot.new_chat_report": true,
@@ -175,6 +177,10 @@ func DefaultTTLDur() time.Duration { return viper.GetDuration("cache.default_ttl
 func ScheduleTTLDur() time.Duration { return viper.GetDuration("cache.schedule_ttl") * time.Minute }
 
 func GroupTTLDur() time.Duration { return viper.GetDuration("cache.group_ttl") * 24 * time.Hour }
+
+func UpdateNotificationInterval() time.Duration {
+	return viper.GetDuration("sending.updates.interval") * time.Minute
+}
 
 func PairNotificationTTLDur() time.Duration {
 	return viper.GetDuration("sending.pair.notification_ttl") * time.Minute

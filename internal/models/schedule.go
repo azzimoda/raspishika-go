@@ -33,10 +33,10 @@ type Schedule struct {
 
 func (s *Schedule) IsActual(ttl time.Duration) bool { return s.UpdatedAt.Add(ttl).After(time.Now()) }
 
-func (s *Schedule) Unmarshal() (rawSchedule *RawSchedule, err error) {
-	jsonData := s.Data
-	err = json.Unmarshal([]byte(jsonData), &rawSchedule)
-	return
+func (s *Schedule) Unmarshal() (*RawSchedule, error) {
+	var rawSchedule RawSchedule
+	err := json.Unmarshal([]byte(s.Data), &rawSchedule)
+	return &rawSchedule, err
 }
 
 func (s *Schedule) Insert(db *sqlx.DB) error {

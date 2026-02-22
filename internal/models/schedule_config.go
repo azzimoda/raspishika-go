@@ -31,6 +31,8 @@ func (s *ScheduleConfig) IsEqual(other *ScheduleConfig) bool {
 		return s.Group.ID == other.Group.ID
 	} else if s.Teacher != nil && other.Teacher != nil {
 		return s.Teacher.ID == other.Teacher.ID
+	} else if (*s == ScheduleConfig{}) && (*other == ScheduleConfig{}) {
+		return true
 	}
 	return false
 }

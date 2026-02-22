@@ -43,7 +43,7 @@ func New() (*BrowserService, error) {
 	ctx, cancelChromeDP := chromedp.NewContext(ctx, chromedp.WithBrowserOption())
 
 	cancel := func() {
-		log.Warn().Msg("Cancelling chromedp contexts...")
+		log.Debug().Msg("Cancelling chromedp contexts...")
 		cancelExecAllocator()
 		cancelChromeDP()
 	}

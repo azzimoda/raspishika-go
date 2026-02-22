@@ -1,0 +1,1 @@
+ALTER TABLE chats ADD COLUMN update_notification BOOLEAN NOT NULL DEFAULT 0;

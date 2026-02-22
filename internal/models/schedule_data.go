@@ -133,7 +133,7 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 }
 
 func (s ScheduleDay) String() string {
-	text := fmt.Sprintf("📅 %s, %s: ", s.WeekDay, bot.EscapeMarkdown(s.Date))
+	text := s.DateString() + ": "
 
 	if kind := s.DetectOneKind(); kind != nil {
 		log.Trace().Msgf("Detected one kind: %s", *kind)
@@ -154,6 +154,10 @@ func (s ScheduleDay) String() string {
 	return text
 }
 
+func (s *ScheduleDay) DateString() string {
+	return fmt.Sprintf("📅 %s, %s", s.WeekDay, bot.EscapeMarkdown(s.Date))
+}
+
 type Pair struct {
 	Kind       PairKind `json:"kind"`
 	Number     int      `json:"number"`
@@ -170,19 +174,29 @@ type Pair struct {
 }
 
 func (p Pair) String() string {
-	discipline := bot.EscapeMarkdown(p.Discipline)
-	teacher := bot.EscapeMarkdown(utils.DerefOrTypeDefault(p.Teacher))
-	timeRange := bot.EscapeMarkdown(p.StartTime + "-" + p.EndTime)
-	classroom := bot.EscapeMarkdown(p.Classroom)
+	log.Trace().Any("pair", p).Msg("Formating pair...")
+
+	discipline := func() string { return bot.EscapeMarkdown(p.Discipline) }
+	teacher := func() string { return bot.EscapeMarkdown(utils.DerefOrTypeDefault(p.Teacher)) }
+	label := func() string { return bot.EscapeMarkdown(p.Label) }
 
 	switch p.Kind {
 	case PairKindSubject:
-		return fmt.Sprintf("%d \\| %s \\| %s\n    *%s*\n    %s",
-			p.Number, timeRange, classroom, discipline, teacher)
+		return fmt.Sprintf("%s\n    *%s*\n    %s", p.TimeSlotCabinetString(), discipline(), teacher())
 	case PairKindExam, PairKindConsultation:
-		return fmt.Sprintf("%d \\| %s \\| %s\n    _%s_\n    *%s*\n    %s",
-			p.Number, timeRange, classroom, p.Label, discipline, teacher)
+		return fmt.Sprintf("%s\n    _%s_\n    *%s*\n    %s",
+			p.TimeSlotCabinetString(), label(), discipline(), teacher())
 	default:
-		return fmt.Sprintf("%d \\| %s — %s", p.Number, timeRange, p.Label)
+		return fmt.Sprintf("%s — %s", p.TimeSlotString(), label())
 	}
+}
+func (p *Pair) TimeSlotString() string {
+	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s - %s", p.Number, p.StartTime, p.EndTime))
+	log.Trace().Msgf("Formatted time slot string: %s", result)
+	return result
+}
+func (p *Pair) TimeSlotCabinetString() string {
+	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s - %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom))
+	log.Trace().Msgf("Formatted time slot cabinet string: %s", result)
+	return result
 }
