@@ -48,6 +48,8 @@ func New() (*App, error) {
 }
 
 type App struct {
+	ctx      context.Context
+	cancel   context.CancelFunc
 	mainBot  *mainbot.MainBot
 	adminBot *adminbot.AdminBot
 	services *services.Services
@@ -55,6 +57,7 @@ type App struct {
 
 func (a *App) Run() error {
 	ctx := context.Background()
+	a.ctx, a.cancel = context.WithCancel(ctx)
 
 	startTime := time.Now()
 	log.Info().Time("start", startTime).Msg("Starting application...")
@@ -71,7 +74,7 @@ func (a *App) Run() error {
 
 	go a.mainBot.Start()
 
-	a.startServices(ctx)
+	a.startServices(a.ctx)
 
 	if err == nil {
 		report.RemoveMessage()
@@ -114,6 +117,8 @@ func (a *App) startServices(ctx context.Context) {
 }
 
 func (a *App) Shutdown() {
+	a.cancel()
+
 	report, err := a.Report().Log().Msg("Shutting down application...")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to report shutdown")
