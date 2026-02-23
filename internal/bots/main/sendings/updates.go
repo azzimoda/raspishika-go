@@ -16,36 +16,13 @@ import (
 	schedulemanager "github.com/azzimoda/raspishika-go/internal/services/schedule/manager"
 )
 
-/*
- * Update notifier algorithm:
- * 1. Collect chats with updates notifications on
- * 2. Group them by configured student group
- * 3. Check updates for each student group
- * 4. Send update reports
- * 5. Repeat until shutdown
- *
- * How should the schedule fetching algorithm change:
- * - How it was:
- *   1. Check cache
- *     - If it ok, return it
- *     - Else...
- *   2. Fetch schedule
- *   3. Update cache
- *   4. Return the new cache
- * - How will be:
- *   1. Check whether the requested group is on update monitoring
- *     (find in DB a chat with this group configured and updates notifier enabled)
- *     - If it is on monitoring, just return current cache
- *     - Else just do the same algorithm
- */
-
 func (sm *SendingManager) RunUpdatesNotifier(ctx context.Context) {
 	log.Info().Msg("Updates notifier started")
 
-	var updates = make(chan *models.ScheduleChange)
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	var updates = make(chan *models.ScheduleChange)
 
 	go sm.RunUpdateMonitor(ctx, updates)
 	log.Debug().Msg("Update monitor started")
@@ -57,9 +34,16 @@ func (sm *SendingManager) RunUpdatesNotifier(ctx context.Context) {
 			log.Info().Msg("Updates notifier stopped")
 			return
 		case change := <-updates:
-			log.Info().Str("groupName", change.Old.Config.Group.GroupName).Msgf("Received schedule update")
-			if err := sm.SendUpdateNotificationForGroup(ctx, change); err != nil {
-				sm.services.Reporter.Report().Log().Err(err).Msg("Errors while update sendings")
+			log.Debug().Str("groupName", change.Old.Config.Group.GroupName).Msg("Received schedule update")
+			var err error
+			elapsed := measureTime(func() {
+				err = sm.SendUpdateNotificationForGroup(ctx, change)
+			})
+			if err != nil {
+				sm.services.Reporter.Report().Log().Err(err).
+					Debug("config", change.New.Config).
+					Debug("elapsed", elapsed).
+					Msg("Errors while update sendings")
 			}
 		default:
 			time.Sleep(time.Second)
@@ -68,6 +52,7 @@ func (sm *SendingManager) RunUpdatesNotifier(ctx context.Context) {
 }
 
 func (sm *SendingManager) SendUpdateNotificationForGroup(ctx context.Context, change *models.ScheduleChange) error {
+	log.Trace().Any("config", change.New.Config).Msg("Sending update notificatin for group...")
 	chats, err := models.GetChatsByGroup(sm.services.Repo.DB, change.New.Config.Group.GroupName)
 	if err != nil {
 		return err
@@ -102,13 +87,7 @@ func (sm *SendingManager) sendUpdateNotification(
 		return fmt.Errorf("failed to send schedule update notification: %w", err)
 	}
 
-	if err = sm.bot.SendSchedulePhoto(
-		ctx,
-		sm.bot.Bot,
-		chat,
-		0,
-		imageFileName,
-		imageData,
+	if err = sm.bot.SendSchedulePhoto(ctx, sm.bot.Bot, chat, 0, imageFileName, imageData,
 		mainbot.WeekScheduleMarkup(change.New.Config),
 	); err != nil {
 		sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
@@ -128,6 +107,7 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		select {
 		case <-ctx.Done():
 			close(updates)
+			log.Debug().Msg("Update monitor stopped")
 			return
 		default:
 		}
@@ -138,35 +118,51 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				Msg("Failed to get chats with update notification enabled grouped by student group")
 			continue
 		}
+		log.Debug().Int("groupCount", len(groups)).Msg("Checking updates...")
+
 		var errs []error
-		for _, group := range groups {
-			conf := models.GroupScheduleConfig(&group)
-			oldRawSchedule, err := sm.services.ScheduleManager.GetCache(sm.services.Repo, conf)
-			if errors.Is(err, schedulemanager.ErrNoCache) {
-				// Do not send notifcation, just update cache
-				_, err := sm.services.ScheduleManager.UpdateCache(sm.services.Repo, sm.services.Browser, conf)
-				errs = append(errs, err)
-				continue
-			}
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
+		elapsed := measureTime(func() {
+			for _, group := range groups {
+				conf := models.GroupScheduleConfig(&group)
+				oldRawSchedule, err := sm.services.ScheduleMan.GetCache(sm.services.Repo, conf)
+				if errors.Is(err, schedulemanager.ErrNoCache) {
+					log.Warn().Err(err).Any("config", conf).Msg("No cache for the schedule config; just updating...")
+					_, err := sm.services.ScheduleMan.UpdateCache(sm.services.Repo, sm.services.Browser, conf)
+					errs = append(errs, err)
+					continue
+				}
+				if err != nil {
+					log.Error().Err(err).Any("config", conf).Msg("Failed to get schedule cache")
+					errs = append(errs, err)
+					continue
+				}
 
-			newRawSchedule, err := sm.services.ScheduleManager.UpdateCache(sm.services.Repo, sm.services.Browser, conf)
-			if err != nil {
-				log.Error().Err(err).Any("config", conf).Msg("Failed to update schedule cache")
-				errs = append(errs, err)
-				continue
-			}
+				newRawSchedule, err := sm.services.ScheduleMan.UpdateCache(sm.services.Repo, sm.services.Browser, conf)
+				if err != nil {
+					log.Error().Err(err).Any("config", conf).Msg("Failed to update schedule cache")
+					errs = append(errs, err)
+					continue
+				}
 
-			// Check if schedule changed
-			change := models.NewScheduleChange(oldRawSchedule.Transform(), newRawSchedule.Transform())
-			if len(change.Diffs()) > 0 {
-				log.Debug().Any("config", conf).Msg("Schedule change detected")
-				// Send the change to channel
-				updates <- change
+				// Check if schedule changed
+				change := models.NewScheduleChange(oldRawSchedule.Transform(), newRawSchedule.Transform())
+				if len(change.Diffs()) > 0 {
+					log.Debug().Any("config", conf).Msg("Schedule change detected")
+					// Send the change to channel
+					updates <- change
+				}
 			}
+		})
+		log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
+			Msgf("Monitored groups schedules updated in %v", elapsed)
+
+		err = errors.Join(errs...)
+		if err != nil {
+			sm.services.Reporter.Report().Log().Err(err).Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
+				Msg("Errors while fetchig updates for monitored groups")
+		} else if elapsed.Minutes() > 1 || elapsed.Seconds()/float64(len(groups)) > 10 {
+			sm.services.Reporter.Report().Log().Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
+				Msg("Updating monitored groups schedules took too long")
 		}
 
 		time.Sleep(interval)

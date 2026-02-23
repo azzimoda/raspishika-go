@@ -104,8 +104,8 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		return []error{fmt.Errorf("failed to get group by name %s: %w", groupName, err)}, true
 	}
 
-	rawSchedule, err := sm.services.ScheduleManager.Get(
-		sm.services.Repo, sm.services.Browser, models.GroupScheduleConfig(group))
+	rawSchedule, err :=
+		sm.services.ScheduleMan.Get(sm.services.Repo, sm.services.Browser, models.GroupScheduleConfig(group))
 	if err != nil {
 		return []error{fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)}, true
 	}
@@ -121,7 +121,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 	text := ""
 	switch pair.Kind {
 	case models.PairKindEmpty, models.PairKindEvent, models.PairKindIGA, models.PairKindVacation,
-	models.PairKindPractice:
+		models.PairKindPractice:
 
 		log.Trace().Str("kind", string(pair.Kind)).Msg("Pair is empty")
 		return nil, false

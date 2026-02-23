@@ -76,7 +76,7 @@ func FetchDepartmentIDs(repo *repository.Repository, browser *browser.BrowserSer
 
 func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) ([]models.Group, error) {
 	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
-		log.Debug().Msg("Using cached groups")
+		log.Trace().Msg("Groups cache hit")
 		return groups, nil
 	}
 	log.Debug().Msg("Fetching groups")

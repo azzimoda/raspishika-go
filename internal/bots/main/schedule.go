@@ -80,7 +80,7 @@ func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (
 	imageData []byte,
 	err error,
 ) {
-	schedule, err := mb.services.ScheduleManager.Get(mb.services.Repo, mb.services.Browser, conf)
+	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
 	if err != nil {
 		err = fmt.Errorf("failed loading schedule: %w", err)
 		return
@@ -245,8 +245,8 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		return
 	}
 
-	rawSchedule, err := mb.services.ScheduleManager.Get(
-		mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
+	rawSchedule, err :=
+		mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -309,7 +309,7 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 			return
 		}
 
-		rawSchedule, err := mb.services.ScheduleManager.Get(
+		rawSchedule, err := mb.services.ScheduleMan.Get(
 			mb.services.Repo,
 			mb.services.Browser,
 			models.GroupScheduleConfig(group),

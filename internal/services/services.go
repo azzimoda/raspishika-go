@@ -33,10 +33,10 @@ func New() (s *Services, err error) {
 }
 
 type Services struct {
-	Repo            *repository.Repository
-	Browser         *browser.BrowserService
-	ScheduleManager smanager.ScheduleManager
-	Reporter        reporter.Reporter
+	Repo     *repository.Repository
+	Browser  *browser.BrowserService
+	ScheduleMan smanager.ScheduleManager
+	Reporter reporter.Reporter
 }
 
 func (s *Services) Close() error { return errors.Join(s.Repo.Close(), s.Browser.Close()) }

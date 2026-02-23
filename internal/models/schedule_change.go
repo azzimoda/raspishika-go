@@ -35,11 +35,10 @@ func Synchronize(old, new ScheduleData) (ScheduleData, ScheduleData) {
 	return old, new
 }
 
-type ScheduleChange struct { Old, New ScheduleData }
+type ScheduleChange struct{ Old, New ScheduleData }
 
 func (s *ScheduleChange) Diffs() []Diff {
 	var absDiffs []Diff
-	log.Trace().Any("ScheduleChange", s).Send()
 	for d := range s.Old.Days {
 		for p := range s.Old.Days[d].Pairs {
 			newDay := s.New.Days[d]
