@@ -127,7 +127,8 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 		for key, value := range debugObjects {
 			logEvent.Any(key, value)
 		}
-		logEvent.Str("report_caller", caller).Int64("chat_id", chatID).Str("username", username).Msgf("Report: %s", text)
+		logEvent.Str("report_caller", caller).Int64("chat_id", chatID).Str("username", username).
+			Msgf("Report: %s", text)
 	}
 
 	if rc.bot == nil {

@@ -39,7 +39,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create application")
 	}
 
-	// Check for scheduled start.
+	// Check for scheduled start
 	if startTime := viper.GetTime("start"); startTime != (time.Time{}) {
 		now := time.Now()
 		if startTime.Year() == 0 {

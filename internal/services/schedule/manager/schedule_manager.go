@@ -29,7 +29,6 @@ func (sm *ScheduleManager) Get(
 		return rawSchedule, nil
 	}
 	log.Debug().Str("cacheKey", key).Msg("Cache miss")
-
 	return sm.UpdateCache(repo, browser, conf)
 }
 
@@ -59,7 +58,7 @@ func (sm *ScheduleManager) CheckCache(
 		return rawSchedule, err == nil
 	}
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to check schedule cache from DB")
+		log.Warn().Err(err).Msg("Failed to check schedule cache from DB")
 	}
 	return nil, false
 }
@@ -71,7 +70,6 @@ func (sm *ScheduleManager) UpdateCache(
 ) (*models.RawSchedule, error) {
 	// Fetch schedule
 	key := scheduleKey(scheduleCfg)
-	log.Debug().Str("cacheKey", key).Msg("Cache miss, scraping schedule")
 	result, err, _ := sm.sf.Do(key, func() (any, error) {
 		return sm.scrapeSchedule(repo, scheduleCfg, browser)
 	})

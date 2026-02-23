@@ -284,7 +284,7 @@ func GetChatCountWithPairSendingEnabled(db *sqlx.DB) (int, error) {
 func GetMonitoredGroups(db *sqlx.DB) ([]Group, error) {
 	var groups []Group
 	if err := db.Select(&groups, `
-		SELECT G.* FROM groups g JOIN chats c ON g.group_name = c.group
+		SELECT G.* FROM groups g JOIN chats c ON g.group_name = c."group"
 		WHERE "group" != '' AND "group" IS NOT NULL AND update_notification = 1
 	`); err != nil {
 		return nil, err

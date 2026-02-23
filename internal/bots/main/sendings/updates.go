@@ -48,7 +48,9 @@ func (sm *SendingManager) RunUpdatesNotifier(ctx context.Context) {
 	defer cancel()
 
 	go sm.RunUpdateMonitor(ctx, updates)
+	log.Debug().Msg("Update monitor started")
 
+	log.Debug().Msg("Update worker started")
 	for {
 		select {
 		case <-ctx.Done():
@@ -121,6 +123,7 @@ func (sm *SendingManager) sendUpdateNotification(
 
 func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *models.ScheduleChange) {
 	interval := config.UpdateNotificationInterval()
+	log.Debug().Dur("interval", interval).Msg("Schedule updating interval")
 	for {
 		select {
 		case <-ctx.Done():

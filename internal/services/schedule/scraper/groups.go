@@ -30,10 +30,12 @@ func FetchDepartments(repo *repository.Repository) ([]models.Department, error) 
 	departments, err := models.GetDepartments(repo.DB)
 	ttl := config.GroupTTLDur()
 	if err != nil && utils.Every(departments, func(d *models.Department) bool { return d.IsActual(ttl) }) {
+		log.Debug().Msg("Departments cache hit")
 		return departments, nil
 	}
 
 	// Update cache
+	log.Debug().Msg("Departments cache miss")
 	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
 	if err != nil {
 		return nil, err
@@ -45,6 +47,7 @@ func FetchDepartments(repo *repository.Repository) ([]models.Department, error) 
 		return nil, err
 	}
 
+	departments = make([]models.Department, 0)
 	doc.Find("ul.mod-menu li.col-lg.col-md-6 a").Each(func(i int, s *goquery.Selection) {
 		name := s.Text()
 		if !strings.Contains(strings.ToLower(name), "отделение") && !strings.Contains(strings.ToLower(name), "заоч") {
