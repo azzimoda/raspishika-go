@@ -292,6 +292,48 @@ func GetMonitoredGroups(db *sqlx.DB) ([]Group, error) {
 	return groups, nil
 }
 
+func GetConfiguredGroupCount(db *sqlx.DB) (int, error) {
+	var count int
+	err := db.Get(&count, `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT "group" FROM chats
+			WHERE "group" != '' AND "group" IS NOT NULL)
+		`)
+	return count, err
+}
+
+func GetAvgChatsPerGroup(db *sqlx.DB) (float32, error) {
+	var avg float32
+	err := db.Get(&avg, `
+		SELECT AVG(chats) FROM (
+			SELECT COUNT(*) AS chats FROM chats
+			WHERE "group" != '' AND "group" IS NOT NULL
+			GROUP BY "group"
+		)
+	`)
+	return avg, err
+}
+
+func GetMedianChatsPerGroup(db *sqlx.DB) (float32, error) {
+	var median float32
+	err := db.Get(&median, `
+		WITH ranked AS (
+			SELECT
+				value,
+				ROW_NUMBER() OVER (ORDER BY value) AS row_num,
+				COUNT(*) OVER () AS total_rows
+			FROM (
+				SELECT COUNT(*) AS value FROM chats
+				WHERE "group" != '' AND "group" IS NOT NULL
+				GROUP BY "group"
+			)
+		)
+		SELECT AVG(value) AS median FROM ranked
+		WHERE row_num IN ((total_rows + 1) / 2, (total_rows + 2) / 2);
+	`)
+	return median, err
+}
+
 func GetChat(db *sqlx.DB, id int64) (*Chat, error) {
 	var chat Chat
 	if err := db.Get(&chat, `SELECT * FROM chats WHERE id = ?`, id); err != nil {
