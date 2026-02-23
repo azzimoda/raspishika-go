@@ -69,17 +69,12 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		})
 		return
 	}
-	log.Debug().Str("filename", imageFilename).Msg("Screenshot saved")
 
 	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (
-	imageFilename string,
-	imageData []byte,
-	err error,
-) {
+func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName string, data []byte, err error) {
 	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
 	if err != nil {
 		err = fmt.Errorf("failed loading schedule: %w", err)
@@ -88,11 +83,11 @@ func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (
 
 	html := schedule.HTML(viper.GetString("schedule_template"))
 
-	imageFilename, imageData, err = mb.htmlToImage(conf, html)
+	fileName, data, err = mb.htmlToImage(conf, html)
 	if err != nil {
 		return "", nil, err
 	}
-	return imageFilename, imageData, nil
+	return fileName, data, nil
 }
 
 func (mb *MainBot) htmlToImage(
@@ -199,18 +194,21 @@ func WeekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
 
 func updateInlineButton(kind, value string) tgmodels.InlineKeyboardButton {
 	return tgmodels.InlineKeyboardButton{
-		Text:         "Обновить",
-		CallbackData: fmt.Sprintf("update_%s\n%s", kind, value),
+		Text: "Обновить",
+		CallbackData: fmt.Sprintf("update_%s\n%s\n%s",
+			kind, value,
+			time.Now().Format("20060102150405000"), // NOTE: Time is added to prevent editing message error when the content is the same.
+		),
 	}
 }
 
-func scheduleScreenshotFileName(config models.ScheduleConfig) string {
-	if config.Group != nil {
-		return fmt.Sprintf("schedule_%s.png", config.Group.GroupName)
-	} else if config.Teacher != nil {
-		return fmt.Sprintf("schedule_%s.png", config.Teacher.Name)
+func scheduleScreenshotFileName(conf models.ScheduleConfig) string {
+	if conf.Group != nil {
+		return fmt.Sprintf("schedule_%s.png", conf.Group.GroupName)
+	} else if conf.Teacher != nil {
+		return fmt.Sprintf("schedule_teacher_%s.png", conf.Teacher.Name)
 	} else {
-		log.Error().Any("config", config).Msg("Schedule config is invalid")
+		log.Error().Any("config", conf).Msg("Schedule config is invalid")
 		return "schedule.png"
 	}
 }

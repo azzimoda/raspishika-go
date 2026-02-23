@@ -4,15 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
@@ -36,8 +33,8 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 		return
 	}
 
-	scheduleCfg := models.GroupScheduleConfig(group)
-	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
+	conf := models.GroupScheduleConfig(group)
+	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -45,25 +42,6 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 			Text:            ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
-		return
-	}
-
-	html := schedule.HTML(viper.GetString("schedule_template"))
-	imageFilename := filepath.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
-	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
-		addContextHandlerError(ctx, err)
-		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
-			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotUpdateData,
-		})
-		addContextHandlerError(ctx, err)
-		return
-	}
-
-	imageData, err := os.ReadFile(imageFilename)
-	if err != nil {
-		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
 
@@ -93,21 +71,9 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	scheduleCfg := models.TeacherScheduleConfig(teacher)
-	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
+	conf := models.TeacherScheduleConfig(teacher)
+	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
-		addContextHandlerError(ctx, err)
-		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
-			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
-		})
-		addContextHandlerError(ctx, err)
-		return
-	}
-
-	html := schedule.HTML(viper.GetString("schedule_template"))
-	imageFilename := filepath.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(scheduleCfg))
-	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
@@ -117,18 +83,9 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	message := update.CallbackQuery.Message.Message
-
-	imageData, err := os.ReadFile(imageFilename)
-	if err != nil {
-		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotLoadSchedule})
-		return
-	}
-
 	_, err = b.EditMessageMedia(ctx, &bot.EditMessageMediaParams{
-		ChatID:      message.Chat.ID,
-		MessageID:   message.ID,
+		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
+		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Media:       &tgmodels.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
 		ReplyMarkup: updateInlineMarkup("teacher", teacherID),
 	})
@@ -152,8 +109,8 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		return
 	}
 
-	scheduleCfg := models.GroupScheduleConfig(group)
-	rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
+	rawSchedule, err :=
+		mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -165,12 +122,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	schedule := rawSchedule.Transform()
-	var tomorrow models.ScheduleDay
-	if time.Now().Weekday() == time.Sunday {
-		tomorrow = schedule.Days[0]
-	} else {
-		tomorrow = schedule.Days[1]
-	}
+	tomorrow := schedule.Tomorrow(time.Now())
 
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
@@ -212,8 +164,8 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	if time.Now().Weekday() == time.Sunday {
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
-		scheduleCfg := models.GroupScheduleConfig(group)
-		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, scheduleCfg)
+		conf := models.GroupScheduleConfig(group)
+		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
 		if err != nil {
 			addContextHandlerError(ctx, err)
 			_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{

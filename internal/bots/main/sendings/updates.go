@@ -153,14 +153,16 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				}
 			}
 		})
+		elapsedPerGroup := elapsed / time.Duration(len(groups))
 		log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
-			Msgf("Monitored groups schedules updated in %v", elapsed)
+			Dur("elapsedPerGroup", elapsedPerGroup).
+			Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
 
 		err = errors.Join(errs...)
 		if err != nil {
 			sm.services.Reporter.Report().Log().Err(err).Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
 				Msg("Errors while fetchig updates for monitored groups")
-		} else if elapsed.Minutes() > 1 || elapsed.Seconds()/float64(len(groups)) > 10 {
+		} else if elapsed.Minutes() > 1 || elapsedPerGroup.Seconds() > 10 {
 			sm.services.Reporter.Report().Log().Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
 				Msg("Updating monitored groups schedules took too long")
 		}

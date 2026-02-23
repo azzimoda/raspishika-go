@@ -31,6 +31,20 @@ type ScheduleData struct {
 	Days   []ScheduleDay  `json:"days"`
 }
 
+// Today returns the first day in the schedule which commonly represents the current day.
+func (s *ScheduleData) Today() ScheduleDay { return s.Days[0] }
+
+// Tomorrow returns a day which should represent the next day after current.
+// If now is Sunday, it returns the first day, because Sunday is not included in the schedule,
+// otherwise it returns the second day.
+func (s *ScheduleData) Tomorrow(t time.Time) ScheduleDay {
+	if time.Now().Weekday() == time.Sunday {
+		return s.Days[0]
+	} else {
+		return s.Days[1]
+	}
+}
+
 type ScheduleDay struct {
 	Date     string `json:"date"`
 	WeekDay  string `json:"week_day"`
@@ -38,39 +52,24 @@ type ScheduleDay struct {
 	Pairs    []Pair `json:"pairs"`
 }
 
-func (s ScheduleDay) DetectOneKind() *PairKind {
+// CommonKind returns the common kind of all pairs in the day.
+// If there are no pairs, it returns PairKindEmpty. If pairs have different kinds, it returns an empty string.
+func (s *ScheduleDay) CommonKind() PairKind {
 	if len(s.Pairs) == 0 {
-		kind := PairKindEmpty
-		return &kind
+		return PairKindEmpty
 	}
 
 	kind := s.Pairs[0].Kind
 	for _, pair := range s.Pairs {
 		if pair.Kind != kind {
-			return nil
+			return ""
 		}
 	}
-	return &kind
+	return kind
 }
 
-func (s *ScheduleDay) IsEqual(other *ScheduleDay) bool {
-	if s.Date != other.Date || s.WeekDay != other.WeekDay || s.WeekKind != other.WeekKind || len(s.Pairs) != len(other.Pairs) {
-		return false
-	}
-
-	for i := range s.Pairs {
-		if !reflect.DeepEqual(s.Pairs[i], other.Pairs[i]) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (s *ScheduleDay) IsEmpty() bool {
-	k := s.DetectOneKind()
-	return k != nil && *k == PairKindEmpty
-}
+func (s *ScheduleDay) IsEqual(other *ScheduleDay) bool { return reflect.DeepEqual(s, other) }
+func (s *ScheduleDay) IsEmpty() bool { return s.CommonKind() == PairKindEmpty }
 
 func (s ScheduleDay) Left() ScheduleDay {
 	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: []Pair{}}
@@ -135,9 +134,9 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 func (s ScheduleDay) String() string {
 	text := s.DateString() + ": "
 
-	if kind := s.DetectOneKind(); kind != nil {
-		log.Trace().Msgf("Detected one kind: %s", *kind)
-		if *kind == PairKindEmpty {
+	if kind := s.CommonKind(); kind != "" {
+		log.Trace().Msgf("Detected common kind: %s", kind)
+		if kind == PairKindEmpty {
 			text += "Нет пар"
 		} else {
 			text += s.Pairs[0].Label
@@ -173,7 +172,9 @@ type Pair struct {
 	Replaced   bool     `json:"replaced"`
 }
 
-func (p Pair) String() string {
+func (p *Pair) IsEqual(other *Pair) bool { return reflect.DeepEqual(p, other) }
+
+func (p *Pair) String() string {
 	log.Trace().Any("pair", p).Msg("Formating pair...")
 
 	discipline := func() string { return bot.EscapeMarkdown(p.Discipline) }
