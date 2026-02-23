@@ -36,7 +36,6 @@ func New(
 		),
 		bot.WithWorkers(viper.GetInt("telegram.workers")),
 		bot.WithDefaultHandler(mb.defaultHandler),
-		// bot.WithErrorsHandler(mb.errorsHandler),
 	}
 	mb.Bot, err = bot.New(viper.GetString("telegram.token"), opts...)
 	if err != nil {

@@ -18,6 +18,7 @@ const (
 	ErrMsgTryLater             = "Произошла ошибка, попробуйте позже"
 	ErrMsgCouldNotLoadSchedule = "Не удалось загрузить расписание, попробуйте позже"
 	ErrMsgCouldNotUpdateData   = "Не удалось обновить данные, попробуйте позже"
+	ErrMsgCouldNotSendSchedule = "Не удалось отправить расписание, попробуте позже"
 	ErrMsgSelectGroupAgain     = "Не удалось найти группу, выберите группу ещё раз"
 )
 

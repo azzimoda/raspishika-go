@@ -27,6 +27,9 @@ var defaults = map[string]any{
 	"browser.timeout":        30, // seconds
 	"browser.max_retries":    10,
 	"browser.screenshot_dir": "storage/cache/screenshots",
+	"browser.width":          1280, // px
+	"browser.height":         720,  // px
+	"browser.scale":          1,
 
 	"cache.dir":          "storage/cache",
 	"cache.default_ttl":  10, // minutes
@@ -65,12 +68,9 @@ func Load() (err error) {
 		return err
 	}
 
-	// Read schedule template from file.
-	data, err := os.ReadFile(viper.GetString("schedule_template_file"))
-	if err != nil {
-		return fmt.Errorf("failed to read schedule template file: %w", err)
+	if _, err = ScheduleTemplate(); err != nil {
+		return fmt.Errorf("failed to load schedule template")
 	}
-	viper.Set("schedule_template", string(data))
 
 	return nil
 }
@@ -210,4 +210,30 @@ func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
 		myCommands[i] = cmdMapString
 	}
 	return myCommands, true
+}
+
+func ScheduleTemplate() (string, error) {
+	data, err := os.ReadFile(viper.GetString("schedule_template_file"))
+	if err != nil {
+		return "", fmt.Errorf("failed to read schedule template file: %w", err)
+	}
+	viper.Set("schedule_template", string(data))
+	return string(data), nil
+}
+
+func FetchScheduleTemplate() string {
+	template, err := ScheduleTemplate()
+	if err != nil {
+		log.Debug().Err(err).Msg("Failed to template")
+		return viper.GetString("schedule_template")
+	}
+	log.Trace().Msg("Loaded schedule template")
+	return template
+}
+
+func BrowserWindowSize() (int, int) {
+	width := float64(viper.GetInt("browser.width"))
+	height := float64(viper.GetInt("browser.height"))
+	scale := viper.GetFloat64("browser.scale")
+	return int(width * scale), int(height * scale)
 }

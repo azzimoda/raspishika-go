@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/rs/zerolog/log"
@@ -14,8 +15,6 @@ import (
 
 	"github.com/playwright-community/playwright-go"
 )
-
-const BrowserWindowWidth = 1280 // px
 
 // TODO: Implement regular restart.
 
@@ -35,17 +34,19 @@ func New() (*BrowserService, error) {
 		return nil, err
 	}
 
+	width, height := config.BrowserWindowSize()
+	log.Debug().Int("width", width).Int("height", height).Msg("Browser window size")
 	ctx, cancelExecAllocator := chromedp.NewExecAllocator(
 		context.Background(),
 		chromedp.Flag("headless", isHeadless),
-		chromedp.WindowSize(BrowserWindowWidth, BrowserWindowWidth/2),
+		chromedp.WindowSize(width, height),
 	)
 	ctx, cancelChromeDP := chromedp.NewContext(ctx, chromedp.WithBrowserOption())
 
 	cancel := func() {
 		log.Debug().Msg("Cancelling chromedp contexts...")
-		cancelExecAllocator()
 		cancelChromeDP()
+		cancelExecAllocator()
 	}
 	bs := BrowserService{pw: pw, pwBrowser: browser, chromedpCtx: ctx, chromedpCancel: cancel}
 
@@ -96,16 +97,19 @@ func (b *BrowserService) TakeScreenshotHTML(html, outputFilename string) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	var ctx context.Context = b.chromedpCtx
 	var imageData []byte
-	screenshotElement := chromedp.Tasks{chromedp.Navigate("about:blank"), chromedp.ActionFunc(func(ctx context.Context) error {
-		frameTree, err := page.GetFrameTree().Do(ctx)
-		if err != nil {
-			return err
-		}
-		return page.SetDocumentContent(frameTree.Frame.ID, html).Do(ctx)
-	}), chromedp.FullScreenshot(&imageData, 100)}
-	if err := chromedp.Run(ctx, screenshotElement); err != nil {
+	screenshotElement := chromedp.Tasks{
+		chromedp.Navigate("about:blank"),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			frameTree, err := page.GetFrameTree().Do(ctx)
+			if err != nil {
+				return err
+			}
+			return page.SetDocumentContent(frameTree.Frame.ID, html).Do(ctx)
+		}),
+		chromedp.FullScreenshot(&imageData, 100),
+	}
+	if err := chromedp.Run(b.chromedpCtx, screenshotElement); err != nil {
 		return fmt.Errorf("failed to take screenshot: %w", err)
 	}
 	if err := os.WriteFile(outputFilename, imageData, 0644); err != nil {

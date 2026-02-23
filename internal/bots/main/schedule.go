@@ -11,19 +11,17 @@ import (
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
-	"github.com/ninetwentyfour/go-wkhtmltoimage"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 )
 
 func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Week handler")
 
 	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
-
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -37,7 +35,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	}
 
 	if chat.GroupName == nil {
-		// Offer to set group.
+		// Offer to set group
 		log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
 		mb.groupHandler(ctx, b, update)
 		return
@@ -81,45 +79,24 @@ func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName st
 		return
 	}
 
-	html := schedule.HTML(viper.GetString("schedule_template"))
-
-	fileName, data, err = mb.htmlToImage(conf, html)
+	fileName, data, err = mb.htmlToImage(conf, schedule.HTML(config.FetchScheduleTemplate()))
 	if err != nil {
 		return "", nil, err
 	}
 	return fileName, data, nil
 }
 
-func (mb *MainBot) htmlToImage(
-	scheduleCfg models.ScheduleConfig,
-	html string,
-) (string, []byte, error) {
-	imageFilename := path.Join(
-		viper.GetString("browser.screenshot_dir"),
-		scheduleScreenshotFileName(scheduleCfg),
-	)
-	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFilename); err != nil {
+func (mb *MainBot) htmlToImage(conf models.ScheduleConfig, html string) (string, []byte, error) {
+	imageFileName := path.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(conf))
+	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFileName); err != nil {
 		return "", nil, err
 	}
 
-	imageData, err := os.ReadFile(imageFilename)
+	imageData, err := os.ReadFile(imageFileName)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read screenshot: %w", err)
 	}
-	return imageFilename, imageData, nil
-}
-
-func htmlToImage(scheduleCfg models.ScheduleConfig, html, imageFilename string) (imageDage []byte, err error) {
-	htmlFilename, err := scraper.SaveScheduleHTML(scheduleCfg, html)
-	if err != nil {
-		return nil, err
-	}
-
-	return wkhtmltoimage.GenerateImage(&wkhtmltoimage.ImageOptions{
-		Input:  htmlFilename,
-		Format: "png",
-		Output: imageFilename,
-	})
+	return imageFileName, imageData, nil
 }
 
 func (mb *MainBot) SendWeekScheduleMessages(
@@ -168,12 +145,21 @@ func (mb *MainBot) SendSchedulePhoto(
 	imageData []byte,
 	replyMarkup tgmodels.ReplyMarkup,
 ) error {
+	log.Trace().Int64("tgChatID", chat.TgChatID).Str("filename", imageFilename).Msg("Sending schedule photo...")
 	_, err := b.SendPhoto(ctx, &bot.SendPhotoParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
 		Photo:           &tgmodels.InputFileUpload{Filename: imageFilename, Data: bytes.NewReader(imageData)},
 		ReplyMarkup:     replyMarkup,
 	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to send schedule photo")
+		err2 := sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: chat.TgChatID,
+			Text:   ErrMsgCouldNotSendSchedule,
+		})
+		return errors.Join(err, err2)
+	}
 	return err
 }
 

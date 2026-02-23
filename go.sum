@@ -66,8 +66,6 @@ github.com/mattn/go-sqlite3 v1.14.32 h1:JD12Ag3oLy1zQA+BNn74xRgaBbdhbNIDYvQUEuuE
 github.com/mattn/go-sqlite3 v1.14.32/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mitchellh/go-ps v1.0.0 h1:i6ampVEEF4wQFF+bkYfwYgY+F/uYJDktmvLPf7qIgjc=
 github.com/mitchellh/go-ps v1.0.0/go.mod h1:J4lOc8z8yJs6vUwklHw2XEIiT4z4C40KtWVN3nvg8Pg=
-github.com/ninetwentyfour/go-wkhtmltoimage v0.0.0-20150201222019-3ccfacb98ac2 h1:hgeQNSb4FGnXCYQ/eFQ7uw55at2Mb+KavmRZricoeVQ=
-github.com/ninetwentyfour/go-wkhtmltoimage v0.0.0-20150201222019-3ccfacb98ac2/go.mod h1:ZyvdvzRa/q9/2fuRXqrgtpW+5NEafEXXM8J0Qu2uZxw=
 github.com/orisano/pixelmatch v0.0.0-20230914042517-fa304d1dc785 h1:J1//5K/6QF10cZ59zLcVNFGmBfiSrH8Cho/lNrViK9s=
 github.com/orisano/pixelmatch v0.0.0-20230914042517-fa304d1dc785/go.mod h1:nZgzbfBr3hhjoZnS66nKrHmduYNpc34ny7RK4z5/HM0=
 github.com/pelletier/go-toml/v2 v2.2.4 h1:mye9XuhQ6gvn5h28+VilKrrPoQVanw5PMw/TB0t5Ec4=

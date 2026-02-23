@@ -23,7 +23,6 @@ require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/go-telegram/bot v1.18.0
 	github.com/joho/godotenv v1.5.1
-	github.com/ninetwentyfour/go-wkhtmltoimage v0.0.0-20150201222019-3ccfacb98ac2
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 )
