@@ -26,6 +26,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		duration = 24 * time.Hour
 	}
 
+	// Chats data
 	totalChats, err := models.GetChatCount(ab.services.Repo.DB)
 	if err != nil {
 		ab.Report().Log().Err(err).Msg("Failed to get chat count")
@@ -56,6 +57,24 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		log.Error().Err(err).Msg("Failed to get new chats grouped")
 	}
 
+	// Groups data
+	groupCount, err := models.GetConfiguredGroupCount(ab.services.Repo.DB)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get configured group count")
+		groupCount = -1
+	}
+	chatsPerGroupAvg, err := models.GetAvgChatsPerGroup(ab.services.Repo.DB)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get average chats per group")
+		chatsPerGroupAvg = -1
+	}
+	chatsPerGroupMedian, err := models.GetMedianChatsPerGroup(ab.services.Repo.DB)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get median chats per group")
+		chatsPerGroupMedian = -1
+	}
+
+	// Updates data
 	updateLogs, err := models.GetUpdateLogsByPeriod(ab.services.Repo.DB, time.Now().Add(-duration), time.Now())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update logs by period")
@@ -82,6 +101,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		}
 	}
 
+	// Sendings data
 	totalSendings, sendingOkCount, sendingFailCount, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.AnySendingLog, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get total sending logs")
@@ -95,12 +115,15 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		log.Error().Err(err).Msg("Failed to get pair sending logs")
 	}
 
+	// Format and send message
 	text := generalReport{
 		period:       duration,
 		chatsTotal:   totalChats,
 		chatsPrivate: privateChatCount, chatsGroup: groupChatCount,
 		chatsActive: activeCount, chatsInactive: inactiveCount,
 		chatsNew: chatsNewCount, chatsNewGrouped: chatsNewGrouped,
+
+		groupsTotal: groupCount, chatsPerGroupAvg: chatsPerGroupAvg, chatsPerGroupMedian: chatsPerGroupMedian,
 
 		updatesTotal:   totalUpdates,
 		updatesSuccess: totalUpdates - errorCount, updatesFail: errorCount,
@@ -109,7 +132,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		sendingsTotal: totalSendings,
 		sendingsDaily: dailySendings, sendingsPair: pairSendings,
 		sendingsSuccess: sendingOkCount, sendingsFail: sendingFailCount,
-	}.make()
+	}.String()
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -135,6 +158,10 @@ type generalReport struct {
 	chatsNew        int
 	chatsNewGrouped map[string]int // Group -> Count
 
+	groupsTotal         int
+	chatsPerGroupAvg    float32
+	chatsPerGroupMedian float32
+
 	updatesTotal    int
 	updatesSuccess  int
 	updatesFail     int
@@ -148,7 +175,7 @@ type generalReport struct {
 	sendingsFail    int
 }
 
-func (gr generalReport) make() string {
+func (gr generalReport) String() string {
 	log.Warn().Any("groupedChats", gr.chatsNewGrouped).Send()
 	var textNewChatsGrouped strings.Builder
 	for group, count := range gr.chatsNewGrouped {
@@ -163,6 +190,9 @@ Active/Inactive: %d / %d
 New reigstered: %d
 %s
 
+Groups: %d
+Chats per group Avg/Median: %.2f / %.2f
+
 Updates: %d
 Success/Fail: %d / %d
 Schedule/Callback: %d / %d
@@ -176,6 +206,8 @@ Success/Fail: %d / %d`,
 		gr.chatsActive, gr.chatsInactive,
 		gr.chatsNew,
 		textNewChatsGrouped.String(),
+
+		gr.groupsTotal, gr.chatsPerGroupAvg, gr.chatsPerGroupMedian,
 
 		gr.updatesTotal,
 		gr.updatesSuccess, gr.updatesFail,
