@@ -57,8 +57,8 @@ func init() {
 }
 
 func Load() (err error) {
-	ConfigEnv()
 	ConfigFlags()
+	ConfigEnv()
 	LoadFiles()
 
 	if err := mkDirs(); err != nil {
@@ -85,6 +85,8 @@ func ConfigEnv() {
 	dotenvPath := viper.GetString("env")
 	if err := godotenv.Load(dotenvPath); err != nil {
 		log.Warn().Err(err).Str("dotenvPath", dotenvPath).Msg("Failed to load .env file")
+	} else {
+		log.Debug().Str("dotenvPath", dotenvPath).Msg(".env file loaded")
 	}
 
 	viper.SetEnvPrefix("raspishika")
@@ -99,6 +101,7 @@ func ConfigEnv() {
 
 func ConfigFlags() {
 	// Parse flags
+	pflag.String("env", "", "Specify dotenv file")
 	pflag.String("config", "", "Specify config file")
 	pflag.String("commands", "", "Specify commands config file")
 
@@ -116,6 +119,7 @@ func ConfigFlags() {
 	pflag.Parse()
 
 	// Bind flags
+	viper.BindPFlag("env", pflag.CommandLine.Lookup("env"))
 	viper.BindPFlag("config_file", pflag.CommandLine.Lookup("config"))
 	viper.BindPFlag("commands_file", pflag.CommandLine.Lookup("commands"))
 
@@ -179,7 +183,7 @@ func ScheduleTTLDur() time.Duration { return viper.GetDuration("cache.schedule_t
 func GroupTTLDur() time.Duration { return viper.GetDuration("cache.group_ttl") * 24 * time.Hour }
 
 func UpdateNotificationInterval() time.Duration {
-	return viper.GetDuration("sending.updates.interval") * time.Minute
+	return time.Duration(viper.GetInt("sending.updates.interval")) * time.Minute
 }
 
 func PairNotificationTTLDur() time.Duration {
