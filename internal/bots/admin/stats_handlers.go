@@ -176,7 +176,6 @@ type generalReport struct {
 }
 
 func (gr generalReport) String() string {
-	log.Warn().Any("groupedChats", gr.chatsNewGrouped).Send()
 	var textNewChatsGrouped strings.Builder
 	for group, count := range gr.chatsNewGrouped {
 		fmt.Fprintf(&textNewChatsGrouped, "\n• `%s`: %d", group, count)

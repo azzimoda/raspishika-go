@@ -80,12 +80,14 @@ func (s *ScheduleChange) String() string {
 	})
 
 	var text strings.Builder
-	fmt.Fprintf(&text, "Изменения в расписании группы %s:", s.New.Config.Group.GroupName)
+	fmt.Fprint(&text, bot.EscapeMarkdown(fmt.Sprintf(
+		"Изменения в расписании группы %s:", s.New.Config.Group.GroupName,
+	)))
 	currentDate := ""
 	for _, diff := range diffs {
 		if currentDate != diff.Day().Date {
 			currentDate = diff.Day().Date
-			fmt.Fprintf(&text, "\n\n%s: ", diff.Day().DateString())
+			fmt.Fprintf(&text, "\n\n%s\\: ", diff.Day().DateString())
 		}
 		fmt.Fprintf(&text, "\n\n%s", diff.String())
 	}
@@ -122,29 +124,32 @@ func (d *Diff) Number() int {
 
 func (d *Diff) String() string {
 	if d.oldDay == nil && d.oldPair == nil {
-		return fmt.Sprintf("Добавлено:\n%s", d.newPair.String()) // Pair added
+		return fmt.Sprintf("Добавлено\\:\n%s", d.newPair.String()) // Pair added
 	} else if d.newDay == nil && d.newPair == nil {
-		return fmt.Sprintf("Удалено:\n%s", d.oldPair.String()) // Pair removed
+		return fmt.Sprintf("Удалено\\:\n%s", d.oldPair.String()) // Pair removed
 	} else if d.oldDay != nil && d.newDay != nil && !d.oldDay.IsEqual(d.newDay) {
 		// Pair moved to other day
 		log.Warn().Msg("Schedule difference case not yet implemented: Pair moved to other day")
 		// TODO: Implement this case later
-		return "<not implemented yet>"
+		return "\\<not implemented yet\\>"
 	} else if d.oldPair != nil && d.newPair != nil {
 		// Pair moved with same day
 		text := ""
 		isOrderChanged := d.oldPair.Number != d.newPair.Number
+		isDiscChanged := d.oldPair.Discipline != d.newPair.Discipline
 		isClassroomChanged := d.oldPair.Classroom != d.newPair.Classroom
-		if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено с %s:_\n", d.oldPair.TimeSlotCabinetString())
+		if isDiscChanged {
+			text = "_Заменено\\:_\n"
+		} else if isOrderChanged && isClassroomChanged {
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", d.oldPair.TimeSlotCabinetString())
 		} else if isOrderChanged {
-			text = fmt.Sprintf("_Перенесено с %s:_\n", d.oldPair.TimeSlotString())
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", d.oldPair.TimeSlotString())
 		} else if isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено из кабинета %s:_\n", d.oldPair.Classroom)
+			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", d.oldPair.Classroom)
 		}
 		return text + pairChangeString(d.oldPair, d.newPair)
 	} else {
-		return fmt.Sprintf("Заменено:\n%s", d.newPair.String())
+		return fmt.Sprintf("Заменено\\:\n%s", d.newPair.String())
 	}
 }
 

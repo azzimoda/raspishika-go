@@ -81,7 +81,7 @@ func (sm *SendingManager) sendUpdateNotification(
 
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
-		Text:      bot.EscapeMarkdownUnescaped(change.String()),
+		Text:      change.String(),
 		ParseMode: tgmodels.ParseModeMarkdown,
 	}); err != nil {
 		return fmt.Errorf("failed to send schedule update notification: %w", err)
