@@ -79,9 +79,12 @@ func (sm *SendingManager) sendUpdateNotification(
 		return fmt.Errorf("failed to prepare schedule image: %w", err)
 	}
 
+	text := change.String()
+	sm.services.Reporter.Report().Msg("Sending change:\n\n```\n" + text + "\n```")
+
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
-		Text:      change.String(),
+		Text:      text,
 		ParseMode: tgmodels.ParseModeMarkdown,
 	}); err != nil {
 		return fmt.Errorf("failed to send schedule update notification: %w", err)
