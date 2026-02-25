@@ -69,7 +69,7 @@ func (s *ScheduleDay) CommonKind() PairKind {
 }
 
 func (s *ScheduleDay) IsEqual(other *ScheduleDay) bool { return reflect.DeepEqual(s, other) }
-func (s *ScheduleDay) IsEmpty() bool { return s.CommonKind() == PairKindEmpty }
+func (s *ScheduleDay) IsEmpty() bool                   { return s.CommonKind() == PairKindEmpty }
 
 func (s ScheduleDay) Left() ScheduleDay {
 	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: []Pair{}}
@@ -131,7 +131,7 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 	return nil, fmt.Errorf("all pairs passed")
 }
 
-func (s ScheduleDay) String() string {
+func (s *ScheduleDay) String() string {
 	text := s.DateString() + ": "
 
 	if kind := s.CommonKind(); kind != "" {

@@ -61,7 +61,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 
 	if chatsCount > 0 {
 		if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
-			Kind:    models.DailySendingLog,
+			Kind:    models.SendingLogDaily,
 			Chats:   chatsCount,
 			Groups:  groupsCount,
 			Elapsed: int(elapsedTime.Milliseconds()),

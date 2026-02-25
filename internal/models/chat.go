@@ -214,11 +214,6 @@ func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) (map[string]int, error) 
 	return groupedChats, nil
 }
 
-func sqlPeriod(dur time.Duration) string {
-	sqlPeriod := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
-	return sqlPeriod
-}
-
 // GetInactiveChatCount returns the number of inactive chats.
 //
 // Chat is inactive if it didn't use any commands for 48 hours,
@@ -237,6 +232,18 @@ func GetInactiveChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 			HAVING count = 0 AND ("group" IS NULL OR "group" = '' OR daily_sending_time IS NULL AND pair_sending = 0)
 		);`,
 		period, period,
+	); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func GetChatsCountWithUpdateSendingEnabled(db *sqlx.DB) (int, error) {
+	var count int
+	if err := db.Get(
+		&count,
+		`SELECT count(*) FROM chats WHERE update_notification= 1`,
+		sqlPeriod(time.Hour*24), sqlPeriod(time.Hour*24),
 	); err != nil {
 		return 0, err
 	}
@@ -407,4 +414,9 @@ func DeleteChat(db *sqlx.DB, id int) error {
 func DeleteAllChats(db *sqlx.DB) error {
 	_, err := db.Exec(`DELETE FROM chats`)
 	return err
+}
+
+func sqlPeriod(dur time.Duration) string {
+	sqlPeriod := fmt.Sprintf("-%d seconds", int(dur.Seconds()))
+	return sqlPeriod
 }

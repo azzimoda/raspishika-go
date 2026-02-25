@@ -55,8 +55,6 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		if groupName, err := models.ValidateGroupName(mb.services.Repo.DB, update.Message.Text); err == nil {
 			mb.sendQuickGroupSchedule(ctx, groupName, update, b)
 		} // Else just ignore message
-
-		return
 	}
 
 	if update.CallbackQuery != nil {
@@ -65,8 +63,6 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 			Text:            "Это сообщение больше не поддерживается",
 		})
 		addContextHandlerError(ctx, err)
-
-		return
 	}
 
 	notLogFlag := ctx.Value(noLogFlagContextKey).(*bool)

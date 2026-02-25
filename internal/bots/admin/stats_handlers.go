@@ -102,15 +102,15 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	}
 
 	// Sendings data
-	totalSendings, sendingOkCount, sendingFailCount, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.AnySendingLog, duration)
+	totalSendings, sendingOkCount, sendingFailCount, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogAny, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get total sending logs")
 	}
-	dailySendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.DailySendingLog, duration)
+	dailySendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogDaily, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get daily sending logs")
 	}
-	pairSendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.PairSendingLog, duration)
+	pairSendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogPair, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pair sending logs")
 	}

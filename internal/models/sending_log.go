@@ -23,9 +23,10 @@ type SendingLog struct {
 type SendingLogKind string
 
 const (
-	AnySendingLog   SendingLogKind = ""
-	DailySendingLog SendingLogKind = "daily"
-	PairSendingLog  SendingLogKind = "pair"
+	SendingLogAny    SendingLogKind = ""
+	SendingLogDaily  SendingLogKind = "daily"
+	SendingLogPair   SendingLogKind = "pair"
+	SendingLogUpdate SendingLogKind = "update"
 )
 
 func InsertSendingLog(db *sqlx.DB, log SendingLog) error {
@@ -42,11 +43,11 @@ func InsertSendingLog(db *sqlx.DB, log SendingLog) error {
 func GetSendingLogs(db *sqlx.DB, kind SendingLogKind, dur time.Duration) ([]SendingLog, error) {
 	query := ""
 	switch kind {
-	case AnySendingLog:
+	case SendingLogAny:
 		query = "SELECT * FROM sending_logs WHERE created_at >= ?"
-	case DailySendingLog:
+	case SendingLogDaily:
 		query = "SELECT * FROM sending_logs WHERE kind = 'daily' AND created_at >= ?"
-	case PairSendingLog:
+	case SendingLogPair:
 		query = "SELECT * FROM sending_logs WHERE kind = 'pair' AND created_at >= ?"
 	}
 	var logs []SendingLog
@@ -65,10 +66,10 @@ func GetSendingLogsCount(
 		`SELECT SUM(chats) AS total, SUM(fails) AS fails FROM sending_logs
 		WHERE created_at >= date('now', 'localtime', ?)`
 	switch kind {
-	case AnySendingLog:
-	case DailySendingLog:
+	case SendingLogAny:
+	case SendingLogDaily:
 		query += ` AND kind = 'daily'`
-	case PairSendingLog:
+	case SendingLogPair:
 		query += ` AND kind = 'pair'`
 	}
 	var data struct {

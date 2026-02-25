@@ -112,14 +112,21 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		default:
 		}
 
+		// Fetch groups
 		groups, err := models.GetMonitoredGroups(sm.services.Repo.DB)
 		if err != nil {
 			sm.services.Reporter.Report().Log().Err(err).
 				Msg("Failed to get chats with update notification enabled grouped by student group")
 			continue
 		}
-		log.Debug().Int("groupCount", len(groups)).Msg("Checking updates...")
+		chatCount, err := models.GetChatsCountWithUpdateSendingEnabled(sm.services.Repo.DB)
+		if err != nil {
+			sm.services.Reporter.Report().Log().Err(err).Msg("Failed to get chats with update notification enabled")
+			chatCount = -1
+		}
+		log.Debug().Int("groupCount", len(groups)).Int("chatsCount", chatCount).Msg("Checking updates...")
 
+		// Fetch schedules
 		var errs []error
 		elapsed := measureTime(func() {
 			for _, group := range groups {
@@ -153,10 +160,33 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				}
 			}
 		})
+
+		// Log statistics
+		elapsedPerChat := elapsed / time.Duration(chatCount)
 		elapsedPerGroup := elapsed / time.Duration(len(groups))
 		log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
 			Dur("elapsedPerGroup", elapsedPerGroup).
 			Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
+		if len(groups) > 0 {
+			if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
+				Kind:    models.SendingLogUpdate,
+				Chats:   chatCount,
+				Groups:  len(groups),
+				Elapsed: int(elapsed.Milliseconds()),
+				Fails:   len(errs),
+			}); err != nil {
+				log.Error().Err(err).Msg("Failed to insert sending log")
+			}
+
+			log.Info().
+				Dur("elapsed", elapsed).
+				Dur("elapsedPerChat", elapsedPerChat).
+				Dur("elapsedPerGroup", elapsedPerGroup).
+				Int("chats", chatCount).
+				Int("groups", len(groups)).
+				Int("errs", len(errs)).
+				Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
+		}
 
 		err = errors.Join(errs...)
 		if err != nil {
