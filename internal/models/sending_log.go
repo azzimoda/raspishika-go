@@ -67,10 +67,13 @@ func GetSendingLogsCount(
 		WHERE created_at >= date('now', 'localtime', ?)`
 	switch kind {
 	case SendingLogAny:
+		break
 	case SendingLogDaily:
 		query += ` AND kind = 'daily'`
 	case SendingLogPair:
 		query += ` AND kind = 'pair'`
+	case SendingLogUpdate:
+		query += ` AND kind = 'update'`
 	}
 	var data struct {
 		Total sql.NullInt32 `db:"total"`

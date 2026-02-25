@@ -114,6 +114,10 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pair sending logs")
 	}
+	updateSendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogUpdate, duration)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get update sending logs")
+	}
 
 	// Format and send message
 	text := generalReport{
@@ -130,7 +134,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		updatesSchedule: scheduleCommandCount, updatesCallback: callbackCount,
 
 		sendingsTotal: totalSendings,
-		sendingsDaily: dailySendings, sendingsPair: pairSendings,
+		sendingsDaily: dailySendings, sendingsPair: pairSendings, sendingsUpdate: updateSendings,
 		sendingsSuccess: sendingOkCount, sendingsFail: sendingFailCount,
 	}.String()
 
@@ -171,6 +175,7 @@ type generalReport struct {
 	sendingsTotal   int
 	sendingsDaily   int
 	sendingsPair    int
+	sendingsUpdate  int
 	sendingsSuccess int
 	sendingsFail    int
 }
@@ -197,7 +202,7 @@ Success/Fail: %d / %d
 Schedule/Callback: %d / %d
 
 Sendings: %d
-Daily/Pair: %d / %d
+Daily/Pair/Update: %d / %d / %d
 Success/Fail: %d / %d`,
 		gr.period,
 		gr.chatsTotal,
@@ -215,7 +220,7 @@ Success/Fail: %d / %d`,
 		gr.updatesSchedule, gr.updatesCallback,
 
 		gr.sendingsTotal,
-		gr.sendingsDaily, gr.sendingsPair,
+		gr.sendingsDaily, gr.sendingsPair, gr.sendingsUpdate,
 		gr.sendingsSuccess, gr.sendingsFail,
 	)
 }
