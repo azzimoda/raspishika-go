@@ -1,8 +1,10 @@
 package adminbot
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"strconv"
 	"strings"
 	"time"
@@ -81,7 +83,26 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	ab.sendChatReport(chat, b, ctx, update)
 }
 
+const chatReportTemplateStr = "ID: {{.ID}}\n" +
+	"Chat ID: `{{.TgChatID}}`\n" +
+	"Username: @{{.UserName}}\n" +
+	"State: {{.State}}\n" +
+	"Department: `{{.DepartmentName}}`\n" +
+	"Group: `{{.GroupNameEscaped}}`\n" +
+	"Daily Sending Time: {{.DailySendingTime}}\n" +
+	"Pair Sending: {{.PairSending}}\n" +
+	"Update Notification: {{.UpdateNotification}}\n" +
+	"Access: {{.Access}}\n" +
+	"\n" +
+	"Recent Teachers: {{.RecentTeachers}}\n" +
+	"\n" +
+	"Recent updates:\n" +
+	"{{.RecentUpdates}}"
+
+var chatReportTemplate, _ = template.New("report").Parse(chatReportTemplateStr)
+
 func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Context, update *tgmodels.Update) {
+	log.Trace().Msg("sendChatReport")
 	recentTeachers, err := models.GetTeacherByChatID(ab.services.Repo.DB, chat.ID)
 	if err != nil {
 		recentTeachers = []models.Teacher{}
@@ -97,45 +118,35 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
 		recentUpdates = []models.UpdateLog{}
 	}
-	recentUpdatesStr := ""
+	var recentUpdatesStr strings.Builder
 	for i := len(recentUpdates) - 1; i >= 0 && i >= len(recentUpdates)-5; i-- {
-		recentUpdatesStr += bot.EscapeMarkdown(fmt.Sprintf("- %s (time: %dms, error: %s)\n",
-			recentUpdates[i].Data, recentUpdates[i].HandlingTime, utils.DerefOrTypeDefault(recentUpdates[i].Error)))
+		recentUpdatesStr.WriteString(bot.EscapeMarkdown(fmt.Sprintf("- %s (time: %dms, error: %s)\n",
+			recentUpdates[i].Data, recentUpdates[i].HandlingTime, utils.DerefOrTypeDefault(recentUpdates[i].Error))))
 	}
 
-	text := fmt.Sprintf(
-		`ID: %d
-Chat ID: %s
-Username: @%s
-State: %s
-Department: %s
-Group: %s
-Daily Sending Time: %s
-Pair Sending: %t
-Access: %d
+	log.Trace().Msg("Building report...")
+	var buf bytes.Buffer
+	chatReportTemplate.Execute(&buf, struct {
+		*models.Chat
+		GroupNameEscaped string
+		RecentTeachers   string
+		RecentUpdates    string
+	}{
+		Chat:             chat,
+		GroupNameEscaped: bot.EscapeMarkdown(*chat.GroupName),
+		RecentTeachers:   bot.EscapeMarkdown(recentUpdatesStr.String()),
+		RecentUpdates:    bot.EscapeMarkdown(recentUpdatesStr.String()),
+	})
+	text := buf.String()
 
-Recent Teachers: %s
-
-Recent updates:
-%s`,
-		chat.ID,
-		fmt.Sprintf("`%d`", chat.TgChatID),
-		bot.EscapeMarkdown(utils.DerefOrTypeDefault(chat.UserName)),
-		bot.EscapeMarkdown(string(chat.State)),
-		utils.DerefOrTypeDefault(chat.DepartmentName),
-		"`"+bot.EscapeMarkdown(utils.DerefOrTypeDefault(chat.GroupName))+"`",
-		bot.EscapeMarkdown(utils.DerefOrTypeDefault(chat.DailySendingTime)),
-		chat.PairSending,
-		chat.Access,
-		bot.EscapeMarkdown(strings.Join(recentTeachersNames, ", ")),
-		recentUpdatesStr,
-	)
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text,
 		ParseMode: tgmodels.ParseModeMarkdown,
 	})
+	if err != nil {
+		ab.Report().Log().Err(err).Debug("text", text).Send()
+	}
 }
 
 func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {

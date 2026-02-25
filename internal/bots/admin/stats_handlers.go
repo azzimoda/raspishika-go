@@ -244,21 +244,29 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		return
 	}
 
+	updateEnabledCount, err := models.GetChatsCountWithUpdateSendingEnabled(ab.services.Repo.DB)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get chats with update sending enabled")
+		return
+	}
+
 	timeKeys := make([]string, 0, len(dailyTimes))
 	for k := range dailyTimes {
 		timeKeys = append(timeKeys, k)
 	}
 	sort.Strings(timeKeys)
 
-	text := fmt.Sprintf("Pair enabled: %d\nDaily enabled: %d\nTimes:\n```\n", pairEnabledCount, dailyEnabledCount)
+	var text strings.Builder
+	fmt.Fprintf(&text, "Pair enabled: %d\nDaily enabled: %d\nUpdate enabled: %d\nTimes:\n```\n",
+		pairEnabledCount, dailyEnabledCount, updateEnabledCount)
 	for _, t := range timeKeys {
-		text += fmt.Sprintf("\\- %s: %3d\n", t, dailyTimes[t])
+		fmt.Fprintf(&text, "\\- %s: %3d\n", t, dailyTimes[t])
 	}
-	text += "```\n"
+	text.WriteString("```\n")
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
-		Text:      text,
+		Text:      text.String(),
 		ParseMode: tgmodels.ParseModeMarkdown,
 	})
 }
@@ -321,33 +329,4 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		log.Error().Err(err).Send()
 	}
 	log.Trace().Msg("distHandler: Done!")
-}
-
-func parsePeriod(str string) (time.Duration, bool) {
-	if str == "" {
-		return 0, false
-	}
-
-	re := regexp.MustCompile(`^(\d+)\s*(h|d|w|m|y)?$`)
-	matches := re.FindStringSubmatch(str)
-	multiplier := time.Hour
-	switch matches[2] {
-	// case "h":
-	// 	multiplier = time.Hour
-	case "d":
-		multiplier = 24 * time.Hour
-	case "w":
-		multiplier = 7 * 24 * time.Hour
-	case "m":
-		multiplier = 30 * 24 * time.Hour
-	case "y":
-		multiplier = 365 * 24 * time.Hour
-		// Defualt is hours
-	}
-
-	num, err := strconv.Atoi(matches[1])
-	if err != nil {
-		return 0, false
-	}
-	return time.Duration(multiplier * time.Duration(num)), true
 }
