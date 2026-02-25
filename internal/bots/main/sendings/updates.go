@@ -126,6 +126,8 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		}
 		log.Debug().Int("groupCount", len(groups)).Int("chatsCount", chatCount).Msg("Checking updates...")
 
+		changesDetected := 0
+
 		// Fetch schedules
 		var errs []error
 		elapsed := measureTime(func() {
@@ -156,6 +158,7 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				if len(change.Diffs()) > 0 {
 					log.Debug().Any("config", conf).Msg("Schedule change detected")
 					// Send the change to channel
+					changesDetected++
 					updates <- change
 				}
 			}
@@ -167,13 +170,14 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
 			Dur("elapsedPerGroup", elapsedPerGroup).
 			Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
-		if len(groups) > 0 {
+		if len(groups) > 0 && changesDetected > 0 {
 			if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
 				Kind:    models.SendingLogUpdate,
 				Chats:   chatCount,
 				Groups:  len(groups),
 				Elapsed: int(elapsed.Milliseconds()),
 				Fails:   len(errs),
+				Errors:  errors.Join(errs...).Error(),
 			}); err != nil {
 				log.Error().Err(err).Msg("Failed to insert sending log")
 			}
@@ -184,6 +188,7 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				Dur("elapsedPerGroup", elapsedPerGroup).
 				Int("chats", chatCount).
 				Int("groups", len(groups)).
+				Int("changes", changesDetected).
 				Int("errs", len(errs)).
 				Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
 		}
