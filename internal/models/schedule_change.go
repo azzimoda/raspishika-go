@@ -67,11 +67,11 @@ func (s *ScheduleChange) String() string {
 			return diffs[i].Number() < diffs[j].Number()
 		}
 
-		date1, err := time.Parse("2006-01-02", diffs[i].Day().Date)
+		date1, err := time.Parse("02.01.2006", diffs[i].Day().Date)
 		if err != nil {
 			log.Panic().Err(err).Msg("Failed to parse date")
 		}
-		date2, err := time.Parse("2006-01-02", diffs[j].Day().Date)
+		date2, err := time.Parse("02.01.2006", diffs[j].Day().Date)
 		if err != nil {
 			log.Panic().Err(err).Msg("Failed to parse date")
 		}
