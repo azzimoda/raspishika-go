@@ -167,6 +167,12 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 			}
 		})
 
+		errSending := errors.Join(errs...)
+		errStr := ""
+		if errSending != nil {
+			errStr = errSending.Error()
+		}
+
 		// Log statistics
 		elapsedPerChat := elapsed / time.Duration(chatCount)
 		elapsedPerGroup := elapsed / time.Duration(len(groups))
@@ -180,7 +186,7 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				Groups:  len(groups),
 				Elapsed: int(elapsed.Milliseconds()),
 				Fails:   len(errs),
-				Errors:  errors.Join(errs...).Error(),
+				Errors:  errStr,
 			}); err != nil {
 				log.Error().Err(err).Msg("Failed to insert sending log")
 			}
