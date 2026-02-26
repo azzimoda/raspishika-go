@@ -91,7 +91,9 @@ func (s *ScheduleChange) String() string {
 		}
 		fmt.Fprintf(&text, "\n\n%s", diff.String())
 	}
-	return text.String()
+	textStr := text.String()
+	log.Trace().Msgf("ScheduleChange.String() => %v", textStr)
+	return textStr
 }
 
 type Diff struct {

@@ -192,12 +192,12 @@ func (p *Pair) String() string {
 	}
 }
 func (p *Pair) TimeSlotString() string {
-	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s - %s", p.Number, p.StartTime, p.EndTime))
+	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s \\- %s", p.Number, p.StartTime, p.EndTime))
 	log.Trace().Msgf("Formatted time slot string: %s", result)
 	return result
 }
 func (p *Pair) TimeSlotCabinetString() string {
-	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s - %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom))
+	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s \\- %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom))
 	log.Trace().Msgf("Formatted time slot cabinet string: %s", result)
 	return result
 }
