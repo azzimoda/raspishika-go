@@ -158,11 +158,14 @@ func (d *Diff) String() (result string) {
 	return result
 }
 
+// pairChangeString returns formatted pair change string.
+//
+// Markdown escaped.
 func pairChangeString(old, new *Pair) string {
 	isDiscChanged := old.Discipline != new.Discipline
-	isTeacherChanged := old.Teacher != nil && new.Teacher != nil && old.Teacher != new.Teacher
+	isTeacherChanged := old.Teacher != nil && new.Teacher != nil && *old.Teacher != *new.Teacher
 
-	text := new.TimeSlotCabinetString()
+	text := bot.EscapeMarkdown(new.TimeSlotCabinetString())
 	switch new.Kind {
 	case PairKindSubject:
 		if isDiscChanged {

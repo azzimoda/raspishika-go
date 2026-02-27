@@ -18,17 +18,16 @@ import (
 type reportKey string
 
 const (
-	logKey      reportKey = "log"
-	tempKey     reportKey = "temp"
-	errKey      reportKey = "err"
-	chatIDKey   reportKey = "chat_id"
-	usernameKey reportKey = "username"
-	debugKey    reportKey = "debug"
+	logKey            reportKey = "log"
+	tempKey           reportKey = "temp"
+	errKey            reportKey = "err"
+	chatIDKey         reportKey = "chat_id"
+	usernameKey       reportKey = "username"
+	debugKey          reportKey = "debug"
+	escapeMarkdownKey reportKey = "escape_markdown"
 )
 
-type Reporter interface {
-	Report() ReportConfig
-}
+type Reporter interface{ Report() ReportConfig }
 
 func NewReportConfig(bot *bot.Bot, recipientChatID int64) ReportConfig {
 	return ReportConfig{bot: bot, recipientChatID: recipientChatID, Context: defaultContext()}
@@ -43,6 +42,7 @@ func defaultContext() context.Context {
 	ctx = context.WithValue(ctx, chatIDKey, int64(0))
 	ctx = context.WithValue(ctx, usernameKey, "")
 	ctx = context.WithValue(ctx, debugKey, make(map[string]any))
+	ctx = context.WithValue(ctx, escapeMarkdownKey, true)
 
 	return ctx
 }
@@ -54,19 +54,13 @@ type ReportConfig struct {
 }
 
 // Log makes the report be printed as log.
-func (r ReportConfig) Log() ReportConfig {
-	return r.withValue(logKey, true)
-}
+func (r ReportConfig) Log() ReportConfig { return r.withValue(logKey, true) }
 
 // Err adds error to report message.
-func (r ReportConfig) Err(err error) ReportConfig {
-	return r.withValue(errKey, err)
-}
+func (r ReportConfig) Err(err error) ReportConfig { return r.withValue(errKey, err) }
 
 // Temp makes the report message be deleted after a minute.
-func (r ReportConfig) Temp() ReportConfig {
-	return r.withValue(tempKey, true)
-}
+func (r ReportConfig) Temp() ReportConfig { return r.withValue(tempKey, true) }
 
 // Chat sets the chat, whose message caused the error. It can be either a Chat object or a chat ID.
 func (r ReportConfig) Chat(chatOrID any) ReportConfig {
@@ -91,6 +85,14 @@ func (r ReportConfig) Debug(name string, value any) ReportConfig {
 		debugValues[name] = value
 	}
 	return r
+}
+
+// MD disables markdown escaping in the report message.
+//
+// If the string provided to any of finalizing method contains wrong markdown formatting,
+// it may cause Telegram API errors.
+func (r ReportConfig) MD() ReportConfig {
+	return r.withValue(escapeMarkdownKey, false)
 }
 
 func (r ReportConfig) withValue(key any, value any) ReportConfig {
@@ -161,7 +163,7 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 	}
 
 	// Message text
-	msgText += bot.EscapeMarkdown(text)
+	msgText += bot.EscapeMarkdownUnescaped(text)
 
 	// Send the message.
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
