@@ -143,11 +143,11 @@ func (d *Diff) String() (result string) {
 		if isDiscChanged {
 			text = "_Заменено\\:_\n"
 		} else if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", d.oldPair.TimeSlotCabinetString())
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.oldPair.TimeSlotCabinetString()))
 		} else if isOrderChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", d.oldPair.TimeSlotString())
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.oldPair.TimeSlotString()))
 		} else if isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", d.oldPair.Classroom)
+			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", bot.EscapeMarkdown(d.oldPair.Classroom))
 		}
 
 		result = text + pairChangeString(d.oldPair, d.newPair)
@@ -178,6 +178,7 @@ func pairChangeString(old, new *Pair) string {
 				bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)),
 			)
 		}
+
 	case PairKindExam, PairKindConsultation:
 		text += fmt.Sprintf("\n    _%s_", bot.EscapeMarkdown(new.Label))
 		if isDiscChanged {
@@ -188,8 +189,10 @@ func pairChangeString(old, new *Pair) string {
 			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
 				utils.DerefOrTypeDefault(old.Teacher), utils.DerefOrTypeDefault(new.Teacher))
 		}
+
 	default:
-		panic("unimplemented")
+		log.Warn().Msg("pairChangeString: default unimplemented")
+		text += bot.EscapeMarkdown("\n    ?")
 	}
 
 	log.Trace().Msgf("pairChangeString() => %v", text)

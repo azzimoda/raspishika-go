@@ -117,6 +117,7 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 	chatID := rc.Value(chatIDKey).(int64)
 	username := rc.Value(usernameKey).(string)
 	debugObjects := rc.Value(debugKey).(map[string]any)
+	doEscapeMarkdown := rc.Value(escapeMarkdownKey).(bool)
 
 	// NOTE: Log the report when it is temporary to not lose information.
 	if doLog || isTemp {
@@ -163,7 +164,11 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 	}
 
 	// Message text
-	msgText += bot.EscapeMarkdownUnescaped(text)
+	if doEscapeMarkdown {
+		msgText += bot.EscapeMarkdownUnescaped(text)
+	} else {
+		msgText += text
+	}
 
 	// Send the message.
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
