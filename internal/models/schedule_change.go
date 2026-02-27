@@ -20,7 +20,6 @@ func NewScheduleChange(old, new ScheduleData) *ScheduleChange {
 	old, new = Synchronize(old, new)
 	return &ScheduleChange{old, new}
 }
-
 func Synchronize(old, new ScheduleData) (ScheduleData, ScheduleData) {
 	if len(old.Days) == 0 || len(new.Days) == 0 {
 		return old, new
@@ -92,7 +91,8 @@ func (s *ScheduleChange) String() string {
 		fmt.Fprintf(&text, "\n\n%s", diff.String())
 	}
 	textStr := text.String()
-	log.Trace().Msgf("ScheduleChange.String() => %v", textStr)
+
+	log.Trace().Msgf("(ScheduleChange).String() => %v", textStr)
 	return textStr
 }
 
@@ -112,7 +112,6 @@ func (d *Diff) Day() *ScheduleDay {
 		panic("Diff must have at least one day instanse")
 	}
 }
-
 func (d *Diff) Number() int {
 	if d.newPair != nil {
 		return d.newPair.Number
@@ -124,16 +123,17 @@ func (d *Diff) Number() int {
 	}
 }
 
-func (d *Diff) String() string {
+func (d *Diff) String() (result string) {
 	if d.oldDay == nil && d.oldPair == nil {
-		return fmt.Sprintf("Добавлено\\:\n%s", d.newPair.String()) // Pair added
+		result = fmt.Sprintf("Добавлено\\:\n%s", d.newPair.String()) // Pair added
 	} else if d.newDay == nil && d.newPair == nil {
-		return fmt.Sprintf("Удалено\\:\n%s", d.oldPair.String()) // Pair removed
+		result = fmt.Sprintf("Удалено\\:\n%s", d.oldPair.String()) // Pair removed
 	} else if d.oldDay != nil && d.newDay != nil && !d.oldDay.IsEqual(d.newDay) {
 		// Pair moved to other day
 		log.Warn().Msg("Schedule difference case not yet implemented: Pair moved to other day")
 		// TODO: Implement this case later
-		return "\\<not implemented yet\\>"
+
+		result = "\\<not implemented yet\\>"
 	} else if d.oldPair != nil && d.newPair != nil {
 		// Pair moved with same day
 		text := ""
@@ -149,10 +149,13 @@ func (d *Diff) String() string {
 		} else if isClassroomChanged {
 			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", d.oldPair.Classroom)
 		}
-		return text + pairChangeString(d.oldPair, d.newPair)
+
+		result = text + pairChangeString(d.oldPair, d.newPair)
 	} else {
-		return fmt.Sprintf("Заменено\\:\n%s", d.newPair.String())
+		result = fmt.Sprintf("Заменено\\:\n%s", d.newPair.String())
 	}
+	log.Trace().Msgf("(Diff).String() => %v", result)
+	return result
 }
 
 func pairChangeString(old, new *Pair) string {
@@ -186,5 +189,6 @@ func pairChangeString(old, new *Pair) string {
 		panic("unimplemented")
 	}
 
+	log.Trace().Msgf("pairChangeString() => %v", text)
 	return text
 }

@@ -174,7 +174,7 @@ type Pair struct {
 
 func (p *Pair) IsEqual(other *Pair) bool { return reflect.DeepEqual(p, other) }
 
-func (p *Pair) String() string {
+func (p *Pair) String() (result string) {
 	log.Trace().Any("pair", p).Msg("Formating pair...")
 
 	discipline := func() string { return bot.EscapeMarkdown(p.Discipline) }
@@ -183,21 +183,24 @@ func (p *Pair) String() string {
 
 	switch p.Kind {
 	case PairKindSubject:
-		return fmt.Sprintf("%s\n    *%s*\n    %s", p.TimeSlotCabinetString(), discipline(), teacher())
+		result = fmt.Sprintf("%s\n    *%s*\n    %s", p.TimeSlotCabinetString(), discipline(), teacher())
 	case PairKindExam, PairKindConsultation:
-		return fmt.Sprintf("%s\n    _%s_\n    *%s*\n    %s",
+		result = fmt.Sprintf("%s\n    _%s_\n    *%s*\n    %s",
 			p.TimeSlotCabinetString(), label(), discipline(), teacher())
 	default:
-		return fmt.Sprintf("%s — %s", p.TimeSlotString(), label())
+		result = fmt.Sprintf("%s — %s", p.TimeSlotString(), label())
 	}
+
+	log.Trace().Msgf("(Pair).String() => %s", result)
+	return result
 }
 func (p *Pair) TimeSlotString() string {
 	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s \\- %s", p.Number, p.StartTime, p.EndTime))
-	log.Trace().Msgf("Formatted time slot string: %s", result)
+	log.Trace().Msgf("(Pair).TimeSlotString() => %s", result)
 	return result
 }
 func (p *Pair) TimeSlotCabinetString() string {
 	result := bot.EscapeMarkdown(fmt.Sprintf("%d | %s \\- %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom))
-	log.Trace().Msgf("Formatted time slot cabinet string: %s", result)
+	log.Trace().Msgf("(Pair).TimeSlotCabinetString() => %s", result)
 	return result
 }
