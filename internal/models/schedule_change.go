@@ -140,6 +140,8 @@ func (d *Diff) String() (result string) {
 		isOrderChanged := d.oldPair.Number != d.newPair.Number
 		isDiscChanged := d.oldPair.Discipline != d.newPair.Discipline
 		isClassroomChanged := d.oldPair.Classroom != d.newPair.Classroom
+		log.Trace().Bool("isOrderChanged", isOrderChanged).Bool("isDiscChanged", isDiscChanged).
+			Bool("isClassroomChanged", isClassroomChanged).Send()
 		if isDiscChanged {
 			text = "_Заменено\\:_\n"
 		} else if isOrderChanged && isClassroomChanged {
@@ -192,7 +194,7 @@ func pairChangeString(old, new *Pair) string {
 
 	default:
 		log.Warn().Msg("pairChangeString: default unimplemented")
-		text += bot.EscapeMarkdown("\n    ?")
+		text += fmt.Sprintf("\n~~%s~~\n%s", old.String(), new.String())
 	}
 
 	log.Trace().Msgf("pairChangeString() => %v", text)
