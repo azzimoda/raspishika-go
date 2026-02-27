@@ -123,26 +123,32 @@ func (d *Diff) Number() int {
 	}
 }
 
+// String representation of the difference.
+//
+// Markdown escaped.
 func (d *Diff) String() (result string) {
-	if d.oldDay == nil && d.oldPair == nil {
-		result = fmt.Sprintf("Добавлено\\:\n%s", d.newPair.String()) // Pair added
-	} else if d.newDay == nil && d.newPair == nil {
-		result = fmt.Sprintf("Удалено\\:\n%s", d.oldPair.String()) // Pair removed
-	} else if d.oldDay != nil && d.newDay != nil && !d.oldDay.IsEqual(d.newDay) {
+	if d.oldDay != nil && d.newDay != nil && !d.oldDay.IsEqual(d.newDay) {
 		// Pair moved to other day
 		log.Warn().Msg("Schedule difference case not yet implemented: Pair moved to other day")
-		// TODO: Implement this case later
+		// TODO: Implement this case later.
 
-		result = "\\<not implemented yet\\>"
+		result = "<not implemented yet>"
 	} else if d.oldPair != nil && d.newPair != nil {
 		// Pair moved with same day
 		text := ""
+
+		isCancelled := d.newPair.Kind == PairKindEmpty && d.newPair.Replaced
 		isOrderChanged := d.oldPair.Number != d.newPair.Number
 		isDiscChanged := d.oldPair.Discipline != d.newPair.Discipline
+		isTeacherChanged := d.oldPair.Teacher != nil && d.newPair.Teacher != nil &&
+			*d.oldPair.Teacher != *d.newPair.Teacher
 		isClassroomChanged := d.oldPair.Classroom != d.newPair.Classroom
 		log.Trace().Bool("isOrderChanged", isOrderChanged).Bool("isDiscChanged", isDiscChanged).
 			Bool("isClassroomChanged", isClassroomChanged).Send()
-		if isDiscChanged {
+
+		if isCancelled {
+			text = "_Снято:_"
+		} else if isDiscChanged || isTeacherChanged {
 			text = "_Заменено\\:_\n"
 		} else if isOrderChanged && isClassroomChanged {
 			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.oldPair.TimeSlotCabinetString()))
@@ -154,6 +160,7 @@ func (d *Diff) String() (result string) {
 
 		result = text + pairChangeString(d.oldPair, d.newPair)
 	} else {
+		// TODO: Ensure that this case is unreachable and remove it.
 		result = fmt.Sprintf("Заменено\\:\n%s", d.newPair.String())
 	}
 	log.Trace().Msgf("(Diff).String() => %v", result)
@@ -167,29 +174,47 @@ func pairChangeString(old, new *Pair) string {
 	isDiscChanged := old.Discipline != new.Discipline
 	isTeacherChanged := old.Teacher != nil && new.Teacher != nil && *old.Teacher != *new.Teacher
 
-	text := bot.EscapeMarkdown(new.TimeSlotCabinetString())
+	text := ""
 	switch new.Kind {
+	case PairKindEmpty:
+		text += fmt.Sprintf("\n~~%s~~", old.String())
+
 	case PairKindSubject:
-		if isDiscChanged {
-			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
-				bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
-		}
-		if isTeacherChanged {
-			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
-				bot.EscapeMarkdown(utils.DerefOrTypeDefault(old.Teacher)),
-				bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)),
-			)
+		if old.Kind == PairKindEmpty {
+			text += fmt.Sprintf("\n%s", old.String())
+		} else {
+			text := bot.EscapeMarkdown(new.TimeSlotCabinetString())
+			if isDiscChanged {
+				text += fmt.Sprintf("\n    ~~%s~~ _%s_",
+					bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
+			} else {
+				text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(new.Discipline))
+			}
+
+			if isTeacherChanged {
+				text += fmt.Sprintf("\n    ~~%s~~ _%s_",
+					bot.EscapeMarkdown(utils.DerefOrTypeDefault(old.Teacher)),
+					bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)),
+				)
+			} else {
+				text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)))
+			}
 		}
 
 	case PairKindExam, PairKindConsultation:
+		text := bot.EscapeMarkdown(new.TimeSlotCabinetString())
 		text += fmt.Sprintf("\n    _%s_", bot.EscapeMarkdown(new.Label))
 		if isDiscChanged {
 			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
 				bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
+		} else {
+			text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(new.Discipline))
 		}
 		if isTeacherChanged {
 			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
 				utils.DerefOrTypeDefault(old.Teacher), utils.DerefOrTypeDefault(new.Teacher))
+		} else {
+			text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)))
 		}
 
 	default:

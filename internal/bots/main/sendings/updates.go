@@ -80,7 +80,7 @@ func (sm *SendingManager) sendUpdateNotification(
 	}
 
 	text := change.String()
-	sm.services.Reporter.Report().MD().Msgf("Schedule change:\n\n```\n%s\n```", text)
+	sm.services.Reporter.Report().MD().Msgf("Schedule change:\n%s", text)
 
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
