@@ -130,6 +130,7 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		log.Debug().Int("groupCount", len(groups)).Int("chatsCount", chatCount).Msg("Checking updates...")
 
 		changesDetected := 0
+		chatsAffected := 0
 
 		// Fetch schedules
 		var errs []error
@@ -160,8 +161,18 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 				change := models.NewScheduleChange(oldRawSchedule.Transform(), newRawSchedule.Transform())
 				if len(change.Diffs()) > 0 {
 					log.Debug().Any("config", conf).Msg("Schedule change detected")
-					// Send the change to channel
+
 					changesDetected++
+					if chatsCount, err := models.GetChatCountByGroup(
+						sm.services.Repo.DB,
+						group.GroupName,
+					); err != nil {
+						chatsAffected++
+					} else {
+						chatsAffected += chatsCount
+					}
+
+					// Send the change to channel
 					updates <- change
 				}
 			}
@@ -182,8 +193,8 @@ func (sm *SendingManager) RunUpdateMonitor(ctx context.Context, updates chan<- *
 		if len(groups) > 0 && changesDetected > 0 {
 			if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
 				Kind:    models.SendingLogUpdate,
-				Chats:   chatCount,
-				Groups:  len(groups),
+				Chats:   changesDetected + 1,
+				Groups:  changesDetected,
 				Elapsed: int(elapsed.Milliseconds()),
 				Fails:   len(errs),
 				Errors:  errStr,

@@ -381,6 +381,14 @@ func GetChatsByGroup(db *sqlx.DB, group string) ([]Chat, error) {
 	return chats, nil
 }
 
+func GetChatCountByGroup(db *sqlx.DB, group string) (int, error) {
+	var count int
+	if err := db.Get(&count, `SELECT COUNT(*) FROM chats WHERE "group" = ?`, group); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func GetChatsByDailySendingTime(db *sqlx.DB, timeStr string) ([]Chat, error) {
 	log.Trace().Str("timeStr", timeStr).Msg("Getting chats by daily sending time")
 	var chats []Chat

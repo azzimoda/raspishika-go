@@ -68,12 +68,8 @@ func GetSendingLogsCount(
 	switch kind {
 	case SendingLogAny:
 		break
-	case SendingLogDaily:
-		query += ` AND kind = 'daily'`
-	case SendingLogPair:
-		query += ` AND kind = 'pair'`
-	case SendingLogUpdate:
-		query += ` AND kind = 'update'`
+	case SendingLogDaily, SendingLogPair, SendingLogUpdate:
+		query += fmt.Sprintf(` AND kind = '%s'`, kind)
 	}
 	var data struct {
 		Total sql.NullInt32 `db:"total"`
