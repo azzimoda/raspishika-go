@@ -36,18 +36,18 @@ const (
 )
 
 type Chat struct {
-	ID                 int             `db:"id"`
-	TgChatID           int64           `db:"tg_chat_id"`
-	UserName           *string         `db:"username"`
-	State              ChatState       `db:"state"`
-	DepartmentName     *string         `db:"department"`
-	GroupName          *string         `db:"group"`
-	DailySendingTime   *string         `db:"daily_sending_time"`
-	PairSending        bool            `db:"pair_sending"`
-	UpdateNotification bool            `db:"update_notification"`
-	Access             ChatAccessLevel `db:"access"`
-	CreatedAt          time.Time       `db:"created_at"`
-	UpdatedAt          time.Time       `db:"updated_at"`
+	ID               int             `db:"id"`
+	TgChatID         int64           `db:"tg_chat_id"`
+	UserName         *string         `db:"username"`
+	State            ChatState       `db:"state"`
+	DepartmentName   *string         `db:"department"`
+	GroupName        *string         `db:"group"`
+	DailySendingTime *string         `db:"daily_sending_time"`
+	PairSending      bool            `db:"pair_sending"`
+	ChangeAlert      bool            `db:"update_notification"`
+	Access           ChatAccessLevel `db:"access"`
+	CreatedAt        time.Time       `db:"created_at"`
+	UpdatedAt        time.Time       `db:"updated_at"`
 }
 
 func (c *Chat) IsPrivate() bool {

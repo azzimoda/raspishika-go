@@ -112,6 +112,36 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	updateSettingsMenu(ctx, b, update, chat)
 }
 
+func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+	log.Trace().Msg("Config change handler")
+
+	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	message := update.CallbackQuery.Message.Message
+
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
+		return
+	}
+
+	chat.ChangeAlert = command.Arg(0) == "true"
+	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
+	}
+
+	updateSettingsMenu(ctx, b, update, chat)
+}
+
 func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config access handler")
 
@@ -171,48 +201,89 @@ func updateSettingsMenu(ctx context.Context, b *bot.Bot, update *tgmodels.Update
 }
 
 func settingsMessageParams(chat *models.Chat) (string, *tgmodels.InlineKeyboardMarkup) {
-	// Text
+	text := settingsMessageText(chat)
+	keyboard := settingsMessageKeyboard(chat)
+
+	return text, &tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+}
+
+func settingsMessageText(chat *models.Chat) string {
 	dailyTime := "выключено"
 	if chat.DailySendingTime != nil {
 		dailyTime = *chat.DailySendingTime
 	}
+
 	pairNotification := "выключено"
 	if chat.PairSending {
 		pairNotification = "включено"
 	}
 
+	changesNotificatin := "выключено"
+	if chat.ChangeAlert {
+		changesNotificatin = "включено"
+	}
+
+	// TODO: Use HTML instead of Markdown everywhere.
+	// TODO: Use `text/template` here.
 	text := fmt.Sprintf(`<b>Меню настроек</b>
 
 Группа: <u>%s</u>
 Ежедневная рассылка: <u>%s</u>
-Напоминания перед парами: <u>%s</u>`,
-		utils.DerefOrTypeDefault(chat.GroupName), dailyTime, pairNotification)
+Напоминания перед парами: <u>%s</u>
+Уведомления об изменениях: <u>%s</u>`,
+		utils.DerefOrTypeDefault(chat.GroupName),
+		dailyTime,
+		pairNotification,
+		changesNotificatin,
+	)
 	if !chat.IsPrivate() {
 		text += fmt.Sprintf("\nУровень доступа: <u>%d</u>", chat.Access)
 	}
 
-	// Keyboard
+	return text
+}
+
+func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButton {
 	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
+
+	// Student group
 	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Изменить группу", CallbackData: "config_group"}})
+
+	// Daily sending
 	if chat.DailySendingTime == nil {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Включить ежедневную рассылку", CallbackData: "config_daily_time"},
+			{Text: "Вкл. ежедневную рассылку", CallbackData: "config_daily_time"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Изменить время", CallbackData: "config_daily_time"},
-			{Text: "Выключить рассылку", CallbackData: "daily_off"},
+			{Text: "Выкл. рассылку", CallbackData: "daily_off"},
 		})
 	}
+
+	// Pair notification
 	if chat.PairSending {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Выключить напоминания", CallbackData: "config_reminder\nfalse"},
+			{Text: "Выкл. напоминания пар", CallbackData: "config_reminder\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Включить напоминания", CallbackData: "config_reminder\ntrue"},
+			{Text: "Вкл. напоминания пар", CallbackData: "config_reminder\ntrue"},
 		})
 	}
+
+	// Changes alerts
+	if chat.ChangeAlert {
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+			{Text: "Выкл. уведомления изменений", CallbackData: "config_change\nfalse"},
+		})
+	} else {
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+			{Text: "Вкл. уведомления изменений", CallbackData: "config_change\ntrue"},
+		})
+	}
+
+	// Group chat access
 	if !chat.IsPrivate() {
 		row := []tgmodels.InlineKeyboardButton{
 			{Text: "0", CallbackData: "set_access\n0"},
@@ -226,7 +297,9 @@ func settingsMessageParams(chat *models.Chat) (string, *tgmodels.InlineKeyboardM
 		}
 		keyboard = append(keyboard, row)
 	}
+
+	// Close button
 	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete_config"}})
 
-	return text, &tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+	return keyboard
 }

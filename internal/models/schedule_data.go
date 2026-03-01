@@ -157,6 +157,33 @@ func (s *ScheduleDay) DateString() string {
 	return fmt.Sprintf("📅 %s, %s", s.WeekDay, bot.EscapeMarkdown(s.Date))
 }
 
+func (s *ScheduleDay) DinamicFormat(t time.Time) string {
+	text := s.DateString() + ": "
+
+	if kind := s.CommonKind(); kind != "" {
+		log.Trace().Msgf("Detected common kind: %s", kind)
+		if kind == PairKindEmpty {
+			text += "Нет пар"
+		} else {
+			text += s.Pairs[0].Label
+		}
+		return text
+	}
+
+	for _, pair := range s.Pairs {
+		if pair.Kind == PairKindEmpty {
+			continue
+		}
+		text += "\n\n" // + pair.String()
+		if pair.IsBefore(t) {
+			text += fmt.Sprintf("~~%s~~", pair.String())
+		} else {
+			text += pair.String()
+		}
+	}
+	return text
+}
+
 type Pair struct {
 	Kind       PairKind `json:"kind"`
 	Number     int      `json:"number"`
@@ -173,6 +200,10 @@ type Pair struct {
 }
 
 func (p *Pair) IsEqual(other *Pair) bool { return reflect.DeepEqual(p, other) }
+func (p *Pair) IsBefore(t time.Time) bool {
+	endTime, err := time.Parse("15:04", p.EndTime)
+	return err == nil && endTime.Before(t)
+}
 
 // String returns formatted pair string.
 //

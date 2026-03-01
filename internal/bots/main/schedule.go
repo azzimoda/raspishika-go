@@ -260,7 +260,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	addContextHandlerError(ctx, err)
 }
 
-func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Left handler")
 
 	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
@@ -309,13 +309,8 @@ func (mb *MainBot) leftHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		}
 
 		schedule := rawSchedule.Transform()
-		left := schedule.Days[0].Left()
-
-		if left.IsEmpty() {
-			text = "Сегодня больше нет пар"
-		} else {
-			text = left.String()
-		}
+		today := schedule.Today()
+		text = today.DinamicFormat(time.Now())
 	}
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{

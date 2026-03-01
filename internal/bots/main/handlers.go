@@ -17,7 +17,6 @@ var (
 	ErrNoChatContext error = errors.New("failed to get chat from context")
 )
 
-
 func (mb *MainBot) registerHandlers() {
 	// Commands
 	{
@@ -25,26 +24,27 @@ func (mb *MainBot) registerHandlers() {
 		mb.registerCommandHandler("help", mb.helpHandler, mb.checkRegularAccessMiddleware)
 		mb.registerCommandHandler("stop", mb.stopHandler, mb.checkRegularAccessMiddleware)
 
+		mb.registerCommandHandler("week", mb.weekHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("tomorrow", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("left", mb.todayHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("today", mb.todayHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("teacher", mb.teacherHandler, mb.checkRegularAccessMiddleware)
+
 		mb.registerCommandHandler("settings", mb.settingsHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("group", mb.groupHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("daily_time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("daily_off", mb.dailyOffHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_on", mb.reminderOnHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_off", mb.reminderOffHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("access", mb.accessHandler, mb.checkConfigAccessMiddleware)
-
-		mb.registerCommandHandler("week", mb.weekHandler, mb.checkRegularAccessMiddleware)
-		mb.registerCommandHandler("tomorrow", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
-		mb.registerCommandHandler("left", mb.leftHandler, mb.checkRegularAccessMiddleware)
-
-		mb.registerCommandHandler("teacher", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 	}
 
 	// Text messages
 	{
 		mb.registerTextMessageHandler("неделя", mb.weekHandler, mb.checkRegularAccessMiddleware)
 		mb.registerTextMessageHandler("завтра", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
-		mb.registerTextMessageHandler("сегодня", mb.leftHandler, mb.checkRegularAccessMiddleware)
+		mb.registerTextMessageHandler("сегодня", mb.todayHandler, mb.checkRegularAccessMiddleware)
 
 		mb.registerTextMessageHandler("преподаватель", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
@@ -67,6 +67,7 @@ func (mb *MainBot) registerHandlers() {
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
 			mb.deleteHandler, mb.checkConfigAccessMiddleware)
 
+		// Settings menu
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_group"),
 			mb.configGroupHandler, mb.checkConfigAccessMiddleware)
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_daily_time"),
@@ -75,6 +76,8 @@ func (mb *MainBot) registerHandlers() {
 			mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_reminder"),
 			mb.configReminderHandler, mb.checkConfigAccessMiddleware)
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_change"),
+			mb.configChangeHandler, mb.checkConfigAccessMiddleware)
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_set_access"),
 			mb.configAccessHandler, mb.checkConfigAccessMiddleware)
 
