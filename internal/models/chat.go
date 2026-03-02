@@ -141,6 +141,7 @@ func UpdateChat(db *sqlx.DB, chat *Chat) error {
 			"group" = :group,
 			daily_sending_time = :daily_sending_time,
 			pair_sending = :pair_sending,
+			update_notification = :update_notification,
 			access = :access,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = :id`,
