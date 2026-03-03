@@ -47,7 +47,7 @@ func (s *ScheduleChange) Diffs() []Diff {
 			oldPair := s.Old.Days[d].Pairs[p]
 			newPair := s.New.Days[d].Pairs[p]
 			if !reflect.DeepEqual(oldPair, newPair) {
-				absDiffs = append(absDiffs, Diff{newDay: &newDay, oldPair: &oldPair, newPair: &newPair})
+				absDiffs = append(absDiffs, Diff{NewDay: &newDay, OldPair: &oldPair, NewPair: &newPair})
 			}
 		}
 	}
@@ -100,26 +100,26 @@ func (s *ScheduleChange) String() string {
 }
 
 type Diff struct {
-	oldDay  *ScheduleDay
-	oldPair *Pair
-	newDay  *ScheduleDay
-	newPair *Pair
+	OldDay  *ScheduleDay `json:"old_day"`
+	OldPair *Pair        `json:"old_pair"`
+	NewDay  *ScheduleDay `json:"new_day"`
+	NewPair *Pair        `json:"new_pair"`
 }
 
 func (d *Diff) Day() *ScheduleDay {
-	if d.newDay != nil {
-		return d.newDay
-	} else if d.oldDay != nil {
-		return d.oldDay
+	if d.NewDay != nil {
+		return d.NewDay
+	} else if d.OldDay != nil {
+		return d.OldDay
 	} else {
 		panic("Diff must have at least one day instanse")
 	}
 }
 func (d *Diff) Number() int {
-	if d.newPair != nil {
-		return d.newPair.Number
-	} else if d.oldPair != nil {
-		return d.oldPair.Number
+	if d.NewPair != nil {
+		return d.NewPair.Number
+	} else if d.OldPair != nil {
+		return d.OldPair.Number
 	} else {
 		log.Panic().Msg("Diff must have at least one pair instanse")
 		panic("")
@@ -130,22 +130,22 @@ func (d *Diff) Number() int {
 //
 // Markdown escaped.
 func (d *Diff) String() (result string) {
-	if d.oldDay != nil && d.newDay != nil && !d.oldDay.IsEqual(d.newDay) {
+	if d.OldDay != nil && d.NewDay != nil && !d.OldDay.IsEqual(d.NewDay) {
 		// Pair moved to other day
 		log.Warn().Msg("Schedule difference case not yet implemented: Pair moved to other day")
 		// TODO: Implement this case later.
 
 		result = "<not implemented yet>"
-	} else if d.oldPair != nil && d.newPair != nil {
+	} else if d.OldPair != nil && d.NewPair != nil {
 		// Pair moved with same day
 		text := ""
 
-		isCancelled := d.newPair.Kind == PairKindEmpty && d.newPair.Replaced
-		isOrderChanged := d.oldPair.Number != d.newPair.Number
-		isDiscChanged := d.oldPair.Discipline != d.newPair.Discipline
-		isTeacherChanged := d.oldPair.Teacher != nil && d.newPair.Teacher != nil &&
-			*d.oldPair.Teacher != *d.newPair.Teacher
-		isClassroomChanged := d.oldPair.Classroom != d.newPair.Classroom
+		isCancelled := d.NewPair.Kind == PairKindEmpty && d.NewPair.Replaced
+		isOrderChanged := d.OldPair.Number != d.NewPair.Number
+		isDiscChanged := d.OldPair.Discipline != d.NewPair.Discipline
+		isTeacherChanged := d.OldPair.Teacher != nil && d.NewPair.Teacher != nil &&
+			*d.OldPair.Teacher != *d.NewPair.Teacher
+		isClassroomChanged := d.OldPair.Classroom != d.NewPair.Classroom
 		log.Trace().Bool("isOrderChanged", isOrderChanged).Bool("isDiscChanged", isDiscChanged).
 			Bool("isClassroomChanged", isClassroomChanged).Send()
 
@@ -154,17 +154,17 @@ func (d *Diff) String() (result string) {
 		} else if isDiscChanged || isTeacherChanged {
 			text = "_Заменено\\:_\n"
 		} else if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.oldPair.TimeSlotCabinetString()))
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.OldPair.TimeSlotCabinetString()))
 		} else if isOrderChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.oldPair.TimeSlotString()))
+			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.OldPair.TimeSlotString()))
 		} else if isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", bot.EscapeMarkdown(d.oldPair.Classroom))
+			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", bot.EscapeMarkdown(d.OldPair.Classroom))
 		}
 
-		result = text + pairChangeString(d.oldPair, d.newPair)
+		result = text + pairChangeString(d.OldPair, d.NewPair)
 	} else {
 		// TODO: Ensure that this case is unreachable and remove it.
-		result = fmt.Sprintf("Заменено\\:\n%s", d.newPair.String())
+		result = fmt.Sprintf("Заменено\\:\n%s", d.NewPair.String())
 	}
 	log.Trace().Msgf("(Diff).String() => %v", result)
 	return result

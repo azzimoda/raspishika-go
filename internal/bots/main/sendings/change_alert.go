@@ -80,14 +80,17 @@ func (sm *SendingManager) sendChangeAlert(
 	}
 
 	text := change.String()
-	changeJSON, err := json.MarshalIndent(&change, "  ", "  ")
-	changeJSONStr := string(changeJSON)
+
+	diffs := change.Diffs()
+	diffsJSON, err := json.MarshalIndent(&diffs, "", "  ")
+	diffsJSONStr := string(diffsJSON)
 	if err != nil {
 		sm.services.Reporter.Report().Err(err).Msg("Failed to marshal schedule change")
-		changeJSONStr = text
+		diffsJSONStr = text
 	}
 
-	sm.services.Reporter.Report().Debug("change", changeJSONStr).MD().Msgf("Schedule change:\n%s", text)
+	sm.services.Reporter.Report().Log().Debug("diffs", diffsJSONStr).Send()
+	sm.services.Reporter.Report().MD().Msgf("Schedule change:\n%s", text)
 
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
