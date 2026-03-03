@@ -89,12 +89,14 @@ func departmentSelectionMarkup(departments []models.Department) tgmodels.InlineK
 		row := make([]tgmodels.InlineKeyboardButton, 0)
 		for j := i; j < len(departments) && j < i+2; j++ {
 			row = append(row, tgmodels.InlineKeyboardButton{Text: departments[j].Name,
-				CallbackData: fmt.Sprintf("%s\n%s", "select_department", departments[j].Name)})
+				CallbackData: fmt.Sprintf("%s\n%s", CallbackCommandSelectDepartment, departments[j].Name)})
 		}
 		keyboard = append(keyboard, row)
 	}
 
-	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete_config"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+		{Text: "Отмена", CallbackData: CallbackCommandDeleteConfig},
+	})
 	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 

@@ -53,7 +53,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 		Text:            text,
 		ParseMode:       tgmodels.ParseModeMarkdown,
 		ReplyMarkup: tgmodels.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete_config"}}},
+			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: CallbackCommandDeleteConfig}}},
 		},
 	})
 	addContextHandlerError(ctx, err)
@@ -180,7 +180,11 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		MessageThreadID: message.MessageThreadID,
 		Text:            text,
 		ParseMode:       tgmodels.ParseModeMarkdown,
-		ReplyMarkup:     tgmodels.InlineKeyboardMarkup{InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: "delete"}}}},
+		ReplyMarkup: tgmodels.InlineKeyboardMarkup{
+			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{
+				{{Text: "Закрыть", CallbackData: CallbackCommandDelete}},
+			},
+		},
 	})
 	addContextHandlerError(ctx, err)
 }

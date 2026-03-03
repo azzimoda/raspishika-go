@@ -62,41 +62,41 @@ func (mb *MainBot) registerHandlers() {
 
 	// Callback queries
 	{
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDelete),
 			mb.deleteHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("delete_config"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDeleteConfig),
 			mb.deleteHandler, mb.checkConfigAccessMiddleware)
 
 		// Settings menu
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_group"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigGroup),
 			mb.configGroupHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_daily_time"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigDailyTime),
 			mb.configDailyTimeHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("daily_off"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDailyOff),
 			mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_reminder"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigReminder),
 			mb.configReminderHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_change"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigChange),
 			mb.configChangeHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("config_set_access"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigSetAccess),
 			mb.configAccessHandler, mb.checkConfigAccessMiddleware)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_department"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandSelectDepartment),
 			mb.selectDepartmentHandler, mb.checkConfigAccessMiddleware)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("select_teacher"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandSelectTeacher),
 			mb.selectTeacherHandler, mb.checkRegularAccessMiddleware)
 
 		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("set_access"),
 			mb.setAccessHandler, mb.checkConfigAccessMiddleware)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_group"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateGroup),
 			mb.updateGroupHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_teacher"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateTeacher),
 			mb.updateTeacherHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_tomorrow"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateTomorrow),
 			mb.updateTomorrowHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("update_left"),
+		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateLeft),
 			mb.updateLeftHandler, mb.checkRegularAccessMiddleware)
 	}
 }

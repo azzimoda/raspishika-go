@@ -247,48 +247,48 @@ func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButto
 	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 
 	// Student group
-	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Изменить группу", CallbackData: "config_group"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Изменить группу", CallbackData: CallbackCommandConfigGroup}})
 
 	// Daily sending
 	if chat.DailySendingTime == nil {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Вкл. ежедневную рассылку", CallbackData: "config_daily_time"},
+			{Text: "Вкл. ежедневную рассылку", CallbackData: CallbackCommandConfigDailyTime},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Изменить время", CallbackData: "config_daily_time"},
-			{Text: "Выкл. рассылку", CallbackData: "daily_off"},
+			{Text: "Изменить время", CallbackData: CallbackCommandConfigDailyTime},
+			{Text: "Выкл. рассылку", CallbackData: CallbackCommandDailyOff},
 		})
 	}
 
 	// Pair notification
 	if chat.PairSending {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Выкл. напоминания перед парами", CallbackData: "config_reminder\nfalse"},
+			{Text: "Выкл. напоминания перед парами", CallbackData: CallbackCommandConfigReminder + "\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Вкл. напоминания перед парами", CallbackData: "config_reminder\ntrue"},
+			{Text: "Вкл. напоминания перед парами", CallbackData: CallbackCommandConfigReminder + "\ntrue"},
 		})
 	}
 
 	// Changes alerts
 	if chat.ChangeAlert {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Выкл. уведомления об изменениях", CallbackData: "config_change\nfalse"},
+			{Text: "Выкл. уведомления об изменениях", CallbackData: CallbackCommandConfigChange + "\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Вкл. уведомления об изменениях", CallbackData: "config_change\ntrue"},
+			{Text: "Вкл. уведомления об изменениях", CallbackData: CallbackCommandConfigChange + "\ntrue"},
 		})
 	}
 
 	// Group chat access
 	if !chat.IsPrivate() {
 		row := []tgmodels.InlineKeyboardButton{
-			{Text: "0", CallbackData: "set_access\n0"},
-			{Text: "1", CallbackData: "set_access\n1"},
-			{Text: "2", CallbackData: "set_access\n2"},
+			{Text: "0", CallbackData: CallbackCommandSetAccess + "\n0"},
+			{Text: "1", CallbackData: CallbackCommandSetAccess + "\n1"},
+			{Text: "2", CallbackData: CallbackCommandSetAccess + "\n2"},
 		}
 		for i := range 3 {
 			if i == int(chat.Access) {
@@ -299,7 +299,9 @@ func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButto
 	}
 
 	// Close button
-	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete_config"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+		{Text: "Закрыть", CallbackData: CallbackCommandDeleteConfig},
+	})
 
 	return keyboard
 }

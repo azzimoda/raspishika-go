@@ -113,7 +113,7 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgm
 func accessMenuInlineMarkup(accessLevel models.ChatAccessLevel) *tgmodels.InlineKeyboardMarkup {
 	keyboard := [][]tgmodels.InlineKeyboardButton{
 		{},
-		{{Text: "Закрыть", CallbackData: "delete_config"}},
+		{{Text: "Закрыть", CallbackData: CallbackCommandDeleteConfig}},
 	}
 	for i := range 3 {
 		text := fmt.Sprint(i)
@@ -122,7 +122,7 @@ func accessMenuInlineMarkup(accessLevel models.ChatAccessLevel) *tgmodels.Inline
 		}
 		keyboard[0] = append(keyboard[0], tgmodels.InlineKeyboardButton{
 			Text:         text,
-			CallbackData: fmt.Sprintf("set_access\n%d", i),
+			CallbackData: fmt.Sprintf("%s\n%d", CallbackCommandSetAccess, i),
 		})
 	}
 	return &tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}

@@ -102,10 +102,12 @@ func teachersInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMark
 	for _, teacher := range teachers {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
 			Text:         teacher.Name,
-			CallbackData: "select_teacher\n" + teacher.TeacherID,
+			CallbackData: CallbackCommandSelectTeacher + "\n" + teacher.TeacherID,
 		}})
 	}
-	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Закрыть", CallbackData: "delete"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+		{Text: "Закрыть", CallbackData: CallbackCommandDelete},
+	})
 	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
@@ -114,10 +116,10 @@ func teacherInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMarku
 	for _, teacher := range teachers {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
 			Text:         teacher.Name,
-			CallbackData: "select_teacher\n" + teacher.TeacherID,
+			CallbackData: CallbackCommandSelectTeacher + "\n" + teacher.TeacherID,
 		}})
 	}
-	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: "delete"}})
+	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: CallbackCommandDelete}})
 	return tgmodels.InlineKeyboardMarkup{InlineKeyboard: keyboard}
 }
 
