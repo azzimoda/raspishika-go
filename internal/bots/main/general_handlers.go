@@ -12,40 +12,37 @@ import (
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
 
-const StartMessage = `Привет! Я предостовляю удобный способ получения расписания МПК ТИУ.
+const StartMessageText = `Привет! Со мной ты можешь легко получить расписание своей группы и любого преподавателя
 
-Для начала нужно задать свою группу для использования комманд /week, /tomorrow, /left и получения рассылки. Други комманды и функции перечислены в /help.
+Для начала нужно задать свою группу, после этого можно будет использовать команды /week, /tomorrow, /left и настроить рассылки. Другие комманды и функции перечислены в /help
 
-Помимо команд можно использовать кнопки клавиатуры, а также меня можно добавить в групповой чат.
+Помимо команд можно использовать кнопки клавиатуры, а также меня можно добавить в групповой чат
 
-Подпишись на канал разработчика @mazzaLLM, где ты можешь найти новости о боте и поделиться своим мнением в комментариях.`
+Подпишись на канал разработчика @mazzaLLM, где ты можешь найти новости о боте и обсудить бота в комментариях`
 
-const HelpMessage = `Доступные команды:
+const HelpMessageText = `Основные команды:
 
 • /week — Расписание на неделю
 • /tomorrow — Расписание на завтра
-• /left — Оставшиеся пары
+• /left — Оставшиеся сегодня пары
 • /teacher — Расписание преподавателя
-
 • /settings — Меню настроек
-• /group — Изменить свою группу
-• /time — Настроить ежедневную рассылку
-• /daily_off — Выключить ежедневную рассылку
-• /reminder_on — Включить напоминания перед парами
-• /reminder_off — Выключить напоминания перед парами
-• /access — Изменить уровень доступа к командам бота в групповом чате
-
 • /stop — Удалить данные о себе и остановить рассылки
 • /help — Это сообщение
 
-Прочие функции:
+Доступные настройки:
 
-• Чтобы получить расписание любой группы, пришлите её название, например: "ИСПт-22-(9)-2", или "испт 22 9 2"
+• Ежедневная рассылка: можно задать время, в которое бот будет присылать расписание на неделю каждый день: /time, /daily_off
+• Напоминания за 15 минут перед парами: /reminder_on, /reminder_off
+• Уведомления об изменениях в расписании: /alert_on, /alert_off
+• В групповом чате можно настроить уровен доступа участников к командам: /access
+
+Также:
+
 • Бота можно добавить в групповой чат
-• Напоминание приходит в течение 15 минут до начала пары
-• В настройках можно включить уведомления об изменениях в разписании
+• Можно получить расписание любой группы, просто прислав её название, например: "ИСПт-22-(9)-2" или "испт 22 9 2"
 
-По всем вопросам пишите в комментарии или в директ канала @mazzaLLM.`
+По всем вопросам пишите в комментарии или директ канала @mazzaLLM.`
 
 // TODO: Move this out of here into separate handler. It should not be here.
 func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -121,7 +118,7 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	_, err := mb.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
-		Text:            StartMessage,
+		Text:            StartMessageText,
 	})
 	addContextHandlerError(ctx, err)
 
@@ -143,7 +140,7 @@ func (mb *MainBot) helpHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
-		Text:            HelpMessage,
+		Text:            HelpMessageText,
 	})
 	addContextHandlerError(ctx, err)
 }

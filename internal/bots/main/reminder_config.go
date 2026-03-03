@@ -48,9 +48,9 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tg
 		return
 	}
 
-	text := "Напоминания выключены"
+	text := "Напоминания перед парами выключены"
 	if on {
-		text = "Напоминания включены"
+		text = "Напоминания перед парами включены"
 	}
 	err = bothelpers.SendTempMessage(ctx, b, 5*time.Second, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
