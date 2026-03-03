@@ -34,7 +34,10 @@ func Synchronize(old, new ScheduleData) (ScheduleData, ScheduleData) {
 	return old, new
 }
 
-type ScheduleChange struct{ Old, New ScheduleData }
+type ScheduleChange struct {
+	Old ScheduleData `json:"old"`
+	New ScheduleData `json:"new"`
+}
 
 func (s *ScheduleChange) Diffs() []Diff {
 	var absDiffs []Diff

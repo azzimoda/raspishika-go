@@ -44,9 +44,9 @@ var defaults = map[string]any{
 	"features.sending.pair":    false,
 	"features.sending.updates": false,
 
-	"sending.workers":               20,
-	"sending.updates.interval":      30, // minutes
-	"sending.pair.notification_ttl": 90, // minutes
+	"sending.workers":                      20,
+	"sending.pair_notification.ttl":        90, // minutes
+	"sending.change_alert.update_interval": 30, // minutes
 
 	"adminbot.new_chat_report": true,
 
@@ -182,12 +182,12 @@ func ScheduleTTLDur() time.Duration { return viper.GetDuration("cache.schedule_t
 
 func GroupTTLDur() time.Duration { return viper.GetDuration("cache.group_ttl") * 24 * time.Hour }
 
-func UpdateNotificationInterval() time.Duration {
-	return time.Duration(viper.GetInt("sending.updates.interval")) * time.Minute
+func ScheduleUpdateMonitorInterval() time.Duration {
+	return time.Duration(viper.GetInt("sending.change_alert.update_interval")) * time.Minute
 }
 
 func PairNotificationTTLDur() time.Duration {
-	return viper.GetDuration("sending.pair.notification_ttl") * time.Minute
+	return viper.GetDuration("sending.pair_notification.ttl") * time.Minute
 }
 
 func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {

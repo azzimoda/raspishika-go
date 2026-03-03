@@ -202,7 +202,7 @@ Success/Fail: %d / %d
 Schedule/Callback: %d / %d
 
 Sendings: %d
-Daily/Pair/Update: %d / %d / %d
+Daily/Pair/Change: %d / %d / %d
 Success/Fail: %d / %d`,
 		gr.period,
 		gr.chatsTotal,
@@ -244,7 +244,7 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		return
 	}
 
-	updateEnabledCount, err := models.GetChatsCountWithUpdateSendingEnabled(ab.services.Repo.DB)
+	updateEnabledCount, err := models.GetChatCountWithChangeAlertOn(ab.services.Repo.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with update sending enabled")
 		return

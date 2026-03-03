@@ -8,9 +8,9 @@ import (
 )
 
 type Teacher struct {
-	ID        int       `db:"id" json:"id"`
+	ID        int       `db:"id"         json:"id"`
 	TeacherID string    `db:"teacher_id" json:"teacher_id"`
-	Name      string    `db:"name" json:"name"`
+	Name      string    `db:"name"       json:"name"`
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 }

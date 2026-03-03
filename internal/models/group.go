@@ -13,14 +13,14 @@ import (
 )
 
 type Group struct {
-	ID             int64     `db:"id" json:"id"`
-	GroupID        string    `db:"group_id" json:"group_id"`
-	DepartmentID   string    `db:"department_id" json:"department_id"`
-	GroupName      string    `db:"group_name" json:"group_name"`
+	ID             int64     `db:"id"              json:"id"`
+	GroupID        string    `db:"group_id"        json:"group_id"`
+	DepartmentID   string    `db:"department_id"   json:"department_id"`
+	GroupName      string    `db:"group_name"      json:"group_name"`
 	DepartmentName string    `db:"department_name" json:"department_name"`
-	Year           int       `db:"year" json:"year"`
-	CreatedAt      time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+	Year           int       `db:"year"            json:"year"`
+	CreatedAt      time.Time `db:"created_at"      json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"      json:"updated_at"`
 }
 
 func GetGroups(db *sqlx.DB) ([]Group, error) {

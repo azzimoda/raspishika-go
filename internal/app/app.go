@@ -110,7 +110,7 @@ func (a *App) startServices(ctx context.Context) {
 	}
 
 	if viper.GetBool("features.sending.updates") {
-		go sendingManager.RunUpdatesNotifier(ctx)
+		go sendingManager.RunChangeAlertNotifier(ctx)
 	}
 
 	sendingManager.Start()

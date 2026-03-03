@@ -264,22 +264,22 @@ func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButto
 	// Pair notification
 	if chat.PairSending {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Выкл. напоминания пар", CallbackData: "config_reminder\nfalse"},
+			{Text: "Выкл. напоминания перед парами", CallbackData: "config_reminder\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Вкл. напоминания пар", CallbackData: "config_reminder\ntrue"},
+			{Text: "Вкл. напоминания перед парами", CallbackData: "config_reminder\ntrue"},
 		})
 	}
 
 	// Changes alerts
 	if chat.ChangeAlert {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Выкл. уведомления изменений", CallbackData: "config_change\nfalse"},
+			{Text: "Выкл. уведомления об изменениях", CallbackData: "config_change\nfalse"},
 		})
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
-			{Text: "Вкл. уведомления изменений", CallbackData: "config_change\ntrue"},
+			{Text: "Вкл. уведомления об изменениях", CallbackData: "config_change\ntrue"},
 		})
 	}
 

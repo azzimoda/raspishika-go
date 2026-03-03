@@ -239,7 +239,7 @@ func GetInactiveChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 	return count, nil
 }
 
-func GetChatsCountWithUpdateSendingEnabled(db *sqlx.DB) (int, error) {
+func GetChatCountWithChangeAlertOn(db *sqlx.DB) (int, error) {
 	var count int
 	if err := db.Get(
 		&count,
