@@ -37,6 +37,8 @@ func (mb *MainBot) registerHandlers() {
 		mb.registerCommandHandler("daily_off", mb.dailyOffHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_on", mb.reminderOnHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_off", mb.reminderOffHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("alert_on", mb.alertOnHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("alert_off", mb.alertOffHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("access", mb.accessHandler, mb.checkConfigAccessMiddleware)
 	}
 
@@ -62,42 +64,40 @@ func (mb *MainBot) registerHandlers() {
 
 	// Callback queries
 	{
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDelete),
-			mb.deleteHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDeleteConfig),
-			mb.deleteHandler, mb.checkConfigAccessMiddleware)
+		registerRegularCallbackHandler := func(callbackCommand string, handler bot.HandlerFunc) {
+			mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(callbackCommand),
+				handler, mb.checkRegularAccessMiddleware)
+		}
 
-		// Settings menu
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigGroup),
-			mb.configGroupHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigDailyTime),
-			mb.configDailyTimeHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandDailyOff),
-			mb.dailyOffCallbackHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigReminder),
-			mb.configReminderHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigChange),
-			mb.configChangeHandler, mb.checkConfigAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandConfigSetAccess),
-			mb.configAccessHandler, mb.checkConfigAccessMiddleware)
+		registerRegularCallbackHandler(CallbackCommandDelete, mb.deleteHandler)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandSelectDepartment),
-			mb.selectDepartmentHandler, mb.checkConfigAccessMiddleware)
+		registerRegularCallbackHandler(CallbackCommandSelectTeacher, mb.selectTeacherHandler)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandSelectTeacher),
-			mb.selectTeacherHandler, mb.checkRegularAccessMiddleware)
+		registerRegularCallbackHandler(CallbackCommandUpdateGroup, mb.updateGroupHandler)
+		registerRegularCallbackHandler(CallbackCommandUpdateTeacher, mb.updateTeacherHandler)
+		registerRegularCallbackHandler(CallbackCommandUpdateTomorrow, mb.updateTomorrowHandler)
+		registerRegularCallbackHandler(CallbackCommandUpdateLeft, mb.updateLeftHandler)
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp("set_access"),
-			mb.setAccessHandler, mb.checkConfigAccessMiddleware)
+		// Config callbacks
+		registerConfigCallbackHandler := func(callbackCommand string, handler bot.HandlerFunc) {
+			mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(callbackCommand),
+				handler, mb.checkConfigAccessMiddleware)
+		}
 
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateGroup),
-			mb.updateGroupHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateTeacher),
-			mb.updateTeacherHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateTomorrow),
-			mb.updateTomorrowHandler, mb.checkRegularAccessMiddleware)
-		mb.Bot.RegisterHandlerRegexp(bot.HandlerTypeCallbackQueryData, callbackDataRegexp(CallbackCommandUpdateLeft),
-			mb.updateLeftHandler, mb.checkRegularAccessMiddleware)
+		registerConfigCallbackHandler(CallbackCommandDeleteConfig, mb.deleteHandler)
+
+		registerConfigCallbackHandler(CallbackCommandConfigGroup, mb.configGroupHandler)
+		registerConfigCallbackHandler(CallbackCommandConfigDailyTime, mb.configDailyTimeHandler)
+		registerConfigCallbackHandler(CallbackCommandDailyOff, mb.dailyOffCallbackHandler)
+		registerConfigCallbackHandler(CallbackCommandConfigReminder, mb.configReminderHandler)
+		registerConfigCallbackHandler(CallbackCommandConfigChange, mb.configChangeHandler)
+		registerConfigCallbackHandler(CallbackCommandConfigSetAccess, mb.configAccessHandler)
+		registerConfigCallbackHandler(CallbackCommandSelectDepartment, mb.selectDepartmentHandler)
+
+		registerConfigCallbackHandler(CallbackCommandSelectDepartment, mb.selectDepartmentHandler)
+
+		registerConfigCallbackHandler(CallbackCommandSetAccess, mb.setAccessHandler)
+
 	}
 }
 
