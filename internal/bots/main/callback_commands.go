@@ -1,6 +1,5 @@
 package mainbot
 
-// TODO NOW: Use these constants everywhere.
 const (
 	CallbackCommandDelete       = "delete"
 	CallbackCommandDeleteConfig = "delete_config"

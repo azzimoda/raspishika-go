@@ -59,7 +59,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	}
 
 	chat.State = models.ChatStateSelectingDepartment
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -133,7 +133,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.State = models.ChatStateSelectingGroup
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -212,7 +212,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat.State = models.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

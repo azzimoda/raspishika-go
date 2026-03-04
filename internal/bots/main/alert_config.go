@@ -34,7 +34,7 @@ func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmod
 	}
 
 	chat.ChangeAlert = on
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

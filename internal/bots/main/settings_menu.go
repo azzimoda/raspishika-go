@@ -68,7 +68,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.DailySendingTime = nil
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -99,7 +99,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.PairSending = command.Arg(0) == "true"
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -130,7 +130,7 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	}
 
 	chat.ChangeAlert = command.Arg(0) == "true"
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -173,7 +173,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 		chat.Access = models.ChatAccessLevel(accessLevel)
 	}
 
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -223,7 +223,6 @@ func settingsMessageText(chat *models.Chat) string {
 		changesNotificatin = "включено"
 	}
 
-	// TODO: Use HTML instead of Markdown everywhere.
 	// TODO: Use `text/template` here.
 	text := fmt.Sprintf(`<b>Меню настроек</b>
 

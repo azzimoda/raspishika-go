@@ -79,7 +79,7 @@ func handleTelegramAPIError(services *services.Services, chat *models.Chat, err 
 		log.Warn().Err(err).Msg("Telegram API error: Forbidden; deactivating sendings for chat...")
 		chat.DailySendingTime = nil
 		chat.PairSending = false
-		if err := models.UpdateChat(services.Repo.DB, chat); err != nil {
+		if err := chat.Update(services.Repo.DB); err != nil {
 			return fmt.Errorf("failed to deactivate forbidden sendings for chat: %w", err)
 		}
 		return nil

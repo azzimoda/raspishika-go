@@ -91,7 +91,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		for _, chat := range chats {
 			chat.GroupName = nil
 			chat.DepartmentName = nil
-			if err := models.UpdateChat(sm.services.Repo.DB, chat); err != nil {
+			if err := chat.Update(sm.services.Repo.DB); err != nil {
 				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
 				bothelpers.SendTempMessage(context.Background(), sm.bot.Bot, 5*time.Minute, &bot.SendMessageParams{

@@ -209,7 +209,7 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *tg
 	}
 
 	chat.State = models.ChatStateDefault
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(update.Message.Chat.ID).Msg("Error in textCancelHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		return

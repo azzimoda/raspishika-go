@@ -74,7 +74,7 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	chat.DailySendingTime = nil
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -122,7 +122,7 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmo
 
 	chat.State = models.ChatStateDefault
 	chat.DailySendingTime = &timeStr
-	if err := models.UpdateChat(mb.services.Repo.DB, chat); err != nil {
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

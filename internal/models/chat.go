@@ -54,6 +54,24 @@ func (c *Chat) IsPrivate() bool {
 	return c.TgChatID > 0
 }
 
+func (c *Chat) Update(db *sqlx.DB) error {
+	_, err := db.NamedExec(
+		`UPDATE chats
+		SET username = :username,
+			state = :state,
+			department = :department,
+			"group" = :group,
+			daily_sending_time = :daily_sending_time,
+			pair_sending = :pair_sending,
+			update_notification = :update_notification,
+			access = :access,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = :id`,
+		c,
+	)
+	return err
+}
+
 // InsertChats inserts multiple chats into the database.
 func InsertChats(db *sqlx.DB, chats []Chat) error {
 	log.Trace().Any("chats", chats).Msg("Inserting chats...")
@@ -117,7 +135,7 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 	if utils.DerefOrTypeDefault(chat.UserName) != username {
 		// Update username.
 		chat.UserName = &username
-		if err := UpdateChat(db, &chat); err != nil {
+		if err := chat.Update(db); err != nil {
 			err := fmt.Errorf("failed to update chat's username (%v -> %s): %w", chat.UserName, username, err)
 			return nil, false, err
 		}
@@ -129,25 +147,6 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 	// Return existing chat
 	log.Trace().Int64("tgChatID", tgChatID).Msg("Chat already exists")
 	return &chat, false, nil
-}
-
-// TODO: Make it as method of Chat.
-func UpdateChat(db *sqlx.DB, chat *Chat) error {
-	_, err := db.NamedExec(
-		`UPDATE chats
-		SET username = :username,
-			state = :state,
-			department = :department,
-			"group" = :group,
-			daily_sending_time = :daily_sending_time,
-			pair_sending = :pair_sending,
-			update_notification = :update_notification,
-			access = :access,
-			updated_at = CURRENT_TIMESTAMP
-		WHERE id = :id`,
-		chat,
-	)
-	return err
 }
 
 func UpdateChatState(db *sqlx.DB, tgChatID int64, state ChatState) error {
