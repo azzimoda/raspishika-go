@@ -83,21 +83,19 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	ab.sendChatReport(chat, b, ctx, update)
 }
 
-const chatReportTemplateStr = "ID: {{.ID}}\n" +
-	"Chat ID: `{{.TgChatID}}`\n" +
-	"Username: @{{.UserName}}\n" +
-	"State: {{.State}}\n" +
-	"Department: `{{.DepartmentName}}`\n" +
-	"Group: `{{.GroupNameEscaped}}`\n" +
-	"Daily Sending Time: {{.DailySendingTime}}\n" +
-	"Pair Sending: {{.PairSending}}\n" +
-	"Update Notification: {{.UpdateNotification}}\n" +
-	"Access: {{.Access}}\n" +
-	"\n" +
-	"Recent Teachers: {{.RecentTeachers}}\n" +
-	"\n" +
-	"Recent updates:\n" +
-	"{{.RecentUpdates}}"
+const chatReportTemplateStr = `ID: {{.ID}}
+Chat ID: <code>{{.TgChatID}}</code>
+Username: @{{.UserName}}
+State: {{.State}}
+Department: <code>{{.DepartmentName}}</code>
+Group: <code>{{.GroupNameEscaped}}</code>
+Daily Sending Time: {{.DailySendingTime}}
+Pair Sending: {{.PairSending}}
+Update Notification: {{.UpdateNotification}}
+Access: {{.Access}}
+Recent Teachers: {{.RecentTeachers}}
+Recent updates:
+{{.RecentUpdates}}`
 
 var chatReportTemplate, _ = template.New("report").Parse(chatReportTemplateStr)
 
@@ -142,7 +140,7 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text,
-		ParseMode: tgmodels.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeHTML,
 	})
 	if err != nil {
 		ab.Report().Log().Err(err).Debug("text", text).Send()
@@ -175,12 +173,12 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	var text strings.Builder
 	text.WriteString(bot.EscapeMarkdown(fmt.Sprintf("Chats in group `%s` (%d chats):\n", group, len(chats))))
 	for _, chat := range chats {
-		fmt.Fprintf(&text, "• `/chat %d`\n", chat.TgChatID)
+		fmt.Fprintf(&text, "• <code>/chat %d</code>\n", chat.TgChatID)
 	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text.String(),
-		ParseMode: tgmodels.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeHTML,
 	})
 }

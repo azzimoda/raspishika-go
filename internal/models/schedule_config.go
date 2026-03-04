@@ -26,6 +26,17 @@ func (sc *ScheduleConfig) FormatMarkdown() string {
 	}
 }
 
+func (sc *ScheduleConfig) FormatHTML() string {
+	switch {
+	case sc.Group != nil:
+		return "Расписание группы — <i>" + sc.Group.GroupName + "</i>"
+	case sc.Teacher != nil:
+		return "Расписание преподавателя — <i>" + sc.Teacher.Name + "</i>"
+	default:
+		return "?"
+	}
+}
+
 func (s *ScheduleConfig) IsEqual(other *ScheduleConfig) bool {
 	if s.Group != nil && other.Group != nil {
 		return s.Group.ID == other.Group.ID

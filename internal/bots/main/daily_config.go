@@ -39,21 +39,21 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 		return
 	}
 
-	time := ""
-	if chat.DailySendingTime == nil {
-		time = "Время не установлено"
-	} else {
-		time = "Установленное время: " + *chat.DailySendingTime
+	time := "<i>время не установлено</i>"
+	if chat.DailySendingTime != nil {
+		time = "Установленное время: <i>" + *chat.DailySendingTime + "</i>"
 	}
-	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
+	text := fmt.Sprintf("%s\nПришлите желаемое время рассылки, например <code>19:00</code>", time)
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       tgmodels.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup: tgmodels.InlineKeyboardMarkup{
-			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{{{Text: "Закрыть", CallbackData: CallbackCommandDeleteConfig}}},
+			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{
+				{{Text: "Закрыть", CallbackData: CallbackCommandDeleteConfig}},
+			},
 		},
 	})
 	addContextHandlerError(ctx, err)
@@ -113,8 +113,8 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            "Неправильный вормат времени, попробуйте ещё раз: `19:00`",
-			ParseMode:       tgmodels.ParseModeMarkdown,
+			Text:            "Неправильный вормат времени, попробуйте ещё раз: <code>19:00</code>",
+			ParseMode:       tgmodels.ParseModeHTML,
 		})
 		return
 	}
@@ -168,18 +168,16 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		})
 		return
 	}
-	time := ""
-	if chat.DailySendingTime == nil {
-		time = "Время не установлено"
-	} else {
-		time = "Установленное время: " + *chat.DailySendingTime
+	time := "<i>Время не установлено</i>"
+	if chat.DailySendingTime != nil {
+		time = "Установленное время: <i>" + *chat.DailySendingTime + "</i>"
 	}
-	text := fmt.Sprintf("_%s_\nПришлите желаемое время рассылки, например `19:00`", time)
+	text := fmt.Sprintf("%s\nПришлите желаемое время рассылки, например <code>19:00</code>", time)
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          message.Chat.ID,
 		MessageThreadID: message.MessageThreadID,
 		Text:            text,
-		ParseMode:       tgmodels.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup: tgmodels.InlineKeyboardMarkup{
 			InlineKeyboard: [][]tgmodels.InlineKeyboardButton{
 				{{Text: "Закрыть", CallbackData: CallbackCommandDelete}},

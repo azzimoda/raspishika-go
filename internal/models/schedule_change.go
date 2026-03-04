@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -56,7 +55,7 @@ func (s *ScheduleChange) Diffs() []Diff {
 	return absDiffs
 }
 
-func (s *ScheduleChange) String() string {
+func (s *ScheduleChange) HTML() string {
 	diffs := s.Diffs()
 	if len(diffs) == 0 {
 		log.Warn().Msg("No changes detected")
@@ -82,21 +81,18 @@ func (s *ScheduleChange) String() string {
 	})
 
 	var text strings.Builder
-	fmt.Fprint(&text, bot.EscapeMarkdown(fmt.Sprintf(
-		"Изменения в расписании группы %s:", s.New.Config.Group.GroupName,
-	)))
+	fmt.Fprintf(&text, "Изменения в расписании группы %s:", s.New.Config.Group.GroupName)
+
 	currentDate := ""
 	for _, diff := range diffs {
 		if currentDate != diff.Day().Date {
 			currentDate = diff.Day().Date
-			fmt.Fprintf(&text, "\n\n%s\\: ", diff.Day().DateString())
+			fmt.Fprintf(&text, "\n\n%s: ", diff.Day().DateHTML())
 		}
-		fmt.Fprintf(&text, "\n\n%s", diff.String())
+		fmt.Fprintf(&text, "\n\n%s", diff.HTML())
 	}
-	textStr := text.String()
 
-	log.Trace().Msgf("(ScheduleChange).String() => %v", textStr)
-	return textStr
+	return text.String()
 }
 
 type Diff struct {
@@ -126,21 +122,18 @@ func (d *Diff) Number() int {
 	}
 }
 
-// String representation of the difference.
-//
-// Markdown escaped.
-func (d *Diff) String() (result string) {
+// HTML representation of the difference.
+func (d *Diff) HTML() (result string) {
 	if d.OldDay != nil && d.NewDay != nil && !d.OldDay.IsEqual(d.NewDay) {
 		// Pair moved to other day
 		log.Warn().Msg("Schedule difference case not yet implemented: Pair moved to other day")
 		// TODO: Implement this case later.
 
-		result = "<not implemented yet>"
+		result = "?"
 	} else if d.OldPair != nil && d.NewPair != nil {
 		// Pair moved with same day
 		text := ""
 
-		isCancelled := d.NewPair.Kind == PairKindEmpty && d.NewPair.Replaced
 		isOrderChanged := d.OldPair.Number != d.NewPair.Number
 		isDiscChanged := d.OldPair.Discipline != d.NewPair.Discipline
 		isTeacherChanged := d.OldPair.Teacher != nil && d.NewPair.Teacher != nil &&
@@ -149,82 +142,80 @@ func (d *Diff) String() (result string) {
 		log.Trace().Bool("isOrderChanged", isOrderChanged).Bool("isDiscChanged", isDiscChanged).
 			Bool("isClassroomChanged", isClassroomChanged).Send()
 
-		if isCancelled {
-			text = "_Снято:_"
+		if d.OldPair.Kind != PairKindEmpty && d.NewPair.Kind == PairKindEmpty && d.NewPair.Replaced {
+			text = "<i>Снято:</i>"
+		} else if d.OldPair.Kind == PairKindEmpty && d.NewPair.Kind != PairKindEmpty && d.NewPair.Replaced {
+			text = "<i>Добавлено:</i>"
 		} else if isDiscChanged || isTeacherChanged {
-			text = "_Заменено\\:_\n"
+			text = "<i>Заменено:</i>"
 		} else if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.OldPair.TimeSlotCabinetString()))
+			text = fmt.Sprintf("<i>Перенесено с %s:</i>\n", d.OldPair.TimeSlotCabinetString())
 		} else if isOrderChanged {
-			text = fmt.Sprintf("_Перенесено с %s\\:_\n", bot.EscapeMarkdown(d.OldPair.TimeSlotString()))
+			text = fmt.Sprintf("<i>Перенесено с %s:</i>\n", d.OldPair.TimeSlotString())
 		} else if isClassroomChanged {
-			text = fmt.Sprintf("_Перенесено из кабинета %s\\:_\n", bot.EscapeMarkdown(d.OldPair.Classroom))
+			text = fmt.Sprintf("<i>Перенесено из кабинета %s:</i>\n", d.OldPair.Classroom)
 		}
 
-		result = text + pairChangeString(d.OldPair, d.NewPair)
+		result = text + pairChangeHTML(d.OldPair, d.NewPair)
 	} else {
 		// TODO: Ensure that this case is unreachable and remove it.
-		result = fmt.Sprintf("Заменено\\:\n%s", d.NewPair.String())
+		result = fmt.Sprintf("Заменено:\n%s", d.NewPair.HTML())
 	}
 	log.Trace().Msgf("(Diff).String() => %v", result)
 	return result
 }
 
-// pairChangeString returns formatted pair change string.
-//
-// Markdown escaped.
-func pairChangeString(old, new *Pair) string {
+// pairChangeHTML returns formatted pair change string.
+func pairChangeHTML(old, new *Pair) string {
 	isDiscChanged := old.Discipline != new.Discipline
 	isTeacherChanged := old.Teacher != nil && new.Teacher != nil && *old.Teacher != *new.Teacher
 
 	text := ""
 	switch new.Kind {
 	case PairKindEmpty:
-		text += fmt.Sprintf("\n~~%s~~", old.String())
+		text += fmt.Sprintf("\n<s>%s</s>", old.HTML())
 
 	case PairKindSubject:
 		if old.Kind == PairKindEmpty {
-			text += fmt.Sprintf("\n%s", old.String())
+			text += fmt.Sprintf("\n%s", old.HTML())
 		} else {
-			text = bot.EscapeMarkdown(new.TimeSlotCabinetString())
+			text = new.TimeSlotCabinetString()
 			if isDiscChanged {
-				text += fmt.Sprintf("\n    ~~%s~~ _%s_",
-					bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
+				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
+					old.Discipline, new.Discipline)
 			} else {
-				text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(new.Discipline))
+				text += fmt.Sprintf("\n    %s", new.Discipline)
 			}
 
 			if isTeacherChanged {
-				text += fmt.Sprintf("\n    ~~%s~~ _%s_",
-					bot.EscapeMarkdown(utils.DerefOrTypeDefault(old.Teacher)),
-					bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)),
+				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
+					utils.DerefOrTypeDefault(old.Teacher),
+					utils.DerefOrTypeDefault(new.Teacher),
 				)
 			} else {
-				text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)))
+				text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
 			}
 		}
 
 	case PairKindExam, PairKindConsultation:
-		text = bot.EscapeMarkdown(new.TimeSlotCabinetString())
-		text += fmt.Sprintf("\n    _%s_", bot.EscapeMarkdown(new.Label))
+		text = new.TimeSlotCabinetString()
+		text += fmt.Sprintf("\n    _%s_", new.Label)
 		if isDiscChanged {
-			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
-				bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
+			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
+				old.Discipline, new.Discipline)
 		} else {
-			text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(new.Discipline))
+			text += fmt.Sprintf("\n    %s", new.Discipline)
 		}
 		if isTeacherChanged {
-			text += fmt.Sprintf("\n    ~~%s~~ _%s_",
+			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
 				utils.DerefOrTypeDefault(old.Teacher), utils.DerefOrTypeDefault(new.Teacher))
 		} else {
-			text += fmt.Sprintf("\n    %s", bot.EscapeMarkdown(utils.DerefOrTypeDefault(new.Teacher)))
+			text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
 		}
 
 	default:
-		log.Warn().Msg("pairChangeString: default unimplemented")
-		text += fmt.Sprintf("\n~~%s~~\n%s", old.String(), new.String())
+		text += fmt.Sprintf("\n<s>%s</s>\n%s", old.HTML(), new.HTML())
 	}
 
-	log.Trace().Msgf("pairChangeString() => %v", text)
 	return text
 }

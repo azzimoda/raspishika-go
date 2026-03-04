@@ -126,10 +126,8 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		log.Trace().Str("kind", string(pair.Kind)).Msg("Pair is empty")
 		return nil, false
 	default:
-		text = fmt.Sprintf("Следующая пара в кабинете %s:\n\t*%s*\n\t%s",
-			bot.EscapeMarkdown(pair.Classroom),
-			bot.EscapeMarkdown(pair.Discipline),
-			bot.EscapeMarkdown(utils.DerefOrTypeDefault(pair.Teacher)))
+		text = fmt.Sprintf("Следующая пара в кабинете %s:\n\t<b>%s</b>\n\t%s",
+			pair.Classroom, pair.Discipline, utils.DerefOrTypeDefault(pair.Teacher))
 	}
 
 	messagesToDelete := make([]*tgmodels.Message, 0)
@@ -138,7 +136,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		if msg, err := sm.bot.Bot.SendMessage(context.Background(), &bot.SendMessageParams{
 			ChatID:    chat.TgChatID,
 			Text:      text,
-			ParseMode: tgmodels.ParseModeMarkdown,
+			ParseMode: tgmodels.ParseModeHTML,
 		}); err != nil {
 			if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
 				continue
