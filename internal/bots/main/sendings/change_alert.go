@@ -79,7 +79,7 @@ func (sm *SendingManager) sendChangeAlert(
 		return fmt.Errorf("failed to prepare schedule image: %w", err)
 	}
 
-	text := change.String()
+	text := change.HTML()
 
 	var diffs []models.Diff
 	for _, d := range change.Diffs() {
@@ -96,12 +96,12 @@ func (sm *SendingManager) sendChangeAlert(
 	}
 
 	sm.services.Reporter.Report().Log().Debug("diffs", diffsJSONStr).Send()
-	sm.services.Reporter.Report().MD().Msgf("Schedule change:\n%s", text)
+	sm.services.Reporter.Report().Msgf("Schedule change:\n%s", text)
 
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
 		Text:      text,
-		ParseMode: tgmodels.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeHTML,
 	}); err != nil {
 		return fmt.Errorf("failed to send schedule change alert: %w", err)
 	}

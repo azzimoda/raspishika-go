@@ -113,8 +113,8 @@ func (mb *MainBot) SendWeekScheduleMessages(
 	if _, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
-		Text:            conf.FormatMarkdown() + ":",
-		ParseMode:       tgmodels.ParseModeMarkdown,
+		Text:            conf.FormatHTML() + ":",
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup:     mainMenuReplyMarkup(chat.IsPrivate()),
 	}); err != nil {
 		errs = append(errs, err)
@@ -249,12 +249,12 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		tomorrow = schedule.Days[1]
 	}
 
-	text := tomorrow.String()
+	text := tomorrow.HTML()
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          chatID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       tgmodels.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup:     updateInlineMarkup("tomorrow", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)
@@ -310,14 +310,14 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 		schedule := rawSchedule.Transform()
 		today := schedule.Today()
-		text = today.DinamicFormat(time.Now())
+		text = today.DynamicFormatHTML(time.Now())
 	}
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
-		ParseMode:       tgmodels.ParseModeMarkdown,
+		ParseMode:       tgmodels.ParseModeHTML,
 		ReplyMarkup:     updateInlineMarkup("left", *chat.GroupName),
 	})
 	addContextHandlerError(ctx, err)

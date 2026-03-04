@@ -127,8 +127,8 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
-		Text:        tomorrow.String(),
-		ParseMode:   tgmodels.ParseModeMarkdown,
+		Text:        tomorrow.HTML(),
+		ParseMode:   tgmodels.ParseModeHTML,
 		ReplyMarkup: updateInlineMarkup("tomorrow", groupName),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {
@@ -177,19 +177,15 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		}
 
 		schedule := rawSchedule.Transform()
-		left := schedule.Days[0].Left()
-		if left.IsEmpty() {
-			text = "Сегодня больше нет пар"
-		} else {
-			text = left.String()
-		}
+		today := schedule.Today()
+		text = today.DynamicFormatHTML(time.Now())
 	}
 
 	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        text,
-		ParseMode:   tgmodels.ParseModeMarkdown,
+		ParseMode:   tgmodels.ParseModeHTML,
 		ReplyMarkup: updateInlineMarkup("left", groupName),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {

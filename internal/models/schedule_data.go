@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -131,8 +130,8 @@ func (s ScheduleDay) CurrentPair(t time.Time) (*Pair, error) {
 	return nil, fmt.Errorf("all pairs passed")
 }
 
-func (s *ScheduleDay) String() string {
-	text := s.DateString() + ": "
+func (s *ScheduleDay) HTML() string {
+	text := s.DateHTML() + ": "
 
 	if kind := s.CommonKind(); kind != "" {
 		log.Trace().Msgf("Detected common kind: %s", kind)
@@ -148,17 +147,15 @@ func (s *ScheduleDay) String() string {
 		if pair.Kind == PairKindEmpty {
 			continue
 		}
-		text += "\n\n" + pair.String()
+		text += "\n\n" + pair.HTML()
 	}
 	return text
 }
 
-func (s *ScheduleDay) DateString() string {
-	return fmt.Sprintf("📅 %s, %s", s.WeekDay, bot.EscapeMarkdown(s.Date))
-}
+func (s *ScheduleDay) DateHTML() string { return fmt.Sprintf("📅 %s, %s", s.WeekDay, s.Date) }
 
-func (s *ScheduleDay) DinamicFormat(t time.Time) string {
-	text := s.DateString() + ": "
+func (s *ScheduleDay) DynamicFormatHTML(t time.Time) string {
+	text := s.DateHTML() + ": "
 
 	if kind := s.CommonKind(); kind != "" {
 		log.Trace().Msgf("Detected common kind: %s", kind)
@@ -174,11 +171,13 @@ func (s *ScheduleDay) DinamicFormat(t time.Time) string {
 		if pair.Kind == PairKindEmpty {
 			continue
 		}
-		text += "\n\n" // + pair.String()
+		text += "\n\n"
 		if pair.IsBefore(t) {
-			text += fmt.Sprintf("~~%s~~", pair.String())
+			log.Trace().Msg("Before")
+			text += fmt.Sprintf("<s>%s</s>", pair.HTML())
 		} else {
-			text += pair.String()
+			log.Trace().Msg("After")
+			text += pair.HTML()
 		}
 	}
 	return text
@@ -206,44 +205,29 @@ func (p *Pair) IsBefore(t time.Time) bool {
 	return err == nil && endTime.Before(t)
 }
 
-// String returns formatted pair string.
-//
-// Markdown escaped.
-func (p *Pair) String() (result string) {
+// HTML returns formatted pair string.
+func (p *Pair) HTML() string {
 	log.Trace().Any("pair", p).Msg("Formating pair...")
 
-	discipline := func() string { return bot.EscapeMarkdown(p.Discipline) }
-	teacher := func() string { return bot.EscapeMarkdown(utils.DerefOrTypeDefault(p.Teacher)) }
-	label := func() string { return bot.EscapeMarkdown(p.Label) }
+	teacher := func() string { return utils.DerefOrTypeDefault(p.Teacher) }
 
 	switch p.Kind {
 	case PairKindSubject:
-		result = fmt.Sprintf("%s\n    *%s*\n    %s", bot.EscapeMarkdown(p.TimeSlotCabinetString()), discipline(), teacher())
+		return fmt.Sprintf("%s\n    <b>%s</b>\n    %s", p.TimeSlotCabinetString(), p.Discipline, teacher())
 	case PairKindExam, PairKindConsultation:
-		result = fmt.Sprintf("%s\n    _%s_\n    *%s*\n    %s",
-			p.TimeSlotCabinetString(), label(), discipline(), teacher())
+		return fmt.Sprintf("%s\n    <i>%s</i>\n    <b>%s</b>\n    %s",
+			p.TimeSlotCabinetString(), p.Label, p.Discipline, teacher())
 	default:
-		result = fmt.Sprintf("%s — %s", bot.EscapeMarkdown(p.TimeSlotString()), label())
+		return fmt.Sprintf("%s — %s", p.TimeSlotString(), p.Label)
 	}
-
-	log.Trace().Msgf("(Pair).String() => %s", result)
-	return result
 }
 
 // TimeSlotString returns formatted time slot string.
-//
-// Markdown not escaped.
 func (p *Pair) TimeSlotString() string {
-	result := fmt.Sprintf("%d | %s - %s", p.Number, p.StartTime, p.EndTime)
-	log.Trace().Msgf("(Pair).TimeSlotString() => %s", result)
-	return result
+	return fmt.Sprintf("%d | %s - %s", p.Number, p.StartTime, p.EndTime)
 }
 
 // TimeSlotCabinetString returns formatted time slot string with classroom.
-//
-// Markdown not escaped.
 func (p *Pair) TimeSlotCabinetString() string {
-	result := fmt.Sprintf("%d | %s - %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom)
-	log.Trace().Msgf("(Pair).TimeSlotCabinetString() => %s", result)
-	return result
+	return fmt.Sprintf("%d | %s - %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom)
 }

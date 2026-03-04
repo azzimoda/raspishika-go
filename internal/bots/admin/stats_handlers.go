@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -138,11 +137,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		sendingsSuccess: sendingOkCount, sendingsFail: sendingFailCount,
 	}.String()
 
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		Text:      text,
-		ParseMode: tgmodels.ParseModeMarkdown,
-	})
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: text})
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -195,7 +190,7 @@ New reigstered: %d
 %s
 
 Groups: %d
-Chats per group Avg/Median: %s / %s
+CpG: Avg/Median: %.2f / %.2f
 
 Updates: %d
 Success/Fail: %d / %d
@@ -212,8 +207,7 @@ Success/Fail: %d / %d`,
 		textNewChatsGrouped.String(),
 
 		gr.groupsTotal,
-		bot.EscapeMarkdown(strconv.FormatFloat(float64(gr.chatsPerGroupAvg), 'f', 2, 32)),
-		bot.EscapeMarkdown(strconv.FormatFloat(float64(gr.chatsPerGroupMedian), 'f', 2, 32)),
+		gr.chatsPerGroupAvg, gr.chatsPerGroupMedian,
 
 		gr.updatesTotal,
 		gr.updatesSuccess, gr.updatesFail,
@@ -257,17 +251,17 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmod
 	sort.Strings(timeKeys)
 
 	var text strings.Builder
-	fmt.Fprintf(&text, "Pair enabled: %d\nDaily enabled: %d\nUpdate enabled: %d\nTimes:\n```\n",
+	fmt.Fprintf(&text, "Pair enabled: %d\nDaily enabled: %d\nUpdate enabled: %d\nTimes:\n<pre>",
 		pairEnabledCount, dailyEnabledCount, updateEnabledCount)
 	for _, t := range timeKeys {
-		fmt.Fprintf(&text, "\\- %s: %3d\n", t, dailyTimes[t])
+		fmt.Fprintf(&text, "- %s: %3d\n", t, dailyTimes[t])
 	}
-	text.WriteString("```\n")
+	text.WriteString("</pre>")
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text.String(),
-		ParseMode: tgmodels.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeHTML,
 	})
 }
 
@@ -309,24 +303,21 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		log.Error().Err(err).Msg("Failed to get distribution")
 		return
 	}
-	log.Trace().Int("len(distribution)", len(distribution)).Send()
 
-	log.Trace().Msg("Building message text...")
 	var text strings.Builder
-	text.WriteString("```\n")
+	text.WriteString("<pre>")
 	for _, s := range distribution {
 		fmt.Fprintf(&text, "%s: %d\n", s.Name, s.Value)
 	}
-	text.WriteString("\n```")
+	text.WriteString("</pre>")
 
 	log.Trace().Msg("Sending message...")
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		Text:      text.String(),
-		ParseMode: tgmodels.ParseModeMarkdown,
+		ParseMode: tgmodels.ParseModeHTML,
 	})
 	if err != nil {
 		log.Error().Err(err).Send()
 	}
-	log.Trace().Msg("distHandler: Done!")
 }
