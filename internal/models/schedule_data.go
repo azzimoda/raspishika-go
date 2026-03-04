@@ -202,6 +202,7 @@ type Pair struct {
 func (p *Pair) IsEqual(other *Pair) bool { return reflect.DeepEqual(p, other) }
 func (p *Pair) IsBefore(t time.Time) bool {
 	endTime, err := time.Parse("15:04", p.EndTime)
+	endTime = time.Date(t.Year(), t.Month(), t.Day(), endTime.Hour(), endTime.Minute(), 0, 0, t.Location())
 	return err == nil && endTime.Before(t)
 }
 
