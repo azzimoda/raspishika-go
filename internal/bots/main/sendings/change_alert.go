@@ -81,7 +81,13 @@ func (sm *SendingManager) sendChangeAlert(
 
 	text := change.String()
 
-	diffs := change.Diffs()
+	var diffs []models.Diff
+	for _, d := range change.Diffs() {
+		dd := d
+		dd.OldDay = nil
+		dd.NewDay = nil
+		diffs = append(diffs, dd)
+	}
 	diffsJSON, err := json.MarshalIndent(&diffs, "", "  ")
 	diffsJSONStr := string(diffsJSON)
 	if err != nil {
