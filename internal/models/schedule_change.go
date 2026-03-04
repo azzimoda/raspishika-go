@@ -186,7 +186,7 @@ func pairChangeString(old, new *Pair) string {
 		if old.Kind == PairKindEmpty {
 			text += fmt.Sprintf("\n%s", old.String())
 		} else {
-			text := bot.EscapeMarkdown(new.TimeSlotCabinetString())
+			text = bot.EscapeMarkdown(new.TimeSlotCabinetString())
 			if isDiscChanged {
 				text += fmt.Sprintf("\n    ~~%s~~ _%s_",
 					bot.EscapeMarkdown(old.Discipline), bot.EscapeMarkdown(new.Discipline))
