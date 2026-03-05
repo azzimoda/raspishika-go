@@ -149,14 +149,14 @@ func (d *Diff) HTML() (result string) {
 		} else if isDiscChanged || isTeacherChanged {
 			text = "<i>Заменено:</i>"
 		} else if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("<i>Перенесено с %s:</i>\n", d.OldPair.TimeSlotCabinetString())
+			text = fmt.Sprintf("<i>Перенесено с %s:</i>", d.OldPair.TimeSlotCabinetString())
 		} else if isOrderChanged {
-			text = fmt.Sprintf("<i>Перенесено с %s:</i>\n", d.OldPair.TimeSlotString())
+			text = fmt.Sprintf("<i>Перенесено с %s:</i>", d.OldPair.TimeSlotString())
 		} else if isClassroomChanged {
-			text = fmt.Sprintf("<i>Перенесено из кабинета %s:</i>\n", d.OldPair.Classroom)
+			text = fmt.Sprintf("<i>Перенесено из кабинета %s:</i>", d.OldPair.Classroom)
 		}
 
-		result = text + pairChangeHTML(d.OldPair, d.NewPair)
+		result = text + "\n" + pairChangeHTML(d.OldPair, d.NewPair)
 	} else {
 		// TODO: Ensure that this case is unreachable and remove it.
 		result = fmt.Sprintf("Заменено:\n%s", d.NewPair.HTML())
