@@ -13,10 +13,8 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 type AdminBot struct {
@@ -52,15 +50,6 @@ func (b *AdminBot) Start() {
 func (b *AdminBot) Report() reporter.ReportConfig {
 	log.Trace().Msg("Reporting...")
 	return reporter.NewReportConfig(b.bot, viper.GetInt64("telegram.admin_id"))
-}
-
-func (b *AdminBot) ReportNewChat(chat *models.Chat) {
-	if !viper.GetBool("adminbot.new_chat_report") {
-		log.Trace().Msg("New chat report is disabled.")
-		return
-	}
-	b.Report().Chat(chat.TgChatID).
-		Msgf("Registered new chat with group %s.", utils.DerefOrTypeDefault(chat.GroupName))
 }
 
 func New(services *services.Services) (*AdminBot, error) {

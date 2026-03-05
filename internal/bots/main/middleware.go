@@ -202,8 +202,6 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 			logEvent.Msg("Unknown update type")
 		}
 
-		// NOTE: I may want to implement skipping of some kinds of errors here.
-
 		var handlerErr error
 		handlerErrStr := ""
 		if len(handlerErrs) > 0 {

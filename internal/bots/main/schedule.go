@@ -278,7 +278,7 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 	text := ""
 	if time.Now().Weekday() == time.Sunday {
-		text = bot.EscapeMarkdown("Сегодня воскресенье, отдыхайте!")
+		text = "Сегодня воскресенье, отдыхайте!"
 	} else {
 		if chat.GroupName == nil {
 			// Offer to set group.

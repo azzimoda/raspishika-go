@@ -135,12 +135,12 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 
 	// Chat
 	if chatID != 0 {
-		msgText += fmt.Sprintf("<code>/chat %d</code> @%s\n", chatID, bot.EscapeMarkdown(username))
+		msgText += fmt.Sprintf("<code>/chat %d</code> @%s\n", chatID, username)
 	}
 
 	// Error
 	if reportErr != nil {
-		msgText += fmt.Sprintf("Error:\n<pre>%s</pre>\n", bot.EscapeMarkdown(reportErr.Error()))
+		msgText += fmt.Sprintf("Error:\n<pre>%s</pre>\n", reportErr.Error())
 	}
 
 	// Debug objects
