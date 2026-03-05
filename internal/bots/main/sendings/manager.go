@@ -101,19 +101,19 @@ func handleTelegramAPIError(services *services.Services, chat *models.Chat, err 
 			Int("migrate_to_chat_id", migrateErr.MigrateToChatID).
 			Msg("Telegram API error: MigrateError")
 
-		if c, err := models.GetChatByTgChatID(services.Repo.DB, int64(migrateErr.MigrateToChatID)); err == nil {
+		if c, err := models.GetChatByTgChatID(services.Repo.DB, models.ChatID(migrateErr.MigrateToChatID)); err == nil {
 			log.Warn().
-				Int64("tgChatID", chat.TgChatID).
+				Any("tgChatID", chat.TgChatID).
 				Int64("migrateToChatID", int64(migrateErr.MigrateToChatID)).
 				Msg("Chat already exists, deleting old chat...")
-			if err := models.DeleteChat(services.Repo.DB, c.ID); err != nil {
+			if err := c.Delete(services.Repo.DB); err != nil {
 				return fmt.Errorf("failed to delete old chat: %w", err)
 			}
 		} else {
 			if err := models.UpdateChatTgChatID(services.Repo.DB, chat.ID, int64(migrateErr.MigrateToChatID)); err != nil {
 				log.Error().
 					Err(err).
-					Int64("tgChatID", chat.TgChatID).
+					Any("tgChatID", chat.TgChatID).
 					Int("migrateToChatID", migrateErr.MigrateToChatID).
 					Msg("Failed to update chat ID")
 				return fmt.Errorf("failed to update chat ID: %w", err)
@@ -121,7 +121,7 @@ func handleTelegramAPIError(services *services.Services, chat *models.Chat, err 
 		}
 
 		log.Info().
-			Int64("tgChatID", chat.TgChatID).
+			Any("tgChatID", chat.TgChatID).
 			Int("migrateToChatID", migrateErr.MigrateToChatID).
 			Msg("Chat ID migration applied successfully")
 		return nil

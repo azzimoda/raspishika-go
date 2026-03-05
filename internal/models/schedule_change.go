@@ -68,11 +68,11 @@ func (s *ScheduleChange) HTML() string {
 			return diffs[i].Number() < diffs[j].Number()
 		}
 
-		date1, err := time.Parse("02.01.2006", diffs[i].Day().Date)
+		date1, err := time.Parse("02.01.2006", diffs[i].Day().Date.String())
 		if err != nil {
 			log.Panic().Err(err).Msg("Failed to parse date")
 		}
-		date2, err := time.Parse("02.01.2006", diffs[j].Day().Date)
+		date2, err := time.Parse("02.01.2006", diffs[j].Day().Date.String())
 		if err != nil {
 			log.Panic().Err(err).Msg("Failed to parse date")
 		}
@@ -83,10 +83,11 @@ func (s *ScheduleChange) HTML() string {
 	var text strings.Builder
 	fmt.Fprintf(&text, "Изменения в расписании группы %s:", s.New.Config.Group.GroupName)
 
-	currentDate := ""
+	var currentDate Date
 	for _, diff := range diffs {
-		if currentDate != diff.Day().Date {
-			currentDate = diff.Day().Date
+		date := diff.Day().Date
+		if currentDate != date {
+			currentDate = date
 			fmt.Fprintf(&text, "\n\n%s: ", diff.Day().DateHTML())
 		}
 		fmt.Fprintf(&text, "\n\n%s", diff.HTML())

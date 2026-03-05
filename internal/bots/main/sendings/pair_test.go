@@ -33,14 +33,14 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		groupName     string
+		groupName     models.GroupName
 		chats         []*models.Chat
 		wantErrs      bool
 		wantFailedAll bool
 	}{
 		{"send pair sending to 1 group with 1 chat",
 			"ИСПт-22-(9)-2",
-			[]*models.Chat{{TgChatID: viper.GetInt64("telegram.admin_id"), PairSending: true}},
+			[]*models.Chat{{TgChatID: models.ChatID(viper.GetInt64("telegram.admin_id")), PairSending: true}},
 			false,
 			false,
 		},

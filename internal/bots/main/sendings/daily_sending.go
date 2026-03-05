@@ -35,7 +35,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	log.Info().Time("time", t).Int("chatCount", chatsCount).Msg("Processing daily sending...")
 
 	// Group chats by configured group
-	groupedChats := make(map[string][]*models.Chat)
+	groupedChats := make(map[models.GroupName][]*models.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
 			groupedChats[*chat.GroupName] = []*models.Chat{}
@@ -114,7 +114,7 @@ type sendingResult struct {
 // sendDailyNotificationToGroups sends daily notifications to each chat in each group in parallel.
 //
 // Returns a slice of errors and the total number of failed chats.
-func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string][]*models.Chat) ([]error, int) {
+func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[models.GroupName][]*models.Chat) ([]error, int) {
 	var wg sync.WaitGroup
 	results := make(chan sendingResult, 64)
 	workers := viper.GetInt("sending.workers") // TODO: Add this for pair sending.
@@ -161,8 +161,8 @@ func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[string]
 	return errs, errCount
 }
 
-func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*models.Chat) ([]error, bool) {
-	log.Trace().Str("group", groupName).Msg("Preparing schedule for group...")
+func (sm *SendingManager) sendWeekScheduleToGroup(groupName models.GroupName, chats []*models.Chat) ([]error, bool) {
+	log.Trace().Any("group", groupName).Msg("Preparing schedule for group...")
 	ctx := context.Background()
 	var errors []error
 
@@ -189,7 +189,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 			return
 		}
 	})
-	log.Trace().Dur("elapsedFetchGroupSchedule", elapsedFetchGroupSchedule).Str("group", groupName).Send()
+	log.Trace().Dur("elapsedFetchGroupSchedule", elapsedFetchGroupSchedule).Any("group", groupName).Send()
 	if doReturn {
 		return errors, true
 	}
@@ -197,7 +197,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 	var errs []error
 	elapsedSendToGroup := measureTime(func() {
 		// Send schedule to chats
-		log.Trace().Str("group", groupName).Msg("Sending daily notification for group...")
+		log.Trace().Any("group", groupName).Msg("Sending daily notification for group...")
 		var wg sync.WaitGroup
 		results := make(chan error, 64)
 		for _, chat := range chats {
@@ -206,19 +206,19 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 					// NOTE: By default bot send dailt sending to general chat, so the message thread ID is 0.
 					err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, 0, chat, conf, imageFilename, imageData)
 					if err != nil {
-						log.Error().Err(err).Int64("chat_id", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
+						log.Error().Err(err).Any("chat_id", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
 						if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
 							return
 						}
 						results <- err
 					}
 				})
-				log.Trace().Dur("elapsedChat", elapsed).Str("group", groupName).Any("chat", chat).Send()
+				log.Trace().Dur("elapsedChat", elapsed).Any("group", groupName).Any("chat", chat).Send()
 			})
 		}
 
 		go func() {
-			log.Trace().Str("group", groupName).Msg("Waiting for results...")
+			log.Trace().Any("group", groupName).Msg("Waiting for results...")
 			wg.Wait()
 			close(results)
 		}()
@@ -228,9 +228,9 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName string, chats []*mod
 			errs = append(errs, res)
 		}
 	})
-	log.Trace().Dur("elapsendSendToGroup", elapsedSendToGroup).Str("group", groupName).Send()
+	log.Trace().Dur("elapsendSendToGroup", elapsedSendToGroup).Any("group", groupName).Send()
 
-	log.Trace().Str("group", groupName).Msg("Done sending daily notification for group.")
+	log.Trace().Any("group", groupName).Msg("Done sending daily notification for group.")
 	return errs, false
 }
 

@@ -7,17 +7,33 @@ import (
 	"time"
 )
 
+type Date string
+
+func (d Date) String() string { return string(d) }
+
+type Weekday string
+
+func (w Weekday) String() string { return string(w) }
+
+type WeekKind string
+
+func (k WeekKind) String() string { return string(k) }
+
+type TimeRange string
+
+func (r TimeRange) String() string { return string(r) }
+
 type RawScheduleDay struct {
-	Date     string `json:"date"`
-	WeekDay  string `json:"weekday"`
-	WeekKind string `json:"week_kind"`
-	Pair     Pair   `json:"pair"`
+	Date     Date     `json:"date"`
+	WeekDay  Weekday  `json:"weekday"`
+	WeekKind WeekKind `json:"week_kind"`
+	Pair     Pair     `json:"pair"`
 }
 
 type RawScheduleRow struct {
 	Number int `json:"number"`
 	// Like "8:00-9:35".
-	TimeRange string           `json:"time_range"`
+	TimeRange TimeRange        `json:"time_range"`
 	Days      []RawScheduleDay `json:"days"`
 }
 
@@ -36,14 +52,14 @@ func (s *RawSchedule) Transform() ScheduleData {
 		day := ScheduleDay{}
 
 		day.Date = s.Rows[0].Days[di].Date
-		day.WeekDay = s.Rows[0].Days[di].WeekDay
+		day.Weekday = s.Rows[0].Days[di].WeekDay
 		day.WeekKind = s.Rows[0].Days[di].WeekKind
 
 		for ri := 0; ri < len(s.Rows); ri++ {
 			pair := s.Rows[ri].Days[di].Pair
 
 			pair.Number = s.Rows[ri].Number
-			parts := strings.Split(s.Rows[ri].TimeRange, "-")
+			parts := strings.Split(s.Rows[ri].TimeRange.String(), "-")
 			pair.StartTime = strings.TrimSpace(parts[0])
 			pair.EndTime = strings.TrimSpace(parts[1])
 
@@ -59,13 +75,13 @@ func (s *RawSchedule) Transform() ScheduleData {
 
 func (s *RawSchedule) JSON() ([]byte, error) { return json.Marshal(s) }
 
-// HTML returns HTML representation of the schedule.
+// HTML representation of the schedule.
 func (s *RawSchedule) HTML(template string) string {
 	var header string
 	if s.Config.Group != nil {
-		header = "Расписание группы " + s.Config.Group.GroupName + " — " + s.Config.Group.DepartmentName
+		header = fmt.Sprintf("Расписание группы %s — %s", s.Config.Group.GroupName, s.Config.Group.DepartmentName)
 	} else if s.Config.Teacher != nil {
-		header = "Расписание преподавателя — " + s.Config.Teacher.Name
+		header = fmt.Sprintf("Расписание преподавателя — %s", s.Config.Teacher.Name)
 	} else {
 		header = "Расписание"
 	}
@@ -93,7 +109,7 @@ func (s *RawSchedule) generateTableBody(rows []RawScheduleRow) string {
 				<td class="side_column_time">%s</td>
 				%s
 			</tr>`,
-			row.Number, strings.ReplaceAll(row.TimeRange, "-", "<hr>"), s.generateRowPairs(row.Days))
+			row.Number, strings.ReplaceAll(row.TimeRange.String(), "-", "<hr>"), s.generateRowPairs(row.Days))
 	}
 	return tableBody.String()
 }

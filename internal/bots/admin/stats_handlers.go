@@ -113,7 +113,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pair sending logs")
 	}
-	updateSendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogUpdate, duration)
+	updateSendings, _, _, err := models.GetSendingLogsCount(ab.services.Repo.DB, models.SendingLogChange, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update sending logs")
 	}

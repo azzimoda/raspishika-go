@@ -45,10 +45,10 @@ func (s *ScheduleData) Tomorrow(t time.Time) ScheduleDay {
 }
 
 type ScheduleDay struct {
-	Date     string `json:"date"`
-	WeekDay  string `json:"week_day"`
-	WeekKind string `json:"week_kind"`
-	Pairs    []Pair `json:"pairs"`
+	Date     Date     `json:"date"`
+	Weekday  Weekday  `json:"week_day"`
+	WeekKind WeekKind `json:"week_kind"`
+	Pairs    []Pair   `json:"pairs"`
 }
 
 // CommonKind returns the common kind of all pairs in the day.
@@ -71,7 +71,7 @@ func (s *ScheduleDay) IsEqual(other *ScheduleDay) bool { return reflect.DeepEqua
 func (s *ScheduleDay) IsEmpty() bool                   { return s.CommonKind() == PairKindEmpty }
 
 func (s ScheduleDay) Left() ScheduleDay {
-	leftSchedule := ScheduleDay{Date: s.Date, WeekDay: s.WeekDay, WeekKind: s.WeekKind, Pairs: []Pair{}}
+	leftSchedule := ScheduleDay{Date: s.Date, Weekday: s.Weekday, WeekKind: s.WeekKind, Pairs: []Pair{}}
 
 	now := time.Now() // TODO: Add current time as a parameter.
 	p, err := s.CurrentPair(now)
@@ -152,7 +152,7 @@ func (s *ScheduleDay) HTML() string {
 	return text
 }
 
-func (s *ScheduleDay) DateHTML() string { return fmt.Sprintf("📅 %s, %s", s.WeekDay, s.Date) }
+func (s *ScheduleDay) DateHTML() string { return fmt.Sprintf("📅 %s, %s", s.Weekday, s.Date) }
 
 func (s *ScheduleDay) DynamicFormatHTML(t time.Time) string {
 	text := s.DateHTML() + ": "

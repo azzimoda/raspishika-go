@@ -20,7 +20,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 
 	message := update.CallbackQuery.Message.Message
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Arg(0)
+	groupName := models.GroupName(command.Arg(0))
 
 	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
@@ -49,7 +49,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 		ChatID:      message.Chat.ID,
 		MessageID:   message.ID,
 		Media:       &tgmodels.InputMediaPhoto{Media: "attach://image.png", MediaAttachment: bytes.NewReader(imageData)},
-		ReplyMarkup: updateInlineMarkup("group", groupName),
+		ReplyMarkup: updateInlineMarkup("group", groupName.String()),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -96,7 +96,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	log.Trace().Msg("Update tomorrow handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Arg(0)
+	groupName := models.GroupName(command.Arg(0))
 
 	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
@@ -129,7 +129,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        tomorrow.HTML(),
 		ParseMode:   tgmodels.ParseModeHTML,
-		ReplyMarkup: updateInlineMarkup("tomorrow", groupName),
+		ReplyMarkup: updateInlineMarkup("tomorrow", groupName.String()),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {
 		log.Debug().Msg("Message is not modified")
@@ -147,7 +147,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	log.Trace().Msg("Update left handler")
 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
-	groupName := command.Arg(0)
+	groupName := models.GroupName(command.Arg(0))
 
 	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
 	if err != nil {
@@ -186,7 +186,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		Text:        text,
 		ParseMode:   tgmodels.ParseModeHTML,
-		ReplyMarkup: updateInlineMarkup("left", groupName),
+		ReplyMarkup: updateInlineMarkup("left", groupName.String()),
 	})
 	if errors.Is(err, bot.ErrorBadRequest) && strings.Contains(err.Error(), "message is not modified") {
 		log.Debug().Msg("Message is not modified")

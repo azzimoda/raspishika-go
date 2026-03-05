@@ -7,10 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type MigrationName string
+
 type Migration struct {
-	ID        int64     `db:"id"`
-	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
+	ID        int64         `db:"id"`
+	Name      MigrationName `db:"name"`
+	CreatedAt time.Time     `db:"created_at"`
 }
 
 func EnsureMigrationsTable(db *sqlx.DB) error {
@@ -26,7 +28,7 @@ func EnsureMigrationsTable(db *sqlx.DB) error {
 }
 
 // checkMigration checks if a migration exists in the database. If it does not exist, it returns an error.
-func CheckMigration(db *sqlx.DB, name string) error {
+func CheckMigration(db *sqlx.DB, name MigrationName) error {
 	var exists bool
 	if err := db.Get(&exists, "SELECT EXISTS(SELECT 1 FROM migrations WHERE name = ?)", name); err != nil {
 		return fmt.Errorf("failed to check migration %s: %w", name, err)
@@ -37,7 +39,7 @@ func CheckMigration(db *sqlx.DB, name string) error {
 	return fmt.Errorf("migration %s does not exist", name)
 }
 
-func ApplyMigration(db *sqlx.DB, name, sql string) error {
+func ApplyMigration(db *sqlx.DB, name MigrationName, sql string) error {
 	if _, err := db.Exec(sql); err != nil {
 		return fmt.Errorf("failed to apply migration %s: %w", name, err)
 	}

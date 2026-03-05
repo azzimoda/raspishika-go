@@ -61,17 +61,17 @@ func (r *Repository) applyMigrations() error {
 
 	count := 0
 	for _, file := range files {
-		name := file.name
+		name := models.MigrationName(file.name)
 		sql := file.sql
 		if err := models.CheckMigration(r.DB, name); err != nil {
 			if err := models.ApplyMigration(r.DB, name, sql); err != nil {
-				log.Error().Err(err).Str("name", name).Msg("Failed to apply migration")
+				log.Error().Err(err).Any("name", name).Msg("Failed to apply migration")
 				return fmt.Errorf("failed to apply migration %s: %w", name, err)
 			}
-			log.Debug().Str("name", name).Msg("Applied migration")
+			log.Debug().Any("name", name).Msg("Applied migration")
 			count++
 		} else {
-			log.Trace().Str("name", name).Msg("Skipped migration")
+			log.Trace().Any("name", name).Msg("Skipped migration")
 		}
 	}
 	log.Debug().Int("count", count).Msg("Migrations applied")

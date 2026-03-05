@@ -69,7 +69,10 @@ func scrapeTeachers(browser *browser.BrowserService) (teachers []models.Teacher,
 				continue
 			}
 
-			teachers = append(teachers, models.Teacher{TeacherID: opt["value"].(string), Name: opt["text"].(string)})
+			teachers = append(teachers, models.Teacher{
+				TeacherID: models.TeacherID(opt["value"].(string)),
+				Name:      models.TeacherName(opt["text"].(string)),
+			})
 		}
 		return nil
 	})

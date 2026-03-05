@@ -28,10 +28,10 @@ var (
 	ErrParserPanicked = errors.New("parser panicked")
 )
 
-func ScrapeSchedule(url string, config models.ScheduleConfig) (*models.RawSchedule, error) {
+func ScrapeSchedule(url models.URL, config models.ScheduleConfig) (*models.RawSchedule, error) {
 	log.Trace().Msg("Scraping schedule with HTTP")
 
-	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(url, 10)
+	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(url.String(), 10)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -75,10 +75,10 @@ func SaveScheduleHTML(config models.ScheduleConfig, html string) (filename strin
 
 func ScrapeScheduleWithBrowser(
 	browser *browser.BrowserService,
-	url string,
+	url models.URL,
 	config models.ScheduleConfig,
 ) (*models.RawSchedule, error) {
-	log.Trace().Str("URL", url).Any("scheduleConfig", config).Msg("Scraping schedule with browser")
+	log.Trace().Any("URL", url).Any("scheduleConfig", config).Msg("Scraping schedule with browser")
 
 	html, err := fetchSchedulePageWithBrowser(browser, url, config)
 	if err != nil {
@@ -87,7 +87,11 @@ func ScrapeScheduleWithBrowser(
 	return parseSchedule(html, config)
 }
 
-func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, config models.ScheduleConfig) (string, error) {
+func fetchSchedulePageWithBrowser(
+	browser *browser.BrowserService,
+	url models.URL,
+	config models.ScheduleConfig,
+) (string, error) {
 	var lastErr error
 	var html string
 	for range viper.GetInt("browser.max_retries") {
@@ -99,7 +103,7 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, c
 				log.Error().Err(err).Msgf("Failed to set extra HTTP headers; retrying...")
 				return fmt.Errorf("failed to set extra HTTP headers: %w", err)
 			}
-			if _, err = p.Goto(url); err != nil {
+			if _, err = p.Goto(url.String()); err != nil {
 				log.Error().Err(err).Msgf("Failed to goto URL; retrying...")
 				return fmt.Errorf("failed to goto URL: %w", err)
 			}
@@ -120,7 +124,7 @@ func fetchSchedulePageWithBrowser(browser *browser.BrowserService, url string, c
 		if lastErr == nil {
 			break
 		}
-		log.Error().Err(lastErr).Str("url", url).Any("headers", headers).
+		log.Error().Err(lastErr).Any("url", url).Any("headers", headers).
 			Msgf("Failed to fetch schedule page; retrying...")
 		time.Sleep(1 * time.Second)
 	}
@@ -205,7 +209,7 @@ func parseScheduleRow(config *models.ScheduleConfig, headers []map[string]string
 
 	row := models.RawScheduleRow{
 		Number:    number,
-		TimeRange: time_range.First().Text(),
+		TimeRange: models.TimeRange(time_range.First().Text()),
 		Days:      []models.RawScheduleDay{},
 	}
 	rowSelection.Find("td:nth-child(n+3)").Each(func(i int, daySelection *goquery.Selection) {
@@ -221,9 +225,9 @@ func parseScheduleDay(
 	daySelection *goquery.Selection,
 ) models.RawScheduleDay {
 	day := models.RawScheduleDay{
-		Date:     header["date"],
-		WeekDay:  header["weekday"],
-		WeekKind: header["week_kind"],
+		Date:     models.Date(header["date"]),
+		WeekDay:  models.Weekday(header["weekday"]),
+		WeekKind: models.WeekKind(header["week_kind"]),
 		Pair:     models.Pair{},
 	}
 
@@ -323,16 +327,16 @@ func detectPairKind(daySelection *goquery.Selection) models.PairKind {
 // Parameter departmentIDs is used for teacher schedule page only and may be empty or nil for group.
 //
 // Returns empty string if config is invalid.
-func ScheduleURL(config models.ScheduleConfig, departmentIDs []string) string {
+func ScheduleURL(config models.ScheduleConfig, departmentIDs []models.DepartmentID) models.URL {
 	switch {
 	case config.Group != nil:
 		zFlag := "" // Заочное обучение?
-		if strings.Contains(strings.ToLower(config.Group.DepartmentName), "заоч") {
+		if strings.Contains(strings.ToLower(config.Group.DepartmentName.String()), "заоч") {
 			zFlag = "z"
 		}
-		return fmt.Sprintf(
+		return models.URL(fmt.Sprintf(
 			"https://coworking.tyuiu.ru/shs/all_t/sh%s.php?action=group&union=0&sid=%s&gr=%s&year=%d&vr=1",
-			zFlag, config.Group.DepartmentID, config.Group.GroupID, config.Group.Year)
+			zFlag, config.Group.DepartmentID, config.Group.GroupID, config.Group.Year))
 	case config.Teacher != nil:
 		var departmentArgs strings.Builder
 		for i, id := range departmentIDs {
@@ -345,9 +349,9 @@ func ScheduleURL(config models.ScheduleConfig, departmentIDs []string) string {
 				// because the year in their DB changes at the end of the first semester.
 			)
 		}
-		return fmt.Sprintf(
+		return models.URL(fmt.Sprintf(
 			"https://coworking.tyuiu.ru/shs/all_t/sh.php?action=prep&prep=%s&vr=1&count=%d%s",
-			config.Teacher.TeacherID, len(departmentIDs), departmentArgs.String())
+			config.Teacher.TeacherID, len(departmentIDs), departmentArgs.String()))
 	default:
 		// Error: invalid config
 		return ""

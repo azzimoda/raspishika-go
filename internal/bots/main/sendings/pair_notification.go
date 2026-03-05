@@ -35,7 +35,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	}
 	log.Debug().Msgf("Processing pair sending for time %s to %d chats", timeStr, len(chats))
 
-	groupedChats := make(map[string][]*models.Chat)
+	groupedChats := make(map[models.GroupName][]*models.Chat)
 	for _, chat := range chats {
 		if groupedChats[*chat.GroupName] == nil {
 			groupedChats[*chat.GroupName] = []*models.Chat{}
@@ -77,7 +77,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 }
 
 func (sm *SendingManager) sendPairNotificationToGroup(
-	groupName string,
+	groupName models.GroupName,
 	pairTime time.Time,
 	chats []*models.Chat,
 ) ([]error, bool) {
@@ -85,14 +85,14 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 
 	group, err := sm.bot.FetchGroupByNameWithValidation(groupName)
 	if errors.Is(err, mainbot.ErrGroupNotFound) || errors.Is(err, mainbot.ErrWrongGroupNameFormat) {
-		log.Error().Err(err).Str("groupName", groupName).Msg("Failed to get group by name")
+		log.Error().Err(err).Any("groupName", groupName).Msg("Failed to get group by name")
 
 		// Clear users' configured group.
 		for _, chat := range chats {
 			chat.GroupName = nil
 			chat.DepartmentName = nil
 			if err := chat.Update(sm.services.Repo.DB); err != nil {
-				log.Error().Err(err).Int64("tgChatID", chat.TgChatID).Msg("Failed to update chat")
+				log.Error().Err(err).Any("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
 				bothelpers.SendTempMessage(context.Background(), sm.bot.Bot, 5*time.Minute, &bot.SendMessageParams{
 					ChatID: chat.TgChatID,
@@ -144,7 +144,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 			errs = append(errs, err)
 		} else {
 			messagesToDelete = append(messagesToDelete, msg)
-			log.Trace().Int64("chatID", chat.TgChatID).Msg("Pair notification sent")
+			log.Trace().Any("chatID", chat.TgChatID).Msg("Pair notification sent")
 		}
 	}
 

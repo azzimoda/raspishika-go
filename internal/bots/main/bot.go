@@ -17,7 +17,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func New(
@@ -89,14 +88,13 @@ func (mb *MainBot) Report() reporter.ReportConfig {
 
 // FetchGroupByNameWithValidation tries to validate given group name and fetch group from the database.
 //
-// When the group name format cannot be validated, it returns ErrWrongGroupNameFormat.
 // When given group name is not found in database, it fetches group from the website and
 // updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
 // When any other error occurs, it returns the error.
-func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*models.Group, error) {
-	groupName, err := utils.ValidateGroupNameFormat(name)
+func (mb *MainBot) FetchGroupByNameWithValidation(name models.GroupName) (*models.Group, error) {
+	groupName, err := models.ValidateGroupName(mb.services.Repo.DB, name)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrWrongGroupNameFormat, err)
+		return nil, err
 	}
 
 	if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
@@ -111,8 +109,7 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name string) (*models.Group, e
 			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
 		}
 	} else {
-		log.Trace().Str("given", name).Str("groupName", groupName).
-			Bool("give == validated", name == groupName).
+		log.Trace().Any("given", name).Any("groupName", groupName).Bool("give == validated", name == groupName).
 			Msg("Group name case is validated")
 	}
 

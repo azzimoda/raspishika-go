@@ -38,8 +38,8 @@ func defaultContext() context.Context {
 	ctx = context.WithValue(ctx, logKey, false)
 	ctx = context.WithValue(ctx, tempKey, false)
 	ctx = context.WithValue(ctx, errKey, nil)
-	ctx = context.WithValue(ctx, chatIDKey, int64(0))
-	ctx = context.WithValue(ctx, usernameKey, "")
+	ctx = context.WithValue(ctx, chatIDKey, models.ChatID(0))
+	ctx = context.WithValue(ctx, usernameKey, models.UserName(""))
 	ctx = context.WithValue(ctx, debugKey, make(map[string]any))
 
 	return ctx
@@ -104,8 +104,8 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 	if !ok {
 		reportErr = nil
 	}
-	chatID := rc.Value(chatIDKey).(int64)
-	username := rc.Value(usernameKey).(string)
+	chatID := rc.Value(chatIDKey).(models.ChatID)
+	username := rc.Value(usernameKey).(models.UserName)
 	debugObjects := rc.Value(debugKey).(map[string]any)
 
 	// NOTE: Log the report when it is temporary to not lose information.
@@ -119,7 +119,7 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 		for key, value := range debugObjects {
 			logEvent.Any(key, value)
 		}
-		logEvent.Str("report_caller", caller).Int64("chat_id", chatID).Str("username", username).
+		logEvent.Str("report_caller", caller).Any("chat_id", chatID).Any("username", username).
 			Msgf("Report: %s", text)
 	}
 

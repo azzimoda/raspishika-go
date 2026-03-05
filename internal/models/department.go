@@ -7,17 +7,25 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type DepartmentName string
+
+func (n DepartmentName) String() string { return string(n) }
+
+type URL string
+
+func (u URL) String() string { return string(u) }
+
 func GetDepartments(db *sqlx.DB) (departments []Department, err error) {
 	err = db.Select(&departments, `SELECT id, name, url, created_at, updated_at FROM departments`)
 	return departments, err
 }
 
 type Department struct {
-	ID        int       `db:"id"`
-	Name      string    `db:"name"`
-	URL       string    `db:"url"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	ID        int            `db:"id"`
+	Name      DepartmentName `db:"name"`
+	URL       URL            `db:"url"`
+	CreatedAt time.Time      `db:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at"`
 }
 
 func (d *Department) IsActual(ttl time.Duration) bool { return d.UpdatedAt.Add(ttl).After(time.Now()) }

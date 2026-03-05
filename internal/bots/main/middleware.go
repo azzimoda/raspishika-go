@@ -49,14 +49,14 @@ func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 }
 
 func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*models.Chat, error) {
-	var chatID int64
-	var username string
+	var chatID models.ChatID
+	var username models.UserName
 	if update.Message != nil {
-		chatID = update.Message.Chat.ID
-		username = update.Message.Chat.Username
+		chatID = models.ChatID(update.Message.Chat.ID)
+		username = models.UserName(update.Message.Chat.Username)
 	} else if update.CallbackQuery != nil {
-		chatID = update.CallbackQuery.Message.Message.Chat.ID
-		username = update.CallbackQuery.Message.Message.Chat.Username
+		chatID = models.ChatID(update.CallbackQuery.Message.Message.Chat.ID)
+		username = models.UserName(update.CallbackQuery.Message.Message.Chat.Username)
 	} else {
 		return nil, ErrUnknownUpdateType
 	}
@@ -76,7 +76,7 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*models.Chat
 
 // sendNewChatReport sends a report to the admin chat when a new user chat is registered.
 // It also sends a message to the admin chat if the user chat has a group configured.
-func (mb *MainBot) sendNewChatReport(chat *models.Chat, err error, tgChatID int64, b *bot.Bot) {
+func (mb *MainBot) sendNewChatReport(chat *models.Chat, err error, tgChatID models.ChatID, b *bot.Bot) {
 	report, sentErr := mb.services.Reporter.Report().Chat(chat).Msg("New chat registered")
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to send report")

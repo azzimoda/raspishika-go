@@ -29,7 +29,7 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 
 	ab.bot.RegisterHandlerMatchFunc(func(update *tgmodels.Update) bool {
-		_, err := models.ValidateGroupName(ab.services.Repo.DB, update.Message.Text)
+		_, err := models.ValidateGroupName(ab.services.Repo.DB, models.GroupName(update.Message.Text))
 		return err == nil
 	}, ab.groupHandler)
 	// TODO: Handle username and chat_id.
@@ -72,7 +72,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 		chat = &chats[len(chats)-1]
 	} else {
-		chat, err = models.GetChatByTgChatID(ab.services.Repo.DB, tgChatID)
+		chat, err = models.GetChatByTgChatID(ab.services.Repo.DB, models.ChatID(tgChatID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chat by chat ID")
 			return
@@ -108,7 +108,7 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 	}
 	recentTeacherNames := make([]string, len(recentTeachers))
 	for i, t := range recentTeachers {
-		recentTeacherNames[i] = t.Name
+		recentTeacherNames[i] = t.Name.String()
 	}
 	recentTeachersStr := strings.Join(recentTeacherNames, ", ")
 
@@ -150,12 +150,13 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 }
 
 func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	group := update.Message.Text // For default handler
+	group := models.GroupName(update.Message.Text) // For default handler
 	if strings.HasPrefix(update.Message.Text, "/") {
-		_, group = bothelpers.ParseCommand(update.Message.Text) // For /group command
+		_, arg := bothelpers.ParseCommand(update.Message.Text) // For /group command
+		group = models.GroupName(arg)
 	}
 
-	group, err := models.ValidateGroupName(ab.services.Repo.DB, update.Message.Text)
+	group, err := models.ValidateGroupName(ab.services.Repo.DB, models.GroupName(update.Message.Text))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return

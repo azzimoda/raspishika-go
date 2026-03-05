@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// UpdateLog represents a log entry for a Telegram API update.
 type UpdateLog struct {
 	ID           int       `db:"id"`
 	ChatID       int       `db:"chat_id"` // Chat.ID

@@ -3,16 +3,16 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
-func TestValidateGroupName(t *testing.T) {
+func TestGroupName_ValidateFormat(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		s       string
-		want    string
-		wantErr bool
+		groupName models.GroupName
+		want      models.GroupName
+		wantErr   bool
 	}{
 		{"valid group name must be validated", "ИСПт-22-(9)-2", "ИСПт-22-(9)-2", false},
 		{"name without parens be validated", "ИСПт-22-9-2", "ИСПт-22-(9)-2", false},
@@ -29,7 +29,7 @@ func TestValidateGroupName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotErr := utils.ValidateGroupNameFormat(tt.s)
+			got, gotErr := tt.groupName.ValidateFormat()
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("ValidateGroupName() failed: %v", gotErr)

@@ -26,7 +26,7 @@ const (
 	SendingLogAny    SendingLogKind = ""
 	SendingLogDaily  SendingLogKind = "daily"
 	SendingLogPair   SendingLogKind = "pair"
-	SendingLogUpdate SendingLogKind = "update"
+	SendingLogChange SendingLogKind = "update"
 )
 
 func InsertSendingLog(db *sqlx.DB, log SendingLog) error {
@@ -68,7 +68,7 @@ func GetSendingLogsCount(
 	switch kind {
 	case SendingLogAny:
 		break
-	case SendingLogDaily, SendingLogPair, SendingLogUpdate:
+	case SendingLogDaily, SendingLogPair, SendingLogChange:
 		query += fmt.Sprintf(` AND kind = '%s'`, kind)
 	}
 	var data struct {

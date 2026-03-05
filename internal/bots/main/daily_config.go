@@ -62,7 +62,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily off handler")
 
-	chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, update.Message.Chat.ID)
+	chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, models.ChatID(update.Message.Chat.ID))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{

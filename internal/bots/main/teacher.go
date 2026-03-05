@@ -64,13 +64,13 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 
 	names := make([]string, len(teachers))
 	for i, t := range teachers {
-		names[i] = t.Name
+		names[i] = t.Name.String()
 	}
 	matchedNames := utils.MatchStrings(names, update.Message.Text, 5)
 	matchedTeachers := make([]models.Teacher, len(matchedNames))
 	for i, name := range matchedNames {
 		for _, t := range teachers {
-			if t.Name == name {
+			if t.Name.String() == name {
 				matchedTeachers[i] = t
 				break
 			}
@@ -101,8 +101,8 @@ func teachersInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMark
 	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for _, teacher := range teachers {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
-			Text:         teacher.Name,
-			CallbackData: CallbackCommandSelectTeacher + "\n" + teacher.TeacherID,
+			Text:         teacher.Name.String(),
+			CallbackData: fmt.Sprintf("%s\n%s", CallbackCommandSelectTeacher, teacher.TeacherID),
 		}})
 	}
 	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
@@ -115,8 +115,8 @@ func teacherInlineMarkup(teachers []models.Teacher) tgmodels.InlineKeyboardMarku
 	keyboard := make([][]tgmodels.InlineKeyboardButton, 0)
 	for _, teacher := range teachers {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{
-			Text:         teacher.Name,
-			CallbackData: CallbackCommandSelectTeacher + "\n" + teacher.TeacherID,
+			Text:         teacher.Name.String(),
+			CallbackData: fmt.Sprintf("%s\n%s", CallbackCommandSelectTeacher, teacher.TeacherID),
 		}})
 	}
 	keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{{Text: "Отмена", CallbackData: CallbackCommandDelete}})

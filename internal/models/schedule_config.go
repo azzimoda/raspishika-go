@@ -1,12 +1,9 @@
 package models
 
-func GroupScheduleConfig(group *Group) ScheduleConfig {
-	return ScheduleConfig{Group: group}
-}
+import "fmt"
 
-func TeacherScheduleConfig(teacher *Teacher) ScheduleConfig {
-	return ScheduleConfig{Teacher: teacher}
-}
+func GroupScheduleConfig(group *Group) ScheduleConfig       { return ScheduleConfig{Group: group} }
+func TeacherScheduleConfig(teacher *Teacher) ScheduleConfig { return ScheduleConfig{Teacher: teacher} }
 
 type ScheduleConfig struct {
 	Group   *Group   `json:"group"`
@@ -16,9 +13,9 @@ type ScheduleConfig struct {
 func (sc *ScheduleConfig) FormatHTML() string {
 	switch {
 	case sc.Group != nil:
-		return "Расписание группы — <i>" + sc.Group.GroupName + "</i>"
+		return fmt.Sprintf("Расписание группы — <i>%s</i>", sc.Group.GroupName)
 	case sc.Teacher != nil:
-		return "Расписание преподавателя — <i>" + sc.Teacher.Name + "</i>"
+		return fmt.Sprintf("Расписание преподавателя — <i>%s</i>", sc.Teacher.Name)
 	default:
 		return "?"
 	}

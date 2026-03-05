@@ -30,16 +30,16 @@ func (a *App) Notify(s string) {
 				err := sendNotification(a.mainBot.Bot, &chat, s)
 				if err != nil {
 					log.Error().Err(err).
-						Int64("tgChatID", chat.TgChatID).
-						Str("username", utils.DerefOrTypeDefault(chat.UserName)).
+						Any("tgChatID", chat.TgChatID).
+						Any("username", utils.DerefOrTypeDefault(chat.UserName)).
 						Msg("Failed to send notification")
 					results <- 0
 					return
 				}
 
 				log.Debug().
-					Int64("tgChatID", chat.TgChatID).
-					Str("username", utils.DerefOrTypeDefault(chat.UserName)).
+					Any("tgChatID", chat.TgChatID).
+					Any("username", utils.DerefOrTypeDefault(chat.UserName)).
 					Msg("Notification sent")
 				results <- 1
 			})

@@ -55,7 +55,7 @@ func FetchDepartments(repo *repository.Repository) ([]models.Department, error) 
 		}
 
 		url := BaseDepartmentPageURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&")
-		department := models.Department{Name: name, URL: url}
+		department := models.Department{Name: models.DepartmentName(name), URL: models.URL(url)}
 		departments = append(departments, department)
 		if err := department.InsertOrUpdate(repo.DB); err != nil {
 			log.Error().Err(err).Msg("Failed to update department cache in DB")
@@ -65,12 +65,11 @@ func FetchDepartments(repo *repository.Repository) ([]models.Department, error) 
 	return departments, nil
 }
 
-func FetchDepartmentIDs(repo *repository.Repository, browser *browser.BrowserService) ([]string, error) {
+func FetchDepartmentIDs(repo *repository.Repository, browser *browser.BrowserService) ([]models.DepartmentID, error) {
 	log.Trace().Msg("Fetching departments...")
 	if _, err := FetchGroups(repo, browser); err != nil {
 		return nil, err
 	}
-
 	return models.GetDepartmentIDs(repo.DB)
 }
 
@@ -107,7 +106,7 @@ func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) (
 func FetchDepartmentGroups(
 	repo *repository.Repository,
 	browser *browser.BrowserService,
-	departmentName string,
+	name models.DepartmentName,
 ) ([]models.Group, error) {
 	groups, err := FetchGroups(repo, browser)
 	if err != nil {
@@ -116,7 +115,7 @@ func FetchDepartmentGroups(
 
 	departmentGroups := make([]models.Group, 0)
 	for _, group := range groups {
-		if group.DepartmentName == departmentName {
+		if group.DepartmentName == name {
 			departmentGroups = append(departmentGroups, group)
 		}
 	}
@@ -150,7 +149,7 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department *models.
 	err := browser.WithPage(func(p playwright.Page) error {
 		log.Trace().Msg("Navigating to department page")
 
-		if _, err := p.Goto(department.URL); err != nil {
+		if _, err := p.Goto(department.URL.String()); err != nil {
 			return fmt.Errorf("failed to navigate to department page: %w", err)
 		}
 
@@ -185,10 +184,10 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department *models.
 			}
 
 			groups = append(groups, models.Group{
-				GroupID:        opt["value"].(string),
-				DepartmentID:   opt["sid"].(string),
-				GroupName:      opt["text"].(string),
-				Year:           int(year),
+				GroupID:        models.GroupID(opt["value"].(string)),
+				DepartmentID:   models.DepartmentID(opt["sid"].(string)),
+				GroupName:      models.GroupName(opt["text"].(string)),
+				Year:           models.Year(year),
 				DepartmentName: department.Name,
 			})
 		}

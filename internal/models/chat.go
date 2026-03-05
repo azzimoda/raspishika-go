@@ -7,11 +7,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/pkg/utils"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
-
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
+
+type ChatID int64
+
+func (i ChatID) Int64() int64 { return int64(i) }
+
+func (i ChatID) IsPrivate() bool { return i > 0 }
+
+type UserName string
+
+func (n UserName) String() string { return string(n) }
 
 type ChatState string
 
@@ -37,11 +46,11 @@ const (
 
 type Chat struct {
 	ID               int             `db:"id"`
-	TgChatID         int64           `db:"tg_chat_id"`
-	UserName         *string         `db:"username"`
+	TgChatID         ChatID          `db:"tg_chat_id"`
+	UserName         *UserName       `db:"username"`
 	State            ChatState       `db:"state"`
-	DepartmentName   *string         `db:"department"`
-	GroupName        *string         `db:"group"`
+	DepartmentName   *DepartmentName `db:"department"`
+	GroupName        *GroupName      `db:"group"`
 	DailySendingTime *string         `db:"daily_sending_time"`
 	PairSending      bool            `db:"pair_sending"`
 	ChangeAlert      bool            `db:"update_notification"`
@@ -50,9 +59,7 @@ type Chat struct {
 	UpdatedAt        time.Time       `db:"updated_at"`
 }
 
-func (c *Chat) IsPrivate() bool {
-	return c.TgChatID > 0
-}
+func (c *Chat) IsPrivate() bool { return c.TgChatID.IsPrivate() }
 
 func (c *Chat) Update(db *sqlx.DB) error {
 	_, err := db.NamedExec(
@@ -69,6 +76,16 @@ func (c *Chat) Update(db *sqlx.DB) error {
 		WHERE id = :id`,
 		c,
 	)
+	return err
+}
+
+func (c *Chat) Delete(db *sqlx.DB) error {
+	_, err := db.Exec(`DELETE FROM chats WHERE id = ?`, c.ID)
+	if err == nil {
+		log.Debug().Int("Chat.ID", c.ID).Msg("Chat deleted")
+	} else {
+		log.Error().Err(err).Int("Chat.ID", c.ID).Msg("Failed to delete chat")
+	}
 	return err
 }
 
@@ -97,7 +114,7 @@ func InsertChats(db *sqlx.DB, chats []Chat) error {
 	return tx.Commit()
 }
 
-func CreateChat(db *sqlx.DB, tgChatID int64, username string) (int64, error) {
+func CreateChat(db *sqlx.DB, tgChatID ChatID, username UserName) (int64, error) {
 	res, err := db.Exec(
 		`INSERT INTO chats (tg_chat_id, username)
 		VALUES (?,?)`,
@@ -111,13 +128,13 @@ func CreateChat(db *sqlx.DB, tgChatID int64, username string) (int64, error) {
 // CreateOrUpdateChat creates or updates chat in the database.
 // If chat does not exist, it creates a new one and returns true as second return value.
 // If chat exists, it updates its username and returns false as second return value.
-func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bool, error) {
+func CreateOrUpdateChat(db *sqlx.DB, tgChatID ChatID, username UserName) (*Chat, bool, error) {
 	var chat Chat
 	err := db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID)
 
 	if err == sql.ErrNoRows {
 		// Create new chat.
-		log.Debug().Int64("tgChatID", tgChatID).Msg("Chat does not exist, creating new one...")
+		log.Debug().Any("tgChatID", tgChatID).Msg("Chat does not exist, creating new one...")
 		id, err := CreateChat(db, tgChatID, username)
 		if err != nil {
 			return nil, true, fmt.Errorf("failed to create chat (%d, %s): %w", tgChatID, username, err)
@@ -128,7 +145,7 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 	}
 
 	if err != nil {
-		log.Error().Err(err).Int64("tgChatID", tgChatID).Msg("Failed to get chat")
+		log.Error().Err(err).Any("tgChatID", tgChatID).Msg("Failed to get chat")
 		return nil, false, fmt.Errorf("failed to get chat by Telegram chat ID (%d): %w", tgChatID, err)
 	}
 
@@ -145,11 +162,11 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID int64, username string) (*Chat, bo
 	}
 
 	// Return existing chat
-	log.Trace().Int64("tgChatID", tgChatID).Msg("Chat already exists")
+	log.Trace().Any("tgChatID", tgChatID).Msg("Chat already exists")
 	return &chat, false, nil
 }
 
-func UpdateChatState(db *sqlx.DB, tgChatID int64, state ChatState) error {
+func UpdateChatState(db *sqlx.DB, tgChatID ChatID, state ChatState) error {
 	_, err := db.Exec(`UPDATE chats SET state = ?, updated_at = ? WHERE tg_chat_id = ?`, state, time.Now(), tgChatID)
 	return err
 }
@@ -349,7 +366,7 @@ func GetChat(db *sqlx.DB, id int64) (*Chat, error) {
 	return &chat, nil
 }
 
-func GetChatByTgChatID(db *sqlx.DB, tgChatID int64) (*Chat, error) {
+func GetChatByTgChatID(db *sqlx.DB, tgChatID ChatID) (*Chat, error) {
 	var chat Chat
 	if err := db.Get(&chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID); err != nil {
 		return nil, err
@@ -357,9 +374,9 @@ func GetChatByTgChatID(db *sqlx.DB, tgChatID int64) (*Chat, error) {
 	return &chat, nil
 }
 
-func GetChatByUserName(db *sqlx.DB, username string) (*Chat, error) {
+func GetChatByUserName(db *sqlx.DB, username UserName) (*Chat, error) {
 	var chat Chat
-	if err := db.Get(&chat, `SELECT * FROM chats WHERE LOWER(username) = ?`, strings.ToLower(username)); err != nil {
+	if err := db.Get(&chat, `SELECT * FROM chats WHERE LOWER(username) = ?`, strings.ToLower(username.String())); err != nil {
 		return nil, err
 	}
 	return &chat, nil
@@ -373,7 +390,7 @@ func GetChats(db *sqlx.DB) ([]Chat, error) {
 	return chats, nil
 }
 
-func GetChatsByGroup(db *sqlx.DB, group string) ([]Chat, error) {
+func GetChatsByGroup(db *sqlx.DB, group GroupName) ([]Chat, error) {
 	var chats []Chat
 	if err := db.Select(&chats, `SELECT * FROM chats WHERE "group" = ?`, group); err != nil {
 		return nil, err
@@ -381,7 +398,7 @@ func GetChatsByGroup(db *sqlx.DB, group string) ([]Chat, error) {
 	return chats, nil
 }
 
-func GetChatCountByGroup(db *sqlx.DB, group string) (int, error) {
+func GetChatCountByGroup(db *sqlx.DB, group GroupName) (int, error) {
 	var count int
 	if err := db.Get(&count, `SELECT COUNT(*) FROM chats WHERE "group" = ?`, group); err != nil {
 		return 0, err
@@ -389,11 +406,11 @@ func GetChatCountByGroup(db *sqlx.DB, group string) (int, error) {
 	return count, nil
 }
 
-func GetChatsByDailySendingTime(db *sqlx.DB, timeStr string) ([]Chat, error) {
-	log.Trace().Str("timeStr", timeStr).Msg("Getting chats by daily sending time")
+func GetChatsByDailySendingTime(db *sqlx.DB, time string) ([]Chat, error) {
+	log.Trace().Str("timeStr", time).Msg("Getting chats by daily sending time")
 	var chats []Chat
 	if err := db.Select(
-		&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND daily_sending_time = ?`, timeStr,
+		&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND daily_sending_time = ?`, time,
 	); err != nil {
 		return nil, err
 	}
@@ -404,16 +421,6 @@ func GetChatsWithPairSendingEnabled(db *sqlx.DB) (chats []Chat, err error) {
 	err = db.Select(&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND pair_sending = 1`)
 	log.Trace().Int("count", len(chats)).Any("chats", chats).Msg("Chats with pair sending enabled")
 	return
-}
-
-func DeleteChat(db *sqlx.DB, id int) error {
-	_, err := db.Exec(`DELETE FROM chats WHERE id = ?`, id)
-	if err == nil {
-		log.Debug().Int("Chat.ID", id).Msg("Chat deleted")
-	} else {
-		log.Error().Err(err).Int("Chat.ID", id).Msg("Failed to delete chat")
-	}
-	return err
 }
 
 // DeleteAllChats deletes all chats from the database.

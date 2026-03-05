@@ -36,7 +36,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 
 	if chat.GroupName == nil {
 		// Offer to set group
-		log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
+		log.Warn().Any("chat_id", chat.TgChatID).Msg("Group name is not set")
 		mb.groupHandler(ctx, b, update)
 		return
 	}
@@ -145,7 +145,7 @@ func (mb *MainBot) SendSchedulePhoto(
 	imageData []byte,
 	replyMarkup tgmodels.ReplyMarkup,
 ) error {
-	log.Trace().Int64("tgChatID", chat.TgChatID).Str("filename", imageFilename).Msg("Sending schedule photo...")
+	log.Trace().Any("tgChatID", chat.TgChatID).Str("filename", imageFilename).Msg("Sending schedule photo...")
 	_, err := b.SendPhoto(ctx, &bot.SendPhotoParams{
 		ChatID:          chat.TgChatID,
 		MessageThreadID: messageThreadID,
@@ -166,9 +166,9 @@ func (mb *MainBot) SendSchedulePhoto(
 func WeekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
 	var button tgmodels.InlineKeyboardButton
 	if config.Group != nil {
-		button = updateInlineButton("group", config.Group.GroupName)
+		button = updateInlineButton("group", string(config.Group.GroupName))
 	} else if config.Teacher != nil {
-		button = updateInlineButton("teacher", config.Teacher.TeacherID)
+		button = updateInlineButton("teacher", config.Teacher.TeacherID.String())
 	} else {
 		return nil
 	}
@@ -218,7 +218,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 
 	if chat.GroupName == nil {
 		// Offer to set group.
-		log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
+		log.Warn().Any("chat_id", chat.TgChatID).Msg("Group name is not set")
 		mb.groupHandler(ctx, b, update)
 		return
 	}
@@ -255,7 +255,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
 		ParseMode:       tgmodels.ParseModeHTML,
-		ReplyMarkup:     updateInlineMarkup("tomorrow", *chat.GroupName),
+		ReplyMarkup:     updateInlineMarkup("tomorrow", chat.GroupName.String()),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -281,8 +281,8 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		text = "Сегодня воскресенье, отдыхайте!"
 	} else {
 		if chat.GroupName == nil {
-			// Offer to set group.
-			log.Warn().Int64("chat_id", chat.TgChatID).Msg("Group name is not set")
+			// Offer to set group
+			log.Warn().Any("chat_id", chat.TgChatID).Msg("Group name is not set")
 			mb.groupHandler(ctx, b, update)
 			return
 		}
@@ -318,7 +318,7 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,
 		ParseMode:       tgmodels.ParseModeHTML,
-		ReplyMarkup:     updateInlineMarkup("left", *chat.GroupName),
+		ReplyMarkup:     updateInlineMarkup("left", chat.GroupName.String()),
 	})
 	addContextHandlerError(ctx, err)
 }
@@ -343,7 +343,7 @@ func (mb *MainBot) tryGetGroup(
 	switch {
 	case errors.Is(err, ErrWrongGroupNameFormat):
 		// Should be impossible, since group name is validated before setting it to chat.
-		log.Warn().Int64("chat_id", chat.TgChatID).Str("group_name", *chat.GroupName).
+		log.Warn().Any("chat_id", chat.TgChatID).Any("group_name", *chat.GroupName).
 			Msg("Wrong group name format, offer to set group again")
 
 		chat.DepartmentName = nil

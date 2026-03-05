@@ -88,7 +88,7 @@ func departmentSelectionMarkup(departments []models.Department) tgmodels.InlineK
 	for i := 0; i < len(departments); i += 2 {
 		row := make([]tgmodels.InlineKeyboardButton, 0)
 		for j := i; j < len(departments) && j < i+2; j++ {
-			row = append(row, tgmodels.InlineKeyboardButton{Text: departments[j].Name,
+			row = append(row, tgmodels.InlineKeyboardButton{Text: departments[j].Name.String(),
 				CallbackData: fmt.Sprintf("%s\n%s", CallbackCommandSelectDepartment, departments[j].Name)})
 		}
 		keyboard = append(keyboard, row)
@@ -109,7 +109,8 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	groups, err := scraper.FetchDepartmentGroups(mb.services.Repo, mb.services.Browser, callbackCommand.Arg(0))
+	groups, err := scraper.FetchDepartmentGroups(mb.services.Repo, mb.services.Browser,
+		models.DepartmentName(callbackCommand.Arg(0)))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -157,7 +158,7 @@ func groupsReplyMarkup(groups []models.Group) tgmodels.ReplyKeyboardMarkup {
 	for i := 0; i < len(groups); i += 2 {
 		row := make([]tgmodels.KeyboardButton, 0)
 		for j := i; j < len(groups) && j < i+2; j++ {
-			row = append(row, tgmodels.KeyboardButton{Text: groups[j].GroupName})
+			row = append(row, tgmodels.KeyboardButton{Text: groups[j].GroupName.String()})
 		}
 		keyboard = append(keyboard, row)
 	}
@@ -172,7 +173,7 @@ func groupsReplyMarkup(groups []models.Group) tgmodels.ReplyKeyboardMarkup {
 func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text group handler")
 
-	group, err := mb.FetchGroupByNameWithValidation(update.Message.Text)
+	group, err := mb.FetchGroupByNameWithValidation(models.GroupName(update.Message.Text))
 	if errors.Is(err, ErrWrongGroupNameFormat) {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

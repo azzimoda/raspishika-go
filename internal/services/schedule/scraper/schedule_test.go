@@ -46,7 +46,7 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 	tests := []struct {
 		name string // description of this test case
 		// Named input parameters for target function.
-		url     string
+		url     models.URL
 		config  models.ScheduleConfig
 		want    *models.RawSchedule
 		wantErr bool

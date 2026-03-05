@@ -34,7 +34,7 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 			log.Info().Msg("Change alert notifier stopped")
 			return
 		case change := <-changes:
-			log.Debug().Str("groupName", change.Old.Config.Group.GroupName).Msg("Received schedule change")
+			log.Debug().Any("groupName", change.Old.Config.Group.GroupName).Msg("Received schedule change")
 			var err error
 			elapsed := measureTime(func() {
 				err = sm.SendChangeAlertForGroup(ctx, change)
@@ -146,7 +146,7 @@ func (sm *SendingManager) RunSchedulepdateMonitor(ctx context.Context, changes c
 			Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
 		if len(groups) > 0 && changesDetected > 0 {
 			if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
-				Kind:    models.SendingLogUpdate,
+				Kind:    models.SendingLogChange,
 				Chats:   chatsAffected,
 				Groups:  changesDetected,
 				Elapsed: int(elapsed.Milliseconds()),
