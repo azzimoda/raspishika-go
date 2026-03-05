@@ -1,23 +1,25 @@
 ---
 mainbot_commands:
   - week: Расписание на неделю
+  - today: Расписание на сегодня
   - tomorrow: Расписание на завтра
-  - left: Оставшиеся пары
   - teacher: Расписание преподавателя
 
   - settings: Меню настроек
   - group: Изменить группу
-  - daily_time: Задать время рассылки
-  - daily_off: Выключить рассылку
-  - reminder_on: Включить напоминания перед парами
-  - reminder_off: Выключить напоминания перед парами
+  - time: Задать время рассылки
+  - daily_off: Выкл. рассылку
+  - reminder_on: Вкл. напоминания перед парами
+  - reminder_off: Выкл. напоминания перед парами
+  - alert_on: Вкл. уведомление об изменениях
+  - alert_off: Выкл. уведомление об изменениях
   - access: Настройки доступа в группах
 
   - help: Список команд
   - stop: Остановить бота
   - start: Запустить бота
 adminbot_commands:
-  - stats: 'Send bot stats for period (default: 24h)'
+  - stats: "Send bot stats for period (default: 24h)"
   - config: Send config stats
   - dist_aw: Send distribution stats of activity for week days
   - dist_ah: Send distribution stats of activity for hours

@@ -26,14 +26,14 @@ func (mb *MainBot) registerHandlers() {
 
 		mb.registerCommandHandler("week", mb.weekHandler, mb.checkRegularAccessMiddleware)
 		mb.registerCommandHandler("tomorrow", mb.tomorrowHandler, mb.checkRegularAccessMiddleware)
-		mb.registerCommandHandler("left", mb.todayHandler, mb.checkRegularAccessMiddleware)
+		mb.registerCommandHandler("left", mb.todayHandler, mb.checkRegularAccessMiddleware) // TODO: Remove this handler after some time.
 		mb.registerCommandHandler("today", mb.todayHandler, mb.checkRegularAccessMiddleware)
 		mb.registerCommandHandler("teacher", mb.teacherHandler, mb.checkRegularAccessMiddleware)
 
 		mb.registerCommandHandler("settings", mb.settingsHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("group", mb.groupHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
-		mb.registerCommandHandler("daily_time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware)
+		mb.registerCommandHandler("daily_time", mb.dailyTimeHandler, mb.checkConfigAccessMiddleware) // TODO: Remove this handler after some time.
 		mb.registerCommandHandler("daily_off", mb.dailyOffHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_on", mb.reminderOnHandler, mb.checkConfigAccessMiddleware)
 		mb.registerCommandHandler("reminder_off", mb.reminderOffHandler, mb.checkConfigAccessMiddleware)
