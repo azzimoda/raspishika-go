@@ -109,9 +109,6 @@ func ConfigFlags() {
 		"Start bot at specified time; format: 2006-01-02T15:04")
 	pflag.String("notify", "", "Send specified notification to all chats")
 
-	// TODO: Decide whether to leave or to remove this option.
-	pflag.Int("year", 0, "Specify fixed year for schedule URL")
-
 	pflag.Bool("headless", true, "Enable browser headless mode")
 	pflag.String("log", "", "Specify log level")
 	pflag.String("log-dir", "", "Specify log directory")
@@ -125,8 +122,6 @@ func ConfigFlags() {
 
 	viper.BindPFlag("start", pflag.CommandLine.Lookup("start"))
 	viper.BindPFlag("notify", pflag.CommandLine.Lookup("notify"))
-
-	viper.BindPFlag("fixed_year", pflag.CommandLine.Lookup("year"))
 
 	viper.BindPFlag("browser.headless", pflag.CommandLine.Lookup("headless"))
 	viper.BindPFlag("logger.level", pflag.CommandLine.Lookup("log"))
