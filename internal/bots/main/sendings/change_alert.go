@@ -41,7 +41,6 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 			})
 			if err != nil {
 				sm.services.Reporter.Report().Log().Err(err).
-					Debug("config", change.New.Config).
 					Debug("elapsed", elapsed).
 					Msg("Errors while change alert sendings")
 			}
@@ -80,24 +79,6 @@ func (sm *SendingManager) sendChangeAlert(
 	}
 
 	text := change.HTML()
-
-	var diffs []models.Diff
-	for _, d := range change.Diffs() {
-		dd := d
-		dd.OldDay = nil
-		dd.NewDay = nil
-		diffs = append(diffs, dd)
-	}
-	diffsJSON, err := json.MarshalIndent(&diffs, "", "  ")
-	diffsJSONStr := string(diffsJSON)
-	if err != nil {
-		sm.services.Reporter.Report().Err(err).Msg("Failed to marshal schedule change")
-		diffsJSONStr = text
-	}
-
-	sm.services.Reporter.Report().Log().Debug("diffs", diffsJSONStr).Send()
-	sm.services.Reporter.Report().Msgf("Schedule change:\n%s", text)
-
 	if _, err = sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chat.TgChatID,
 		Text:      text,
@@ -233,7 +214,8 @@ func (sm *SendingManager) fetchScheduleUpdates(
 
 			// Check if schedule changed
 			change := models.NewScheduleChange(oldRawSchedule.Transform(), newRawSchedule.Transform())
-			if len(change.Diffs()) > 0 {
+			diffs := change.Diffs()
+			if len(diffs) > 0 {
 				log.Debug().Any("config", conf).Msg("Schedule change detected")
 
 				changesDetected++
@@ -246,6 +228,8 @@ func (sm *SendingManager) fetchScheduleUpdates(
 					chatsAffected += chatsCount
 				}
 
+				sm.sendChangeAlertReport(diffs, change)
+
 				// Send the change to channel
 				changes <- change
 			}
@@ -253,4 +237,27 @@ func (sm *SendingManager) fetchScheduleUpdates(
 	})
 
 	return changesDetected, chatsAffected, elapsed, errs
+}
+
+func (sm *SendingManager) sendChangeAlertReport(diffs []models.Diff, change *models.ScheduleChange) {
+	var debugDiffs []models.Diff
+	for _, d := range diffs {
+		dd := d
+		dd.OldDay = nil
+		dd.NewDay = nil
+		debugDiffs = append(debugDiffs, dd)
+	}
+	diffsJSON, err := json.MarshalIndent(&debugDiffs, "", "  ")
+	diffsJSONStr := string(diffsJSON)
+	if err != nil {
+		sm.services.Reporter.Report().Err(err).Msg("Failed to marshal schedule change")
+		diffsJSONStr = "failed to marshal diffs"
+	}
+
+	if _, err = sm.services.Reporter.Report().Log().Debug("diffs", diffsJSONStr).Send(); err != nil {
+		sm.services.Reporter.Report().Err(err).Msg("Failed to send change alert report")
+	}
+	if _, err = sm.services.Reporter.Report().Msgf("Schedule change:\n%s", change.HTML()); err != nil {
+		sm.services.Reporter.Report().Err(err).Msg("Failed to send change alert report")
+	}
 }
