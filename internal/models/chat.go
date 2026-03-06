@@ -81,12 +81,12 @@ func (c *Chat) Update(db *sqlx.DB) error {
 
 func (c *Chat) Delete(db *sqlx.DB) error {
 	_, err := db.Exec(`DELETE FROM chats WHERE id = ?`, c.ID)
-	if err == nil {
-		log.Debug().Int("Chat.ID", c.ID).Msg("Chat deleted")
-	} else {
+	if err != nil {
 		log.Error().Err(err).Int("Chat.ID", c.ID).Msg("Failed to delete chat")
+		return err
 	}
-	return err
+	log.Info().Int("id", c.ID).Int64("tgChatID", c.TgChatID.Int64()).Msg("Chat deleted")
+	return nil
 }
 
 // InsertChats inserts multiple chats into the database.

@@ -63,6 +63,26 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		addContextHandlerError(ctx, err)
 	}
 
+	if update.MyChatMember != nil {
+		// Bot's status changed
+		switch update.MyChatMember.NewChatMember.Type {
+		case tgmodels.ChatMemberTypeBanned:
+			// Bot was kicked: remove the chat from DB
+			if chat, err := models.GetChatByTgChatID(
+				mb.services.Repo.DB,
+				models.ChatID(update.MyChatMember.Chat.ID),
+			); err != nil {
+				log.Error().Err(err).Msg("Failed to get chat from DB")
+			} else {
+				mb.services.Reporter.Report().Log().Chat(chat).Msg("Bot was kicked from chat :(")
+
+				if err := chat.Delete(mb.services.Repo.DB); err != nil {
+					mb.services.Reporter.Report().Log().Err(err).Chat(chat).Msg("Failed to delete chat from database")
+				}
+			}
+		}
+	}
+
 	notLogFlag := ctx.Value(noLogFlagContextKey).(*bool)
 	*notLogFlag = true
 }
