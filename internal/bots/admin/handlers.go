@@ -29,6 +29,10 @@ func (ab *AdminBot) registerHandlers() {
 	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 
 	ab.bot.RegisterHandlerMatchFunc(func(update *tgmodels.Update) bool {
+		if update.Message == nil {
+			return false
+		}
+
 		_, err := models.ValidateGroupName(ab.services.Repo.DB, models.GroupName(update.Message.Text))
 		return err == nil
 	}, ab.groupHandler)
