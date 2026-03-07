@@ -25,7 +25,7 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 
 	var changes = make(chan *models.ScheduleChange)
 
-	go sm.RunSchedulepdateMonitor(ctx, changes)
+	go sm.runSchedulepdateMonitor(ctx, changes)
 
 	log.Debug().Msg("Change worker started")
 	for {
@@ -37,7 +37,7 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 			log.Debug().Any("groupName", change.Old.Config.Group.GroupName).Msg("Received schedule change")
 			var err error
 			elapsed := measureTime(func() {
-				err = sm.SendChangeAlertForGroup(ctx, change)
+				err = sm.sendChangeAlertForGroup(ctx, change)
 			})
 			if err != nil {
 				sm.services.Reporter.Report().Log().Err(err).
@@ -50,9 +50,9 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 	}
 }
 
-func (sm *SendingManager) SendChangeAlertForGroup(ctx context.Context, change *models.ScheduleChange) error {
+func (sm *SendingManager) sendChangeAlertForGroup(ctx context.Context, change *models.ScheduleChange) error {
 	log.Trace().Any("config", change.New.Config).Msg("Sending change alert for group...")
-	chats, err := models.GetChatsByGroup(sm.services.Repo.DB, change.New.Config.Group.GroupName)
+	chats, err := models.GetChatsByMonitoredGroup(sm.services.Repo.DB, change.New.Config.Group.GroupName)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (sm *SendingManager) sendChangeAlert(
 	return errors.Join(errs...)
 }
 
-func (sm *SendingManager) RunSchedulepdateMonitor(ctx context.Context, changes chan<- *models.ScheduleChange) {
+func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes chan<- *models.ScheduleChange) {
 	log.Trace().Msg("Schedule update monitor started")
 
 	interval := config.ScheduleUpdateMonitorInterval()

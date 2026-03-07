@@ -398,6 +398,14 @@ func GetChatsByGroup(db *sqlx.DB, group GroupName) ([]Chat, error) {
 	return chats, nil
 }
 
+func GetChatsByMonitoredGroup(db *sqlx.DB, group GroupName) ([]Chat, error) {
+	var chats []Chat
+	if err := db.Select(&chats, `SELECT * FROM chats WHERE "group" = ? && update_notification = 1`, group); err != nil {
+		return nil, err
+	}
+	return chats, nil
+}
+
 func GetChatCountByGroup(db *sqlx.DB, group GroupName) (int, error) {
 	var count int
 	if err := db.Get(&count, `SELECT COUNT(*) FROM chats WHERE "group" = ?`, group); err != nil {
