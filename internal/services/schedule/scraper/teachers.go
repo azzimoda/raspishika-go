@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
@@ -14,10 +15,13 @@ import (
 const TeachersPageURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1247&Itemid=304"
 
 func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService) ([]models.Teacher, error) {
+	// Check existing cache
 	if teachers, err := checkTeachers(repo); err == nil && len(teachers) > 0 {
 		log.Debug().Msg("Using cached teachers")
 		return teachers, nil
 	}
+
+	// Update cache
 	log.Debug().Msg("Fetching teachers")
 
 	teachers, err := scrapeTeachers(browser)
@@ -71,7 +75,7 @@ func scrapeTeachers(browser *browser.BrowserService) (teachers []models.Teacher,
 
 			teachers = append(teachers, models.Teacher{
 				TeacherID: models.TeacherID(opt["value"].(string)),
-				Name:      models.TeacherName(opt["text"].(string)),
+				Name:      models.TeacherName(strings.TrimSpace(opt["text"].(string))),
 			})
 		}
 		return nil
