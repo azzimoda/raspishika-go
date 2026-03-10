@@ -178,7 +178,7 @@ func pairChangeHTML(old, new *Pair) string {
 
 	case PairKindSubject:
 		if old.Kind == PairKindEmpty {
-			text += fmt.Sprintf("\n%s", old.HTML())
+			text += fmt.Sprintf("\n%s", new.HTML())
 		} else {
 			text = new.TimeSlotCabinetString()
 			if isDiscChanged {
