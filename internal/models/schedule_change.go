@@ -174,13 +174,13 @@ func pairChangeHTML(old, new *Pair) string {
 	text := ""
 	switch new.Kind {
 	case PairKindEmpty:
-		text += fmt.Sprintf("\n<s>%s</s>", old.HTML())
+		text += fmt.Sprintf("<s>%s</s>", old.HTML())
 
 	case PairKindSubject:
 		if old.Kind == PairKindEmpty {
-			text += fmt.Sprintf("\n%s", new.HTML())
+			text += fmt.Sprintf("%s", new.HTML())
 		} else {
-			text = new.TimeSlotCabinetString()
+			text += new.TimeSlotCabinetString()
 			if isDiscChanged {
 				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
 					old.Discipline, new.Discipline)
@@ -199,7 +199,7 @@ func pairChangeHTML(old, new *Pair) string {
 		}
 
 	case PairKindExam, PairKindConsultation:
-		text = new.TimeSlotCabinetString()
+		text += new.TimeSlotCabinetString()
 		text += fmt.Sprintf("\n    _%s_", new.Label)
 		if isDiscChanged {
 			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
@@ -215,7 +215,7 @@ func pairChangeHTML(old, new *Pair) string {
 		}
 
 	default:
-		text += fmt.Sprintf("\n<s>%s</s>\n%s", old.HTML(), new.HTML())
+		text += fmt.Sprintf("<s>%s</s>\n%s", old.HTML(), new.HTML())
 	}
 
 	return text
