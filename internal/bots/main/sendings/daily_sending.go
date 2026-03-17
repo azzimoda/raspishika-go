@@ -68,7 +68,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 			Elapsed: int(elapsedTime.Milliseconds()),
 			Fails:   errCount,
 		}); err != nil {
-			log.Error().Err(err).Msg("Failed to insert sending log")
+			log.Error().Err(err).Msg("Failed to insert daily sending log")
 		}
 
 		log.Info().

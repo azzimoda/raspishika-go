@@ -29,11 +29,12 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 		return
 	}
 
-	if len(chats) == 0 {
+	chatCount := len(chats)
+	if chatCount == 0 {
 		log.Trace().Msg("No chats with pair sending enabled")
 		return
 	}
-	log.Debug().Msgf("Processing pair sending for time %s to %d chats", timeStr, len(chats))
+	log.Debug().Msgf("Processing pair sending for time %s to %d chats", timeStr, chatCount)
 
 	groupedChats := make(map[models.GroupName][]*models.Chat)
 	for _, chat := range chats {
@@ -56,23 +57,52 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 		errs = append(errs, groupErrs...)
 	}
 
-	if len(errs) != 0 {
-		err := errors.Join(errs...)
-		log.Error().Err(err).Msg("Errors while sending pair notification")
-		sm.services.Reporter.Report().Err(err).Msg("Errors while sending pair notification")
+	// Log stats
+	elapsed := time.Since(t)
+
+	groupCount := len(groupedChats)
+	if chatCount > 0 {
+		if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
+			Kind:    models.SendingLogPair,
+			Chats:   chatCount,
+			Groups:  groupCount,
+			Elapsed: int(elapsed.Milliseconds()),
+			Fails:   errCount,
+		}); err != nil {
+			log.Error().Err(err).Msg("Failed to insert pair notification log")
+		}
 	}
 
-	takenTime := time.Since(t)
-	log.Info().
-		Int("okCount", len(chats)-errCount).
-		Int("errCount", errCount).
-		Dur("timeTaken", takenTime).
-		Msgf("Pair sending for time %s finished", timeStr)
+	elapsedFloat := float64(elapsed)
+	elapsedPerChat := elapsedFloat / float64(chatCount)
+	elapsedPerGroup := elapsedFloat / float64(groupCount)
+	if elapsedPerGroup > float64(10*time.Second) {
+		sm.services.Reporter.Report().Log().
+			Debug("time", t).
+			Debug("elapsed", elapsed).
+			Debug("elapsedPerChat", time.Duration(elapsedPerChat)).
+			Debug("elapsedPerGroup", time.Duration(elapsedPerGroup)).
+			Debug("chats", chatCount).
+			Debug("groups", groupCount).
+			Debug("ok", chatCount-errCount).
+			Debug("err", errCount).
+			Msgf("Daily sending for time %s took too long (%s, %s/group)",
+				t, elapsed, time.Duration(elapsedPerGroup))
+	} else {
+		log.Info().
+			Time("time", t).
+			Dur("elapsed", elapsed).
+			Dur("elapsedPerChat", time.Duration(elapsedPerChat)).
+			Int("chats", chatCount).
+			Int("groups", groupCount).
+			Int("ok", chatCount-errCount).
+			Int("err", errCount).
+			Msgf("Pair sending for time %s finished", timeStr)
+	}
 
-	takenTimeFloat := float64(takenTime)
-	takenTimePerChat := takenTimeFloat / float64(len(chats))
-	if takenTimeFloat > 1.5*float64(time.Minute) || takenTimePerChat > float64(10*time.Second) {
-		sm.services.Reporter.Report().Msgf("Daily sending for time %s took too long (%s)", t, takenTime)
+	if len(errs) != 0 {
+		err := errors.Join(errs...)
+		sm.services.Reporter.Report().Log().Err(err).Msg("Errors while sending pair notification")
 	}
 }
 
