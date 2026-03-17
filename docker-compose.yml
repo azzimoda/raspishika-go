@@ -8,3 +8,4 @@ services:
       - ./.env:/app/.env
       - ./database:/app/database
       - ./configs:/app/configs
+      - ./storage/logs:/app/storage/logs

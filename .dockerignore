@@ -1,7 +1,10 @@
 .*
 
 database/
-!database/migrations/
+configs/
+
+storage/
+!storage/schedule_template.html
 
 Dockerfile
 docker-compose.yml
