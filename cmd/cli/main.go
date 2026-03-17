@@ -24,9 +24,9 @@ func main() {
 	}
 
 	// Reset logget with loaded config.
-	logger.SetupLogger(viper.GetString("logger.level"), viper.GetString("logger.dir"))
+	logger.SetupLogger(viper.GetString(config.KeyLoggerLevel), viper.GetString(config.KeyLoggerDir))
 
-	log.Debug().Str("baseConfigFile", viper.GetString("config_file")).Msg("Loaded configuration")
+	log.Debug().Str("baseConfigFile", viper.GetString(config.KeyConfigFile)).Msg("Loaded configuration")
 	if zerolog.GlobalLevel() == zerolog.TraceLevel {
 		log.Trace().Msg("Viper debug:")
 		viper.Debug()
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// Check for scheduled start
-	if startTime := viper.GetTime("start"); startTime != (time.Time{}) {
+	if startTime := viper.GetTime(config.KeyStartTime); startTime != (time.Time{}) {
 		now := time.Now()
 		if startTime.Year() == 0 {
 			startTime = time.Date(
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Send notification if the option provided.
-	if text := viper.GetString("notify"); text != "" {
+	if text := viper.GetString(config.KeyStartTime); text != "" {
 		app.Notify(text)
 		os.Exit(0)
 	}

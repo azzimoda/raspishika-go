@@ -49,7 +49,7 @@ func (b *AdminBot) Start() {
 
 func (b *AdminBot) Report() reporter.ReportConfig {
 	log.Trace().Msg("Reporting...")
-	return reporter.NewReportConfig(b.bot, viper.GetInt64("telegram.admin_id"))
+	return reporter.NewReportConfig(b.bot, viper.GetInt64(config.KeyTelegramAdminId))
 }
 
 func New(services *services.Services) (*AdminBot, error) {
@@ -61,7 +61,7 @@ func New(services *services.Services) (*AdminBot, error) {
 	}
 
 	var err error
-	ab.bot, err = bot.New(viper.GetString("telegram.admin_token"), opts...)
+	ab.bot, err = bot.New(viper.GetString(config.KeyTelegramAdminToken), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new bot: %w", err)
 	}
@@ -74,7 +74,7 @@ func New(services *services.Services) (*AdminBot, error) {
 func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		if update.Message != nil {
-			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != viper.GetInt64("telegram.admin_id") {
+			if update.Message.Chat.Type != "private" || update.Message.Chat.ID != viper.GetInt64(config.KeyTelegramAdminId) {
 				log.Trace().Msgf("Ignoring update from chat %d", update.Message.Chat.ID)
 				return
 			}

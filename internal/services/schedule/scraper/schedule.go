@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/net/html"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
 	"github.com/azzimoda/raspishika-go/pkg/utils"
@@ -56,14 +57,14 @@ func ScrapeSchedule(url models.URL, config models.ScheduleConfig) (*models.RawSc
 	return parseSchedule(fixedEncoding, config)
 }
 
-func SaveScheduleHTML(config models.ScheduleConfig, html string) (filename string, err error) {
+func SaveScheduleHTML(conf models.ScheduleConfig, html string) (filename string, err error) {
 	filename = "schedule_temp.html"
-	if config.Group != nil {
-		filename = fmt.Sprintf("schedule_group_%s_%s.html", config.Group.DepartmentName, config.Group.GroupName)
-	} else if config.Teacher != nil {
-		filename = fmt.Sprintf("schedule_teacher_%s.html", config.Teacher.Name)
+	if conf.Group != nil {
+		filename = fmt.Sprintf("schedule_group_%s_%s.html", conf.Group.DepartmentName, conf.Group.GroupName)
+	} else if conf.Teacher != nil {
+		filename = fmt.Sprintf("schedule_teacher_%s.html", conf.Teacher.Name)
 	}
-	filename = path.Join(viper.GetString("cache.dir"), filename)
+	filename = path.Join(viper.GetString(config.KeyCacheDir), filename) // TODO NOW: Continue using config key constants!
 	if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 		log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		return "", err
@@ -90,11 +91,11 @@ func ScrapeScheduleWithBrowser(
 func fetchSchedulePageWithBrowser(
 	browser *browser.BrowserService,
 	url models.URL,
-	config models.ScheduleConfig,
+	conf models.ScheduleConfig,
 ) (string, error) {
 	var lastErr error
 	var html string
-	for range viper.GetInt("browser.max_retries") {
+	for range viper.GetInt(config.KeyBrowserMaxRetries) {
 		headers := utils.GenerateHeaders()
 		lastErr = browser.WithPage(func(p playwright.Page) (err error) {
 			log.Trace().Msgf("Fetching schedule page...")
@@ -131,17 +132,17 @@ func fetchSchedulePageWithBrowser(
 
 	if lastErr != nil {
 		return "", fmt.Errorf("failed to fetch schedule page with browser after %d retries: %w",
-			viper.GetInt("browser.max_retries"), lastErr)
+			viper.GetInt(config.KeyBrowserMaxRetries), lastErr)
 	}
 
 	if log.Logger.GetLevel() == zerolog.TraceLevel {
 		filename := fmt.Sprintf("schedule_%s.html", time.Now().Format("20060102"))
-		if config.Group != nil {
-			filename = fmt.Sprintf("schedule_%s_%s.html", config.Group.DepartmentName, config.Group.GroupName)
-		} else if config.Teacher != nil {
-			filename = fmt.Sprintf("schedule_%s.html", config.Teacher.Name)
+		if conf.Group != nil {
+			filename = fmt.Sprintf("schedule_%s_%s.html", conf.Group.DepartmentName, conf.Group.GroupName)
+		} else if conf.Teacher != nil {
+			filename = fmt.Sprintf("schedule_%s.html", conf.Teacher.Name)
 		}
-		filename = filepath.Join(viper.GetString("cache.dir"), filename)
+		filename = filepath.Join(viper.GetString(config.KeyCacheDir), filename)
 		if err := os.WriteFile(filename, []byte(html), 0644); err != nil {
 			log.Error().Err(err).Msg("Failed to save schedule HTML to file")
 		} else {

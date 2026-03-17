@@ -13,44 +13,90 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	KeyDotEnv       = "dotenv"
+	KeyConfigFile   = "config_file"
+	KeyCommandsFile = "commands_file"
+
+	KeyTelegramWorkers    = "telegram.workers"
+	KeyTelegramToken      = "Telegram.token"
+	KeyTelegramAdminToken = "Telegram.admin_token"
+	KeyTelegramAdminId    = "Telegram.admin_id"
+
+	KeyDatabaseFile       = "database.file"
+	KeyDatabaseMigrations = "database.migrations"
+
+	KeyBrowserHeadless        = "browser.headless"
+	KeyBrowserTimeout         = "browser.timeout"
+	KeyBrowserMaxRetries      = "browser.max_retries"
+	KeyBrowserScreenshotDir   = "browser.screenshot_dir"
+	KeyBrowserWidth           = "browser.width"
+	KeyBrowserHeight          = "browser.height"
+	KeyBrowserWindowSizeScale = "browser.scale"
+
+	KeyCacheDir         = "cache.dir"
+	KeyCacheDefaultTTL  = "cache.default_ttl"
+	KeyCacheScheduleTTL = "cache.schedule_ttl"
+	KeyCacheGroupTTL    = "cache.group_ttl"
+
+	KeyLoggerLevel = "logger.level"
+	KeyLoggerDir   = "logger.dir"
+
+	KeyFeatureAdminBot         = "features.admin_bot"
+	KeyFeatureDailySending     = "features.sending.daily"
+	KeyFeaturePairNotification = "featurs.sending.pair_notification"
+	KeyFeatureChangeAlert      = "featurs.sending.change_alert"
+
+	KeySendingWorkers            = "sending.workers"
+	KeyPairNotificationTTL       = "sending.pair_notification.ttl"
+	KeyChangeAlertUpdateInterval = "sending.change_alert.update_interval"
+	KeyAdminNewChatReport        = "adminbot.new_chat_report"
+
+	KeyScheduleTemplateFile = "schedule_template_file"
+	KeyScheduleTemplate     = "schedule_template"
+
+	KeyStartTime     = "start"
+	KeyNotifyMessage = "notify"
+)
+
 var defaults = map[string]any{
-	"env":           ".env",
-	"config_file":   "configs/config.yml",
-	"commands_file": "configs/commands.yml",
+	KeyDotEnv:       ".env",
+	KeyConfigFile:   "configs/config.yml",
+	KeyCommandsFile: "configs/commands.yml",
 
-	"telegram.workers": 1,
+	KeyTelegramWorkers: 1,
 
-	"database.file":       "database/db.sqlite3",
-	"database.migrations": "migrations",
+	KeyDatabaseFile:       "database/db.sqlite3",
+	KeyDatabaseMigrations: "migrations",
 
-	"browser.headless":       true,
-	"browser.timeout":        30, // seconds
-	"browser.max_retries":    10,
-	"browser.screenshot_dir": "storage/cache/screenshots",
-	"browser.width":          1280, // px
-	"browser.height":         720,  // px
-	"browser.scale":          1,
+	KeyBrowserHeadless:        true,
+	KeyBrowserTimeout:         30, // seconds
+	KeyBrowserMaxRetries:      10,
+	KeyBrowserScreenshotDir:   "storage/cache/screenshots",
+	KeyBrowserWidth:           1280, // px
+	KeyBrowserHeight:          720,  // px
+	KeyBrowserWindowSizeScale: 1,
 
-	"cache.dir":          "storage/cache",
-	"cache.default_ttl":  10, // minutes
-	"cache.schedule_ttl": 20, // minutes
-	"cache.group_ttl":    7,  // days
+	KeyCacheDir:         "storage/cache",
+	KeyCacheDefaultTTL:  10, // minutes
+	KeyCacheScheduleTTL: 20, // minutes
+	KeyCacheGroupTTL:    7,  // days
 
-	"logger.level": "debug",
-	"logger.dir":   "storage/logs",
+	KeyLoggerLevel: "debug",
+	KeyLoggerDir:   "storage/logs",
 
-	"features.admin_bot":       false,
-	"features.sending.daily":   false,
-	"features.sending.pair":    false,
-	"features.sending.updates": false,
+	KeyFeatureAdminBot:         false,
+	KeyFeatureDailySending:     false,
+	KeyFeaturePairNotification: false,
+	KeyFeatureChangeAlert:      false,
 
-	"sending.workers":                      20,
-	"sending.pair_notification.ttl":        90, // minutes
-	"sending.change_alert.update_interval": 30, // minutes
+	KeySendingWorkers:            20,
+	KeyPairNotificationTTL:       90, // minutes
+	KeyChangeAlertUpdateInterval: 30, // minutes
 
-	"adminbot.new_chat_report": true,
+	KeyAdminNewChatReport: true,
 
-	"schedule_template_file": "storage/schedule_template.html",
+	KeyScheduleTemplateFile: "storage/schedule_template.html",
 }
 
 func init() {
@@ -82,20 +128,20 @@ func SetDefaults() {
 }
 
 func ConfigEnv() {
-	dotenvPath := viper.GetString("env")
+	dotenvPath := viper.GetString(KeyDotEnv)
 	if err := godotenv.Load(dotenvPath); err != nil {
-		log.Warn().Err(err).Str("dotenvPath", dotenvPath).Msg("Failed to load .env file")
+		log.Warn().Err(err).Str("dotenv", dotenvPath).Msg("Failed to load .env file")
 	} else {
-		log.Debug().Str("dotenvPath", dotenvPath).Msg(".env file loaded")
+		log.Debug().Str("dotenv", dotenvPath).Msg(".env file loaded")
 	}
 
 	viper.SetEnvPrefix("raspishika")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	viper.BindEnv("config_file")
-	viper.BindEnv("commands_file")
-	viper.BindEnv("telegram_token")
-	viper.BindEnv("telegram_admin_token")
-	viper.BindEnv("telegram_admin_id")
+	viper.BindEnv(KeyConfigFile)
+	viper.BindEnv(KeyCommandsFile)
+	viper.BindEnv(strings.ReplaceAll(KeyTelegramToken, ".", "_"))
+	viper.BindEnv(strings.ReplaceAll(KeyTelegramAdminToken, ".", "_"))
+	viper.BindEnv(strings.ReplaceAll(KeyTelegramAdminId, ".", "_"))
 	viper.AutomaticEnv()
 }
 
@@ -116,27 +162,27 @@ func ConfigFlags() {
 	pflag.Parse()
 
 	// Bind flags
-	viper.BindPFlag("env", pflag.CommandLine.Lookup("env"))
-	viper.BindPFlag("config_file", pflag.CommandLine.Lookup("config"))
-	viper.BindPFlag("commands_file", pflag.CommandLine.Lookup("commands"))
+	viper.BindPFlag(KeyDotEnv, pflag.CommandLine.Lookup("env"))
+	viper.BindPFlag(KeyConfigFile, pflag.CommandLine.Lookup("config"))
+	viper.BindPFlag(KeyCommandsFile, pflag.CommandLine.Lookup("commands"))
 
-	viper.BindPFlag("start", pflag.CommandLine.Lookup("start"))
-	viper.BindPFlag("notify", pflag.CommandLine.Lookup("notify"))
+	viper.BindPFlag(KeyStartTime, pflag.CommandLine.Lookup("start"))
+	viper.BindPFlag(KeyNotifyMessage, pflag.CommandLine.Lookup("notify"))
 
-	viper.BindPFlag("browser.headless", pflag.CommandLine.Lookup("headless"))
-	viper.BindPFlag("logger.level", pflag.CommandLine.Lookup("log"))
-	viper.BindPFlag("logger.dir", pflag.CommandLine.Lookup("log-dir"))
+	viper.BindPFlag(KeyBrowserHeadless, pflag.CommandLine.Lookup("headless"))
+	viper.BindPFlag(KeyLoggerLevel, pflag.CommandLine.Lookup("log"))
+	viper.BindPFlag(KeyLoggerLevel, pflag.CommandLine.Lookup("log-dir"))
 }
 
 func LoadFiles() {
-	filename := viper.GetString("config_file")
+	filename := viper.GetString(KeyConfigFile)
 	log.Debug().Str("filename", filename).Msg("Loading base config...")
 	viper.SetConfigFile(filename)
 	if err := viper.ReadInConfig(); err != nil {
 		log.Error().Err(err).Msg("Failed to load main config file! Default values are used.")
 	}
 
-	filename = viper.GetString("commands_file")
+	filename = viper.GetString(KeyCommandsFile)
 	log.Debug().Str("filename", filename).Msg("Loading commands config...")
 	viper.SetConfigFile(filename)
 	if err := viper.MergeInConfig(); err != nil {
@@ -146,10 +192,10 @@ func LoadFiles() {
 
 func mkDirs() error {
 	dirs := []string{
-		filepath.Dir(viper.GetString("database.file")),
-		viper.GetString("browser.screenshot_dir"),
-		viper.GetString("cache.dir"),
-		viper.GetString("logger.dir"),
+		filepath.Dir(viper.GetString(KeyDatabaseFile)),
+		viper.GetString(KeyBrowserScreenshotDir),
+		viper.GetString(KeyCacheDir),
+		viper.GetString(KeyLoggerDir),
 	}
 	log.Trace().Strs("dirs", dirs).Msg("Ensuring directories...")
 	for _, dir := range dirs {
@@ -171,18 +217,18 @@ func PrintUsage() bool {
 	return false
 }
 
-func DefaultTTLDur() time.Duration { return viper.GetDuration("cache.default_ttl") * time.Minute }
+func DefaultTTLDur() time.Duration { return viper.GetDuration(KeyCacheDefaultTTL) * time.Minute }
 
-func ScheduleTTLDur() time.Duration { return viper.GetDuration("cache.schedule_ttl") * time.Minute }
+func ScheduleTTLDur() time.Duration { return viper.GetDuration(KeyCacheScheduleTTL) * time.Minute }
 
-func GroupTTLDur() time.Duration { return viper.GetDuration("cache.group_ttl") * 24 * time.Hour }
+func GroupTTLDur() time.Duration { return viper.GetDuration(KeyCacheGroupTTL) * 24 * time.Hour }
 
 func ScheduleUpdateMonitorInterval() time.Duration {
-	return time.Duration(viper.GetInt("sending.change_alert.update_interval")) * time.Minute
+	return time.Duration(viper.GetInt(KeyChangeAlertUpdateInterval)) * time.Minute
 }
 
 func PairNotificationTTLDur() time.Duration {
-	return viper.GetDuration("sending.pair_notification.ttl") * time.Minute
+	return viper.GetDuration(KeyPairNotificationTTL) * time.Minute
 }
 
 func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
@@ -208,7 +254,7 @@ func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
 }
 
 func ScheduleTemplate() (string, error) {
-	data, err := os.ReadFile(viper.GetString("schedule_template_file"))
+	data, err := os.ReadFile(viper.GetString(KeyScheduleTemplateFile))
 	if err != nil {
 		return "", fmt.Errorf("failed to read schedule template file: %w", err)
 	}
@@ -220,15 +266,15 @@ func FetchScheduleTemplate() string {
 	template, err := ScheduleTemplate()
 	if err != nil {
 		log.Debug().Err(err).Msg("Failed to template")
-		return viper.GetString("schedule_template")
+		return viper.GetString(KeyScheduleTemplate)
 	}
 	log.Trace().Msg("Loaded schedule template")
 	return template
 }
 
-func BrowserWindowSize() (int, int) {
-	width := float64(viper.GetInt("browser.width"))
-	height := float64(viper.GetInt("browser.height"))
-	scale := viper.GetFloat64("browser.scale")
+func BrowserWindowSizeScaled() (int, int) {
+	width := float64(viper.GetInt(KeyBrowserWidth))
+	height := float64(viper.GetInt(KeyBrowserHeight))
+	scale := viper.GetFloat64(KeyBrowserWindowSizeScale)
 	return int(width * scale), int(height * scale)
 }

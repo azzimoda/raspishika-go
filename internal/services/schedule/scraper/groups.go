@@ -168,7 +168,6 @@ func scrapeDepartmentGroups(browser *browser.BrowserService, department *models.
 
 		for _, opt := range options.([]any) {
 			opt := opt.(map[string]any)
-			log.Trace().Any("opt", opt).Msg("Validating option...")
 			if !(validateOptionValue(opt["value"]) &&
 				validateOptionValue(opt["text"]) &&
 				validateOptionValue(opt["sid"]) &&

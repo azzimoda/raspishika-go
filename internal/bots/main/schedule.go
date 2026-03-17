@@ -87,7 +87,7 @@ func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName st
 }
 
 func (mb *MainBot) htmlToImage(conf models.ScheduleConfig, html string) (string, []byte, error) {
-	imageFileName := path.Join(viper.GetString("browser.screenshot_dir"), scheduleScreenshotFileName(conf))
+	imageFileName := path.Join(viper.GetString(config.KeyBrowserScreenshotDir), scheduleScreenshotFileName(conf))
 	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFileName); err != nil {
 		return "", nil, err
 	}

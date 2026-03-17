@@ -8,6 +8,7 @@ import (
 
 	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
 	"github.com/azzimoda/raspishika-go/internal/bots/main/tests"
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
@@ -40,7 +41,7 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	}{
 		{"send pair sending to 1 group with 1 chat",
 			"ИСПт-22-(9)-2",
-			[]*models.Chat{{TgChatID: models.ChatID(viper.GetInt64("telegram.admin_id")), PairSending: true}},
+			[]*models.Chat{{TgChatID: models.ChatID(viper.GetInt64(config.KeyTelegramAdminId)), PairSending: true}},
 			false,
 			false,
 		},

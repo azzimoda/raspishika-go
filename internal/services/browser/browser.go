@@ -24,17 +24,17 @@ func New() (*BrowserService, error) {
 		return nil, err
 	}
 
-	isHeadless := viper.GetBool("browser.headless")
+	isHeadless := viper.GetBool(config.KeyBrowserHeadless)
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
 		Headless: playwright.Bool(isHeadless),
-		Timeout:  playwright.Float(float64(viper.GetInt("browser.timeout")) * 1000),
+		Timeout:  playwright.Float(float64(viper.GetInt(config.KeyBrowserTimeout)) * 1000),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	width, height := config.BrowserWindowSize()
+	width, height := config.BrowserWindowSizeScaled()
 	log.Debug().Int("width", width).Int("height", height).Msg("Browser window size")
 	ctx, cancelExecAllocator := chromedp.NewExecAllocator(
 		context.Background(),

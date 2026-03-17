@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
@@ -99,7 +100,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 			Debug("elapsedPerGroup", elapsedPerGroup).
 			Debug("chats", chatsCount).
 			Debug("groups", groupsCount).
-			Debug("workers", viper.GetInt("sending.workers")).
+			Debug("workers", viper.GetInt(config.KeySendingWorkers)).
 			Msg("Daily sending took too long")
 	}
 }
@@ -117,7 +118,7 @@ type sendingResult struct {
 func (sm *SendingManager) sendDailyNotificationToGroups(groupedChats map[models.GroupName][]*models.Chat) ([]error, int) {
 	var wg sync.WaitGroup
 	results := make(chan sendingResult, 64)
-	workers := viper.GetInt("sending.workers") // TODO: Add this for pair sending.
+	workers := viper.GetInt(config.KeySendingWorkers) // TODO: Add this for pair sending.
 	if workers == 0 {
 		workers = 20 // Default
 	}

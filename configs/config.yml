@@ -3,32 +3,26 @@ telegram:
   workers: 1
 database:
   file: database/db.sqlite3
-  migrations: migrations
 browser:
   headless: true
   timeout: 30 # seconds
-  max_retries: 3
-  screenshot_dir: storage/screenshots
+  max_retries: 10
 cache:
-  dir: storage/cache
   default_ttl: 10 # minutes
   schedule_ttl: 20 # minutes
   group_ttl: 7 # days
 logger:
   level: debug
-  dir: storage/logs
 features:
   admin_bot: false
   sending:
     daily: false
-    pair: false
-    updates: false
+    pair_notification: false
+    change_alert: false
 
 sending:
   workers: 20
-  pair:
-    notification_ttl: 90 # minutes
-  updates:
-    interval: 20 # minutes
-
-schedule_template_file: storage/schedule_template.html
+  pair_notificatoin:
+    ttl: 90 # minutes
+  change_alert:
+    update_interval: 20 # minutes

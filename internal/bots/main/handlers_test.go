@@ -7,11 +7,12 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
 
 func Test_commandMatchFunction(t *testing.T) {
-	logger.SetupLogger(viper.GetString("logger.level"), viper.GetString("logger.dir"))
+	logger.SetupLogger(viper.GetString(config.KeyLoggerLevel), viper.GetString(config.KeyLoggerDir))
 
 	messageUpdate := func(text string, chatType models.ChatType) *models.Update {
 		return &models.Update{Message: &models.Message{Chat: models.Chat{Type: chatType}, Text: text}}

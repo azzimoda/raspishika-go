@@ -10,11 +10,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
 func New() (*Repository, error) {
-	file := viper.GetString("database.file")
+	file := viper.GetString(config.KeyDatabaseFile)
 	if _, err := os.Stat(file); err != nil {
 		log.Warn().Str("file", file).Msg("Database file or its directore doesn't exist")
 		if err := os.MkdirAll(filepath.Dir(file), os.ModePerm); err != nil {
@@ -80,7 +81,7 @@ func (r *Repository) applyMigrations() error {
 }
 
 func migrationFiles() ([]migrationFile, error) {
-	dir := viper.GetString("database.migrations")
+	dir := viper.GetString(config.KeyDatabaseMigrations)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		log.Warn().Str("dir", dir).Msg("Migrations directory doesn't exist")
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {

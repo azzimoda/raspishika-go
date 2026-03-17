@@ -15,6 +15,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
 	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
 	"github.com/azzimoda/raspishika-go/internal/bots/main/sendings"
+	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/services"
 )
 
@@ -33,7 +34,7 @@ func New() (*App, error) {
 		log.Info().Msg("Initialized main bot")
 	}
 
-	if viper.GetBool("features.admin_bot") {
+	if viper.GetBool(config.KeyFeatureAdminBot) {
 		app.adminBot, err = adminbot.New(app.services)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
@@ -93,7 +94,7 @@ func (a *App) Run() error {
 func (a *App) startServices(ctx context.Context) {
 	sendingManager := sendings.NewSendingManager(a.mainBot, a.services)
 
-	if viper.GetBool("features.sending.daily") {
+	if viper.GetBool(config.KeyFeatureDailySending) {
 		if err := sendingManager.ScheduleDailySending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
 		} else {
@@ -101,7 +102,7 @@ func (a *App) startServices(ctx context.Context) {
 		}
 	}
 
-	if viper.GetBool("features.sending.pair") {
+	if viper.GetBool(config.KeyFeaturePairNotification) {
 		if err := sendingManager.SchedulePairSending(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
 		} else {
@@ -109,7 +110,7 @@ func (a *App) startServices(ctx context.Context) {
 		}
 	}
 
-	if viper.GetBool("features.sending.updates") {
+	if viper.GetBool(config.KeyFeatureChangeAlert) {
 		go sendingManager.RunChangeAlertNotifier(ctx)
 	}
 

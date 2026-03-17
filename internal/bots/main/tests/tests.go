@@ -28,14 +28,14 @@ func init() {
 
 	configFile := "configs/.debug-config.yml"
 	if _, err := os.Stat(configFile); err != nil {
-		configFile = viper.GetString("config_file")
+		configFile = viper.GetString(config.KeyConfigFile)
 	}
 
-	viper.Set("env", filepath.Join(rootDir, ".env"))
-	viper.Set("config_file", filepath.Join(rootDir, "configs/config.yml"))
-	viper.Set("commands_file", filepath.Join(rootDir, "configs/commands.yml"))
-	viper.Set("schedule_template_file", filepath.Join(rootDir, "storage/schedule_template.html"))
-	viper.Set("database.migrations", filepath.Join(rootDir, "migrations"))
+	viper.Set(config.KeyDotEnv, filepath.Join(rootDir, ".env"))
+	viper.Set(config.KeyConfigFile, filepath.Join(rootDir, "configs/config.yml"))
+	viper.Set(config.KeyCommandsFile, filepath.Join(rootDir, "configs/commands.yml"))
+	viper.Set(config.KeyScheduleTemplateFile, filepath.Join(rootDir, "storage/schedule_template.html"))
+	viper.Set(config.KeyDatabaseMigrations, filepath.Join(rootDir, "migrations"))
 	log.Trace().Msg("Configured paths")
 }
 
@@ -48,10 +48,10 @@ func isProjectRootDir(dir string) bool {
 }
 
 func InitConfig(t *testing.T, testsDir string) {
-	viper.Set("database.file", filepath.Join(testsDir, "database/test.sqlite3"))
-	viper.Set("browser.screenshot_dir", filepath.Join(testsDir, "storage/screenshots"))
-	viper.Set("cache.dir", filepath.Join(testsDir, "storage/cache"))
-	viper.Set("logger.dir", "")
+	viper.Set(config.KeyDatabaseFile, filepath.Join(testsDir, "database/test.sqlite3"))
+	viper.Set(config.KeyBrowserScreenshotDir, filepath.Join(testsDir, "storage/screenshots"))
+	viper.Set(config.KeyCacheDir, filepath.Join(testsDir, "storage/cache"))
+	viper.Set(config.KeyLoggerDir, "")
 
 	if err := config.Load(); err != nil {
 		t.Fatalf("could not load config: %v", err)

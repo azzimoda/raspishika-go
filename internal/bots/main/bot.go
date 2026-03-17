@@ -33,10 +33,10 @@ func New(
 			mb.ensureChatMiddleware,
 			mb.logMiddleware,
 		),
-		bot.WithWorkers(viper.GetInt("telegram.workers")),
+		bot.WithWorkers(viper.GetInt(config.KeyTelegramWorkers)),
 		bot.WithDefaultHandler(mb.defaultHandler),
 	}
-	mb.Bot, err = bot.New(viper.GetString("telegram.token"), opts...)
+	mb.Bot, err = bot.New(viper.GetString(config.KeyTelegramToken), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
