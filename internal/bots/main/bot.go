@@ -36,6 +36,9 @@ func New(
 		bot.WithWorkers(viper.GetInt(config.KeyTelegramWorkers)),
 		bot.WithDefaultHandler(mb.defaultHandler),
 	}
+	if viper.GetString(config.KeyLoggerLevel) == "trace" {
+		opts = append(opts, bot.WithDebug())
+	}
 	mb.Bot, err = bot.New(viper.GetString(config.KeyTelegramToken), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)

@@ -80,7 +80,7 @@ func (a *App) Run() error {
 	if err == nil {
 		report.RemoveMessage()
 	}
-	a.Report().Log().Msg("Application started.")
+	a.Report().Log().Msgf("Application started on bot @%s.", a.mainBot.Me.Username)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -136,7 +136,7 @@ func (a *App) Shutdown() {
 func (a *App) Report() reporter.ReportConfig {
 	if a.adminBot == nil {
 		log.Warn().Msg("Admin bot is not initialized")
-		return reporter.ReportConfig{}
+		return reporter.ReportConfig{Context: context.Background()}
 	}
 	return a.adminBot.Report()
 }
