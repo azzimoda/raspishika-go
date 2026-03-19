@@ -139,12 +139,13 @@ func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes c
 		}
 
 		// Log statistics
-		elapsedPerChat := elapsed / time.Duration(chatCount)
-		elapsedPerGroup := elapsed / time.Duration(len(groups))
-		log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
-			Dur("elapsedPerGroup", elapsedPerGroup).
-			Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
 		if len(groups) > 0 && changesDetected > 0 {
+			elapsedPerChat := elapsed / time.Duration(chatCount)
+			elapsedPerGroup := elapsed / time.Duration(len(groups))
+			log.Debug().Int("groupCount", len(groups)).Dur("elapsed", elapsed).
+				Dur("elapsedPerGroup", elapsedPerGroup).
+				Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
+
 			if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
 				Kind:    models.SendingLogChange,
 				Chats:   chatsAffected,
@@ -165,17 +166,16 @@ func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes c
 				Int("changes", changesDetected).
 				Int("errs", len(errs)).
 				Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
-		}
 
-		err = errors.Join(errs...)
-		if err != nil {
-			sm.services.Reporter.Report().Log().Err(err).Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
-				Msg("Errors while fetchig updates for monitored groups")
-		} else if elapsedPerGroup.Seconds() > 10 {
-			sm.services.Reporter.Report().Log().Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
-				Msg("Updating monitored groups schedules took too long")
+			err = errors.Join(errs...)
+			if err != nil {
+				sm.services.Reporter.Report().Log().Err(err).Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
+					Msg("Errors while fetchig updates for monitored groups")
+			} else if elapsedPerGroup.Seconds() > 10 {
+				sm.services.Reporter.Report().Log().Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
+					Msg("Updating monitored groups schedules took too long")
+			}
 		}
-
 		time.Sleep(interval)
 	}
 }

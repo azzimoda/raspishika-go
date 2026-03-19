@@ -2,14 +2,47 @@ package mainbot
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path"
 	"time"
 
 	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
+	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 
+	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
 )
+
+func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName string, data []byte, err error) {
+	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
+	if err != nil {
+		err = fmt.Errorf("failed loading schedule: %w", err)
+		return
+	}
+
+	fileName, data, err = mb.htmlToImage(conf, schedule.HTML(config.FetchScheduleTemplate(conf.IsDark)))
+	if err != nil {
+		return "", nil, err
+	}
+	return fileName, data, nil
+}
+
+func (mb *MainBot) htmlToImage(conf models.ScheduleConfig, html string) (string, []byte, error) {
+	imageFileName := path.Join(viper.GetString(config.KeyBrowserScreenshotDir), scheduleScreenshotFileName(conf))
+	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFileName); err != nil {
+		return "", nil, err
+	}
+
+	imageData, err := os.ReadFile(imageFileName)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read screenshot: %w", err)
+	}
+	return imageFileName, imageData, nil
+}
 
 // addContextHandlerError adds an error to the handler error context.
 func addContextHandlerError(ctx context.Context, err error) {
@@ -24,17 +57,17 @@ func addContextHandlerError(ctx context.Context, err error) {
 }
 
 // mainMenuReplyMarkup returns the main menu keyboard for the given chat type.
-func mainMenuReplyMarkup(isPrivate bool) models.ReplyMarkup {
+func mainMenuReplyMarkup(isPrivate bool) tgmodels.ReplyMarkup {
 	if isPrivate {
-		return models.ReplyKeyboardMarkup{
-			Keyboard: [][]models.KeyboardButton{
+		return tgmodels.ReplyKeyboardMarkup{
+			Keyboard: [][]tgmodels.KeyboardButton{
 				{{Text: "Неделя"}},
 				{{Text: "Сегодня"}, {Text: "Завтра"}, {Text: "Преподаватель"}},
 			},
 			ResizeKeyboard: true,
 		}
 	} else {
-		return models.ReplyKeyboardRemove{RemoveKeyboard: true}
+		return tgmodels.ReplyKeyboardRemove{RemoveKeyboard: true}
 	}
 }
 

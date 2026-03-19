@@ -159,7 +159,7 @@ func (mb *MainBot) sendTeacherSchedule(
 	ctx context.Context,
 	b *bot.Bot,
 	messageThreadID int,
-	chat *tgmodels.Chat,
+	tgChat *tgmodels.Chat,
 	localChat *models.Chat,
 	teacher *models.Teacher,
 ) {
@@ -170,11 +170,11 @@ func (mb *MainBot) sendTeacherSchedule(
 
 	if err := models.UpdateChatState(mb.services.Repo.DB, localChat.TgChatID, models.ChatStateDefault); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotUpdateData})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
 	}
 
 	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
-		ChatID:          chat.ID,
+		ChatID:          tgChat.ID,
 		MessageThreadID: messageThreadID,
 		Action:          tgmodels.ChatActionTyping,
 	})
@@ -183,10 +183,11 @@ func (mb *MainBot) sendTeacherSchedule(
 	}
 
 	conf := models.TeacherScheduleConfig(teacher)
+	conf.IsDark = localChat.DarkMode
 	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: chat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
 

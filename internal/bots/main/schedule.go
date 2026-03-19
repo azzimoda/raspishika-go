@@ -5,16 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path"
 	"time"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
@@ -57,6 +53,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	}
 
 	conf := models.GroupScheduleConfig(group)
+	conf.IsDark = chat.DarkMode
 	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -70,33 +67,6 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 
 	err = mb.SendWeekScheduleMessages(ctx, b, update.Message.MessageThreadID, chat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
-}
-
-func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName string, data []byte, err error) {
-	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
-	if err != nil {
-		err = fmt.Errorf("failed loading schedule: %w", err)
-		return
-	}
-
-	fileName, data, err = mb.htmlToImage(conf, schedule.HTML(config.FetchScheduleTemplate()))
-	if err != nil {
-		return "", nil, err
-	}
-	return fileName, data, nil
-}
-
-func (mb *MainBot) htmlToImage(conf models.ScheduleConfig, html string) (string, []byte, error) {
-	imageFileName := path.Join(viper.GetString(config.KeyBrowserScreenshotDir), scheduleScreenshotFileName(conf))
-	if err := mb.services.Browser.TakeScreenshotHTML(html, imageFileName); err != nil {
-		return "", nil, err
-	}
-
-	imageData, err := os.ReadFile(imageFileName)
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to read screenshot: %w", err)
-	}
-	return imageFileName, imageData, nil
 }
 
 func (mb *MainBot) SendWeekScheduleMessages(
@@ -163,12 +133,12 @@ func (mb *MainBot) SendSchedulePhoto(
 	return err
 }
 
-func WeekScheduleMarkup(config models.ScheduleConfig) tgmodels.ReplyMarkup {
+func WeekScheduleMarkup(conf models.ScheduleConfig) tgmodels.ReplyMarkup {
 	var button tgmodels.InlineKeyboardButton
-	if config.Group != nil {
-		button = updateInlineButton("group", string(config.Group.GroupName))
-	} else if config.Teacher != nil {
-		button = updateInlineButton("teacher", config.Teacher.TeacherID.String())
+	if conf.Group != nil {
+		button = updateInlineButton("group", string(conf.Group.GroupName))
+	} else if conf.Teacher != nil {
+		button = updateInlineButton("teacher", conf.Teacher.TeacherID.String())
 	} else {
 		return nil
 	}
@@ -189,10 +159,15 @@ func updateInlineButton(kind, value string) tgmodels.InlineKeyboardButton {
 }
 
 func scheduleScreenshotFileName(conf models.ScheduleConfig) string {
+	darkSuffix := ""
+	if conf.IsDark {
+		darkSuffix = "_dark"
+	}
+
 	if conf.Group != nil {
-		return fmt.Sprintf("schedule_%s.png", conf.Group.GroupName)
+		return fmt.Sprintf("schedule_%s%s.png", conf.Group.GroupName, darkSuffix)
 	} else if conf.Teacher != nil {
-		return fmt.Sprintf("schedule_teacher_%s.png", conf.Teacher.Name)
+		return fmt.Sprintf("schedule_teacher_%s%s.png", conf.Teacher.Name, darkSuffix)
 	} else {
 		log.Error().Any("config", conf).Msg("Schedule config is invalid")
 		return "schedule.png"

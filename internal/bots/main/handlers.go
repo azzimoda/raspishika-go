@@ -91,6 +91,7 @@ func (mb *MainBot) registerHandlers() {
 		registerConfigCallbackHandler(CallbackCommandDailyOff, mb.dailyOffCallbackHandler)
 		registerConfigCallbackHandler(CallbackCommandConfigReminder, mb.configReminderHandler)
 		registerConfigCallbackHandler(CallbackCommandConfigChange, mb.configChangeHandler)
+		registerConfigCallbackHandler(CallbackCommandConfigDarkMode, mb.configDarkModeHandler)
 		registerConfigCallbackHandler(CallbackCommandConfigSetAccess, mb.configAccessHandler)
 		registerConfigCallbackHandler(CallbackCommandSelectDepartment, mb.selectDepartmentHandler)
 

@@ -3,8 +3,23 @@
 
 <head>
     <style>
+        * {
+            --background: #2b2b2b;
+            --text-color: white;
+            --border-color: #444;
+            --bg-time: #333333;
+            --bg-replaced: #786c3b;
+            --bg-event: #8b3f3f;
+            --bg-iga: #3e8e41;
+            --bg-practice: #2f80b2;
+            --bg-exam: #663333;
+            --bg-consultation: #3e5943;
+            --bg-session: #444400;
+        }
+
         body {
-            background-color: white;
+            background-color: var(--background);
+            color: var(--text-color);
             font-family: Arial, sans-serif;
             font-size: 1vw;
             margin: 1%;
@@ -18,7 +33,7 @@
 
         th,
         td {
-            border: 1px solid gray;
+            border: 1px solid var(--border-color);
             padding: 4px;
             text-align: center;
             min-height: 3vw;
@@ -27,7 +42,7 @@
         th,
         td.side_column_number,
         td.side_column_time {
-            background-color: #f2f2f2;
+            background-color: var(--bg-time);
         }
 
         .side_column_number {
@@ -39,7 +54,7 @@
         }
 
         .replaced {
-            background-color: #fae4d7;
+            background-color: var(--bg-replaced);
         }
 
         .title,
@@ -50,31 +65,31 @@
         }
 
         .event {
-            background-color: #fa8072;
+            background-color: var(--bg-event);
         }
 
         .iga {
-            background-color: #cfffd9;
+            background-color: var(--bg-iga);
         }
 
         .practice {
-            background-color: #c0d5fa;
+            background-color: var(--bg-practice);
         }
 
         .exam {
-            background-color: #f5d0d0;
+            background-color: var(--bg-exam);
         }
 
         .consultation {
-            background-color: #c9dec3;
+            background-color: var(--bg-consultation);
         }
 
         .session {
-            background-color: #fdffe0;
+            background-color: var(--bg-session);
         }
 
         .example {
-            border: 1px solid gray;
+            border: 1px solid var(--border-color);
             padding: 0.2vw 0.4vw;
         }
     </style>

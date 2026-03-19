@@ -18,6 +18,15 @@ import (
 func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update group handler")
 
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
+	darkMode := false
+	if !ok {
+		addContextHandlerError(ctx, errors.New("chat not found in context"))
+		log.Error().Err(errors.New("chat not found in context")).Send()
+	} else {
+		darkMode = chat.DarkMode
+	}
+
 	message := update.CallbackQuery.Message.Message
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := models.GroupName(command.Arg(0))
@@ -34,6 +43,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 	}
 
 	conf := models.GroupScheduleConfig(group)
+	conf.IsDark = darkMode
 	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -57,6 +67,16 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Update teacher handler")
 
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
+	darkMode := false
+	if !ok {
+		addContextHandlerError(ctx, errors.New("chat not found in context"))
+		log.Error().Err(errors.New("chat not found in context")).Send()
+		return
+	} else {
+		darkMode = chat.DarkMode
+	}
+
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	teacherID := command.Arg(0)
 
@@ -72,6 +92,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	}
 
 	conf := models.TeacherScheduleConfig(teacher)
+	conf.IsDark = darkMode
 	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)

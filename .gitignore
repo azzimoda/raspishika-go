@@ -3,7 +3,7 @@
 !.dockerignore
 
 storage/cache/
-storage/screenshots/
+storage/logs/
 
 *.sqlite3
 *.bak

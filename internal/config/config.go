@@ -52,8 +52,10 @@ const (
 	KeyChangeAlertUpdateInterval = "sending.change_alert.update_interval"
 	KeyAdminNewChatReport        = "adminbot.new_chat_report"
 
-	KeyScheduleTemplateFile = "schedule_template_file"
-	KeyScheduleTemplate     = "schedule_template"
+	KeyScheduleTemplateFile     = "schedule_template_file"
+	KeyScheduleTemplateDarkFile = "schedule_template_dark_file"
+	KeyScheduleTemplate         = "schedule_template"
+	KeyScheduleTemplateDark     = "schedule_template_dark"
 
 	KeyStartTime     = "start"
 	KeyNotifyMessage = "notify"
@@ -96,7 +98,8 @@ var defaults = map[string]any{
 
 	KeyAdminNewChatReport: true,
 
-	KeyScheduleTemplateFile: "storage/schedule_template.html",
+	KeyScheduleTemplateFile:     "storage/templates/schedule_template.html",
+	KeyScheduleTemplateDarkFile: "storage/templates/schedule_template_dark.html",
 }
 
 func init() {
@@ -114,8 +117,11 @@ func Load() (err error) {
 		return err
 	}
 
-	if _, err = ScheduleTemplate(); err != nil {
-		return fmt.Errorf("failed to load schedule template")
+	if _, err = ScheduleTemplate(false); err != nil {
+		return fmt.Errorf("failed to load schedule template: %w", err)
+	}
+	if _, err = ScheduleTemplate(true); err != nil {
+		return fmt.Errorf("failed to load schedule template: %w", err)
 	}
 
 	return nil
@@ -253,23 +259,32 @@ func AssertMyCommands(myCommandsAny any) ([]map[string]string, bool) {
 	return myCommands, true
 }
 
-func ScheduleTemplate() (string, error) {
-	data, err := os.ReadFile(viper.GetString(KeyScheduleTemplateFile))
+func FetchScheduleTemplate(is_dark bool) string {
+	template, err := ScheduleTemplate(is_dark)
+	if err != nil {
+		log.Debug().Err(err).Msg("Failed to template")
+		key := KeyScheduleTemplate
+		if is_dark {
+			key = KeyScheduleTemplateDark
+		}
+		return viper.GetString(key)
+	}
+	log.Trace().Msg("Loaded schedule template")
+	return template
+}
+
+func ScheduleTemplate(is_dark bool) (string, error) {
+	key := KeyScheduleTemplateFile
+	if is_dark {
+		key = KeyScheduleTemplateDarkFile
+	}
+
+	data, err := os.ReadFile(viper.GetString(key))
 	if err != nil {
 		return "", fmt.Errorf("failed to read schedule template file: %w", err)
 	}
 	viper.Set("schedule_template", string(data))
 	return string(data), nil
-}
-
-func FetchScheduleTemplate() string {
-	template, err := ScheduleTemplate()
-	if err != nil {
-		log.Debug().Err(err).Msg("Failed to template")
-		return viper.GetString(KeyScheduleTemplate)
-	}
-	log.Trace().Msg("Loaded schedule template")
-	return template
 }
 
 func BrowserWindowSizeScaled() (int, int) {

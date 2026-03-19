@@ -119,6 +119,7 @@ func (mb *MainBot) sendQuickGroupSchedule(
 	}
 
 	conf := models.GroupScheduleConfig(group)
+	conf.IsDark = chat.DarkMode
 	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		log.Error().Any("group", group).Err(err).

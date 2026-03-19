@@ -3,8 +3,8 @@
 database/
 configs/
 
-storage/
-!storage/schedule_template.html
+storage/cache/
+storage/logs/
 
 Dockerfile
 docker-compose.yml

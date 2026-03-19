@@ -10,6 +10,7 @@ const (
 	CallbackCommandConfigReminder  = "config_reminder"
 	CallbackCommandConfigChange    = "config_change"
 	CallbackCommandConfigSetAccess = "config_set_access"
+	CallbackCommandConfigDarkMode  = "config_darkmode"
 	CallbackCommandSetAccess       = "set_access"
 
 	CallbackCommandSelectDepartment = "select_department"
