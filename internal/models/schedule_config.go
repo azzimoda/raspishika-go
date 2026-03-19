@@ -8,6 +8,7 @@ func TeacherScheduleConfig(teacher *Teacher) ScheduleConfig { return ScheduleCon
 type ScheduleConfig struct {
 	Group   *Group   `json:"group"`
 	Teacher *Teacher `json:"teacher"`
+	IsDark  bool     `json:"is_dark"`
 }
 
 func (sc *ScheduleConfig) FormatHTML() string {

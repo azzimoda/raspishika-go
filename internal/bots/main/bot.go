@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
@@ -35,6 +36,7 @@ func New(
 		),
 		bot.WithWorkers(viper.GetInt(config.KeyTelegramWorkers)),
 		bot.WithDefaultHandler(mb.defaultHandler),
+		bot.WithCheckInitTimeout(20 * time.Second),
 	}
 	if viper.GetString(config.KeyLoggerLevel) == "trace" {
 		opts = append(opts, bot.WithDebug())

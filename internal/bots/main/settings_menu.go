@@ -142,6 +142,36 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	updateSettingsMenu(ctx, b, update, chat)
 }
 
+func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+	log.Trace().Msg("Config dark mode handler")
+
+	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	message := update.CallbackQuery.Message.Message
+
+	chat, ok := ctx.Value(chatContextKey).(*models.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgTryLater,
+		})
+		return
+	}
+
+	chat.DarkMode = command.Arg(0) == "true"
+	if err := chat.Update(mb.services.Repo.DB); err != nil {
+		addContextHandlerError(ctx, err)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          message.Chat.ID,
+			MessageThreadID: message.MessageThreadID,
+			Text:            ErrMsgCouldNotUpdateData,
+		})
+	}
+
+	updateSettingsMenu(ctx, b, update, chat)
+}
+
 func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config access handler")
 
@@ -223,17 +253,24 @@ func settingsMessageText(chat *models.Chat) string {
 		changesNotificatin = "включено"
 	}
 
+	theme := "светлая"
+	if chat.DarkMode {
+		theme = "тёмная"
+	}
+
 	// TODO: Use `text/template` here.
 	text := fmt.Sprintf(`<b>Меню настроек</b>
 
 Группа: <u>%s</u>
 Ежедневная рассылка: <u>%s</u>
 Напоминания перед парами: <u>%s</u>
-Уведомления об изменениях: <u>%s</u>`,
+Уведомления об изменениях: <u>%s</u>
+Тема: <u>%s</u>`,
 		utils.DerefOrTypeDefault(chat.GroupName),
 		dailyTime,
 		pairNotification,
 		changesNotificatin,
+		theme,
 	)
 	if !chat.IsPrivate() {
 		text += fmt.Sprintf("\nУровень доступа: <u>%d</u>", chat.Access)
@@ -271,7 +308,7 @@ func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButto
 		})
 	}
 
-	// Changes alerts
+	// Change alerts
 	if chat.ChangeAlert {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Выкл. уведомления об изменениях", CallbackData: CallbackCommandConfigChange + "\nfalse"},
@@ -279,6 +316,17 @@ func settingsMessageKeyboard(chat *models.Chat) [][]tgmodels.InlineKeyboardButto
 	} else {
 		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
 			{Text: "Вкл. уведомления об изменениях", CallbackData: CallbackCommandConfigChange + "\ntrue"},
+		})
+	}
+
+	// Dark mode
+	if chat.DarkMode {
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+			{Text: "Вкл. светлую тему", CallbackData: CallbackCommandConfigDarkMode + "\nfalse"},
+		})
+	} else {
+		keyboard = append(keyboard, []tgmodels.InlineKeyboardButton{
+			{Text: "Вкл. тёмную тему", CallbackData: CallbackCommandConfigDarkMode + "\ntrue"},
 		})
 	}
 

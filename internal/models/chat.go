@@ -55,6 +55,7 @@ type Chat struct {
 	PairSending      bool            `db:"pair_sending"`
 	ChangeAlert      bool            `db:"update_notification"`
 	Access           ChatAccessLevel `db:"access"`
+	DarkMode         bool            `db:"dark_mode"`
 	CreatedAt        time.Time       `db:"created_at"`
 	UpdatedAt        time.Time       `db:"updated_at"`
 }
@@ -72,6 +73,7 @@ func (c *Chat) Update(db *sqlx.DB) error {
 			pair_sending = :pair_sending,
 			update_notification = :update_notification,
 			access = :access,
+			dark_mode = :dark_mode,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = :id`,
 		c,
