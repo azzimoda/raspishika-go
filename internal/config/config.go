@@ -44,8 +44,8 @@ const (
 
 	KeyFeatureAdminBot         = "features.admin_bot"
 	KeyFeatureDailySending     = "features.sending.daily"
-	KeyFeaturePairNotification = "featurs.sending.pair_notification"
-	KeyFeatureChangeAlert      = "featurs.sending.change_alert"
+	KeyFeaturePairNotification = "features.sending.pair_notification"
+	KeyFeatureChangeAlert      = "features.sending.change_alert"
 
 	KeySendingWorkers            = "sending.workers"
 	KeyPairNotificationTTL       = "sending.pair_notification.ttl"
