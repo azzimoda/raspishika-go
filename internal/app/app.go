@@ -100,6 +100,8 @@ func (a *App) startServices(ctx context.Context) {
 		} else {
 			log.Info().Msg("Daily sending scheduled")
 		}
+	} else {
+		log.Info().Msg("Daily sending disabled")
 	}
 
 	if viper.GetBool(config.KeyFeaturePairNotification) {
@@ -108,10 +110,15 @@ func (a *App) startServices(ctx context.Context) {
 		} else {
 			log.Info().Msg("Pair sending scheduled")
 		}
+	} else {
+		log.Info().Msg("Pair notification disabled")
 	}
 
 	if viper.GetBool(config.KeyFeatureChangeAlert) {
 		go sendingManager.RunChangeAlertNotifier(ctx)
+		log.Info().Msg("Change alert notifier started")
+	} else {
+		log.Info().Msg("Change alert disabled")
 	}
 
 	sendingManager.Start()
