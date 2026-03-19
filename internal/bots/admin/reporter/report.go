@@ -114,7 +114,7 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 		if reportErr != nil {
 			logEvent = log.Error().Err(reportErr)
 		} else {
-			logEvent = log.Info()
+			logEvent = log.Debug()
 		}
 		for key, value := range debugObjects {
 			logEvent.Any(key, value)

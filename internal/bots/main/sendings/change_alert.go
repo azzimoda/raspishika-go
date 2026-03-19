@@ -171,7 +171,7 @@ func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes c
 		if err != nil {
 			sm.services.Reporter.Report().Log().Err(err).Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
 				Msg("Errors while fetchig updates for monitored groups")
-		} else if elapsed.Minutes() > 1 || elapsedPerGroup.Seconds() > 10 {
+		} else if elapsedPerGroup.Seconds() > 10 {
 			sm.services.Reporter.Report().Log().Debug("groupCount", len(groups)).Debug("elapsed", elapsed).
 				Msg("Updating monitored groups schedules took too long")
 		}
