@@ -143,7 +143,7 @@ func (a *App) Shutdown() {
 func (a *App) Report() reporter.ReportConfig {
 	if a.adminBot == nil {
 		log.Warn().Msg("Admin bot is not initialized")
-		return reporter.ReportConfig{Context: context.Background()}
+		return reporter.NewReportConfig(nil, viper.GetInt64(config.KeyTelegramAdminId))
 	}
 	return a.adminBot.Report()
 }
