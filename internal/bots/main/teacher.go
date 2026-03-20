@@ -182,8 +182,7 @@ func (mb *MainBot) sendTeacherSchedule(
 		log.Error().Err(err).Msg("Failed to send chat action")
 	}
 
-	conf := models.TeacherScheduleConfig(teacher)
-	conf.IsDark = localChat.DarkMode
+	conf := models.TeacherScheduleConfig(teacher, localChat.DarkMode)
 	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))

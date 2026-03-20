@@ -52,8 +52,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		log.Error().Err(err).Msg("Failed to send chat action")
 	}
 
-	conf := models.GroupScheduleConfig(group)
-	conf.IsDark = chat.DarkMode
+	conf := models.GroupScheduleConfig(group, chat.DarkMode)
 	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -204,8 +203,11 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		return
 	}
 
-	rawSchedule, err :=
-		mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
+	rawSchedule, err := mb.services.ScheduleMan.Get(
+		mb.services.Repo,
+		mb.services.Browser,
+		models.GroupScheduleConfig(group, chat.DarkMode),
+	)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -271,7 +273,7 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		rawSchedule, err := mb.services.ScheduleMan.Get(
 			mb.services.Repo,
 			mb.services.Browser,
-			models.GroupScheduleConfig(group),
+			models.GroupScheduleConfig(group, chat.DarkMode),
 		)
 		if err != nil {
 			addContextHandlerError(ctx, err)

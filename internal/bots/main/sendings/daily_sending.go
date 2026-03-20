@@ -173,9 +173,12 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName models.GroupName, ch
 		errors = []error{fmt.Errorf("failed to get group by name %s", groupName)}
 		return errors, true
 	}
-	conf := models.GroupScheduleConfig(group)
-	var imageFilename string
-	var imageData []byte
+	confLight := models.GroupScheduleConfig(group, false)
+	confDark := models.GroupScheduleConfig(group, true)
+	var imageFilenameLight string
+	var imageDataLight []byte
+	var imageFilenameDark string
+	var imageDataDark []byte
 	var doReturn = false
 	elapsedFetchGroupSchedule := measureTime(func() {
 		_, err = sm.bot.Bot.SendChatAction(ctx, &bot.SendChatActionParams{
@@ -183,7 +186,8 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName models.GroupName, ch
 			MessageThreadID: 0,
 			Action:          tgmodels.ChatActionTyping,
 		})
-		imageFilename, imageData, err = sm.bot.PrepareScheduleImage(conf)
+		imageFilenameLight, imageDataLight, err = sm.bot.PrepareScheduleImage(confLight)
+		imageFilenameDark, imageDataDark, err = sm.bot.PrepareScheduleImage(confDark)
 		if err != nil {
 			errors = []error{fmt.Errorf("failed preparing week schedule data: %w", err)}
 			doReturn = true
@@ -205,9 +209,19 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName models.GroupName, ch
 			wg.Go(func() {
 				elapsed := measureTime(func() {
 					// NOTE: By default bot send dailt sending to general chat, so the message thread ID is 0.
+					conf := confLight
+					imageFilename := imageFilenameLight
+					imageData := imageDataLight
+					if chat.DarkMode {
+						conf = confDark
+						imageFilename = imageFilenameDark
+						imageData = imageDataDark
+					}
+
 					err := sm.bot.SendWeekScheduleMessages(ctx, sm.bot.Bot, 0, chat, conf, imageFilename, imageData)
 					if err != nil {
-						log.Error().Err(err).Any("chat_id", chat.TgChatID).Msgf("Failed to send daily schedule to chat")
+						log.Error().Err(err).Any("chat_id", chat.TgChatID).
+							Msgf("Failed to send daily schedule to chat")
 						if err = handleTelegramAPIError(sm.services, chat, err); err == nil {
 							return
 						}

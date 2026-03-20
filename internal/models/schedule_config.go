@@ -2,8 +2,12 @@ package models
 
 import "fmt"
 
-func GroupScheduleConfig(group *Group) ScheduleConfig       { return ScheduleConfig{Group: group} }
-func TeacherScheduleConfig(teacher *Teacher) ScheduleConfig { return ScheduleConfig{Teacher: teacher} }
+func GroupScheduleConfig(group *Group, isDark bool) ScheduleConfig {
+	return ScheduleConfig{Group: group, IsDark: isDark}
+}
+func TeacherScheduleConfig(teacher *Teacher, isDark bool) ScheduleConfig {
+	return ScheduleConfig{Teacher: teacher, IsDark: isDark}
+}
 
 type ScheduleConfig struct {
 	Group   *Group   `json:"group"`

@@ -42,8 +42,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 		return
 	}
 
-	conf := models.GroupScheduleConfig(group)
-	conf.IsDark = darkMode
+	conf := models.GroupScheduleConfig(group, darkMode)
 	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -91,8 +90,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	conf := models.TeacherScheduleConfig(teacher)
-	conf.IsDark = darkMode
+	conf := models.TeacherScheduleConfig(teacher, darkMode)
 	_, imageData, err := mb.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -130,8 +128,11 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		return
 	}
 
-	rawSchedule, err :=
-		mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, models.GroupScheduleConfig(group))
+	rawSchedule, err := mb.services.ScheduleMan.Get(
+		mb.services.Repo,
+		mb.services.Browser,
+		models.GroupScheduleConfig(group, false),
+	)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -185,7 +186,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	if time.Now().Weekday() == time.Sunday {
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
-		conf := models.GroupScheduleConfig(group)
+		conf := models.GroupScheduleConfig(group, false)
 		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
 		if err != nil {
 			addContextHandlerError(ctx, err)

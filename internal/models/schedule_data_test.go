@@ -20,7 +20,7 @@ func TestSchedule_JSON(t *testing.T) {
 	}
 	teacherName := "Иванов Иван Иванович"
 	schedule := models.RawSchedule{
-		Config: models.GroupScheduleConfig(&group),
+		Config: models.GroupScheduleConfig(&group, false),
 		Rows: []models.RawScheduleRow{
 			{Number: 1, TimeRange: "8:00-9:35", Days: []models.RawScheduleDay{
 				{

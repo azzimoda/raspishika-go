@@ -134,8 +134,11 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		return []error{fmt.Errorf("failed to get group by name %s: %w", groupName, err)}, true
 	}
 
-	rawSchedule, err :=
-		sm.services.ScheduleMan.Get(sm.services.Repo, sm.services.Browser, models.GroupScheduleConfig(group))
+	rawSchedule, err := sm.services.ScheduleMan.Get(
+		sm.services.Repo,
+		sm.services.Browser,
+		models.GroupScheduleConfig(group, false),
+	)
 	if err != nil {
 		return []error{fmt.Errorf("failed to fetch schedule for group %s: %w", groupName, err)}, true
 	}

@@ -39,7 +39,7 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 
 	teacher := teachers[42]
 	t.Log(teacher)
-	teacherScheduleConfig := models.TeacherScheduleConfig(&teacher)
+	teacherScheduleConfig := models.TeacherScheduleConfig(&teacher, false)
 	teacherScheduleURL := scraper.ScheduleURL(teacherScheduleConfig, departmentIDs)
 
 	// Test.

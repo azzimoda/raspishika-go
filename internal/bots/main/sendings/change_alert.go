@@ -190,7 +190,7 @@ func (sm *SendingManager) fetchScheduleUpdates(
 
 	elapsed := measureTime(func() {
 		for _, group := range groups {
-			conf := models.GroupScheduleConfig(&group)
+			conf := models.GroupScheduleConfig(&group, false)
 
 			oldRawSchedule, err := sm.services.ScheduleMan.GetCache(sm.services.Repo, conf)
 			if errors.Is(err, schedulemanager.ErrNoCache) {
