@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +27,8 @@ func (n GroupName) String() string { return string(n) }
 
 const GroupRegexp = `^([\w\p{Cyrillic}]{3,5})[- ]*(\d{2})[- ]*\(?(9|11)\)?[- ]*(\d)$`
 
+var GroupRE = regexp.MustCompile(GroupRegexp)
+
 var ErrInvalidGroupNameFormat = errors.New("string does not match the group name format")
 
 // ValidateFormat determines whether the given string can be formatted into a valid group name,
@@ -34,13 +37,22 @@ var ErrInvalidGroupNameFormat = errors.New("string does not match the group name
 //
 // Important: the function doesn't validate case, i.e. if string "иСпТ-22-(9)-2" is given, the result is the same.
 func (n GroupName) ValidateFormat() (GroupName, error) {
-	r := regexp.MustCompile(GroupRegexp)
-	if !r.MatchString(string(n)) {
+	if !GroupRE.MatchString(string(n)) {
 		return n, fmt.Errorf("%w: '%s'", ErrInvalidGroupNameFormat, n)
 	}
-	subs := r.FindStringSubmatch(string(n))
+	subs := GroupRE.FindStringSubmatch(string(n))
 	return GroupName(fmt.Sprintf("%s-%s-(%s)-%s", subs[1], subs[2], subs[3], subs[4])), nil
+}
 
+func (group GroupName) Parse() (name string, year int, base int, n int, err error) {
+	if !GroupRE.MatchString(string(group)) {
+		return "", 0, 0, 0, fmt.Errorf("%w: '%s'", ErrInvalidGroupNameFormat, group)
+	}
+	subs := GroupRE.FindStringSubmatch(string(group))
+	year, _ = strconv.Atoi(subs[2])
+	base, _ = strconv.Atoi(subs[3])
+	n, _ = strconv.Atoi(subs[4])
+	return subs[1], year, base, n, nil
 }
 
 type Year int

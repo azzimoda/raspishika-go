@@ -208,14 +208,11 @@ func GetNewChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 	return count, nil
 }
 
-func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) (map[string]int, error) {
-	var data []struct {
-		Group *string `db:"group"`
-		Count int     `db:"count"`
-	}
+func GetNewChats(db *sqlx.DB, dur time.Duration) ([]Chat, error) {
+	var chats []Chat
 	if err := db.Select(
-		&data,
-		`SELECT "group", COUNT(*) AS count FROM chats WHERE created_at > datetime('now', ?) GROUP BY "group" ORDER BY "group"`,
+		&chats,
+		`SELECT * FROM chats WHERE created_at > datetime('now', ?)`,
 		sqlPeriod(dur),
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -223,12 +220,25 @@ func GetNewChatsGrouped(db *sqlx.DB, dur time.Duration) (map[string]int, error) 
 		}
 		return nil, err
 	}
-	groupedChats := make(map[string]int)
-	for _, item := range data {
-		if item.Group == nil {
-			item.Group = new(string) // Empty string
+	return chats, nil
+}
+
+// GetNewChatsGroupedByYear returns a map of new chats grouped by the year of admission.
+func GetNewChatsGroupedByYear(db *sqlx.DB, dur time.Duration) (map[int]int, error) {
+	chats, err := GetNewChats(db, dur)
+	if err != nil {
+		return nil, err
+	}
+	groupedChats := make(map[int]int)
+	for _, chat := range chats {
+		groupName := utils.DerefOrTypeDefault(chat.GroupName)
+		_, year, _, _, err := groupName.Parse()
+		if err != nil {
+			log.Error().Err(err).Msg("invalid group name")
+			continue
 		}
-		groupedChats[*item.Group] = item.Count
+
+		groupedChats[year]++
 	}
 	return groupedChats, nil
 }

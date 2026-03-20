@@ -51,7 +51,7 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		return
 	}
 
-	chatsNewGrouped, err := models.GetNewChatsGrouped(ab.services.Repo.DB, duration)
+	chatsNewGrouped, err := models.GetNewChatsGroupedByYear(ab.services.Repo.DB, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get new chats grouped")
 	}
@@ -126,7 +126,9 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		chatsActive: activeCount, chatsInactive: inactiveCount,
 		chatsNew: chatsNewCount, chatsNewGrouped: chatsNewGrouped,
 
-		groupsTotal: groupCount, chatsPerGroupAvg: chatsPerGroupAvg, chatsPerGroupMedian: chatsPerGroupMedian,
+		groupsTotal:         groupCount,
+		chatsPerGroupAvg:    chatsPerGroupAvg,
+		chatsPerGroupMedian: chatsPerGroupMedian,
 
 		updatesTotal:   totalUpdates,
 		updatesSuccess: totalUpdates - errorCount, updatesFail: errorCount,
@@ -159,7 +161,7 @@ type generalReport struct {
 	chatsActive     int
 	chatsInactive   int
 	chatsNew        int
-	chatsNewGrouped map[string]int // Group -> Count
+	chatsNewGrouped map[int]int // Admission Year -> Count
 
 	groupsTotal         int
 	chatsPerGroupAvg    float32
@@ -182,8 +184,8 @@ type generalReport struct {
 func (gr generalReport) HTML() string {
 	var textNewChatsGrouped strings.Builder
 	fmt.Fprint(&textNewChatsGrouped, "\n<pre>")
-	for group, count := range gr.chatsNewGrouped {
-		fmt.Fprintf(&textNewChatsGrouped, "- %s: %d\n", group, count)
+	for year, count := range gr.chatsNewGrouped {
+		fmt.Fprintf(&textNewChatsGrouped, "%d => %d\n", year, count)
 	}
 	fmt.Fprint(&textNewChatsGrouped, "</pre>")
 
