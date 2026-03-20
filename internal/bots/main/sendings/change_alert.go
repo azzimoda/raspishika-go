@@ -73,7 +73,9 @@ func (sm *SendingManager) sendChangeAlert(
 ) error {
 	var errs []error
 
-	imageFileName, imageData, err := sm.bot.PrepareScheduleImage(change.New.Config)
+	conf := change.New.Config
+	conf.IsDark = chat.DarkMode
+	imageFileName, imageData, err := sm.bot.PrepareScheduleImage(conf)
 	if err != nil {
 		return fmt.Errorf("failed to prepare schedule image: %w", err)
 	}
@@ -88,7 +90,7 @@ func (sm *SendingManager) sendChangeAlert(
 	}
 
 	if err = sm.bot.SendSchedulePhoto(ctx, sm.bot.Bot, chat, 0, imageFileName, imageData,
-		mainbot.WeekScheduleMarkup(change.New.Config),
+		mainbot.WeekScheduleMarkup(conf),
 	); err != nil {
 		sm.bot.Bot.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chat.TgChatID,
