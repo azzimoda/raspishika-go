@@ -36,7 +36,7 @@ func New(
 		),
 		bot.WithWorkers(viper.GetInt(config.KeyTelegramWorkers)),
 		bot.WithDefaultHandler(mb.defaultHandler),
-		bot.WithCheckInitTimeout(20 * time.Second),
+		bot.WithCheckInitTimeout(30 * time.Second),
 	}
 	if viper.GetString(config.KeyLoggerLevel) == "trace" {
 		opts = append(opts, bot.WithDebug())

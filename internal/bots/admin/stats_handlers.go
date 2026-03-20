@@ -252,6 +252,12 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		return
 	}
 
+	darkModeEnabledCount, err := models.GetChatCountWithDarkModeOn(ab.services.Repo.DB)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get chats with dark mode enabled")
+		return
+	}
+
 	timeKeys := make([]string, 0, len(dailyTimes))
 	for k := range dailyTimes {
 		timeKeys = append(timeKeys, k)
@@ -259,8 +265,15 @@ func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmod
 	sort.Strings(timeKeys)
 
 	var text strings.Builder
-	fmt.Fprintf(&text, "Pair enabled: %d\nDaily enabled: %d\nUpdate enabled: %d\nTimes:\n<pre>",
-		pairEnabledCount, dailyEnabledCount, updateEnabledCount)
+	fmt.Fprintf(&text, `CONFIGS
+
+Dark mode enabled: %d
+Pair enabled: %d
+Daily enabled: %d
+Update enabled: %d
+Times:
+<pre>`,
+		darkModeEnabledCount, pairEnabledCount, dailyEnabledCount, updateEnabledCount)
 	for _, t := range timeKeys {
 		fmt.Fprintf(&text, "- %s: %3d\n", t, dailyTimes[t])
 	}

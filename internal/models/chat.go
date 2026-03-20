@@ -269,11 +269,15 @@ func GetInactiveChatCount(db *sqlx.DB, dur time.Duration) (int, error) {
 
 func GetChatCountWithChangeAlertOn(db *sqlx.DB) (int, error) {
 	var count int
-	if err := db.Get(
-		&count,
-		`SELECT count(*) FROM chats WHERE update_notification= 1`,
-		sqlPeriod(time.Hour*24), sqlPeriod(time.Hour*24),
-	); err != nil {
+	if err := db.Get(&count, `SELECT count(*) FROM chats WHERE update_notification= 1`); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func GetChatCountWithDarkModeOn(db *sqlx.DB) (int, error) {
+	var count int
+	if err := db.Get(&count, `SELECT count(*) FROM chats WHERE dark_mode = 1`); err != nil {
 		return 0, err
 	}
 	return count, nil
