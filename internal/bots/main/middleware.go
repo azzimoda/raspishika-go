@@ -31,8 +31,6 @@ var (
 // Use it as global middleware.
 func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-		log.Trace().Msg("Middleware: ensureChatMiddleware")
-
 		chat, err := mb.ensureChat(b, update)
 		if errors.Is(err, ErrUnknownUpdateType) {
 			log.Warn().Msg("Unknown update type")
@@ -97,15 +95,25 @@ func (mb *MainBot) sendNewChatReport(chat *models.Chat, err error, tgChatID mode
 	}
 }
 
-// ignoreOldMessagesMiddleware ignores old messages.
+// ignoreOldMessagesMiddleware ignores messages sent more that 10 minutes ago.
 //
 // Use it as global middleware.
 func (mb *MainBot) ignoreOldMessagesMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-		log.Trace().Msg("Middleware: ignoreOldMessagesMiddleware")
-
 		if update.Message == nil || time.Unix(int64(update.Message.Date), 0).After(time.Now().Add(-10*time.Minute)) {
 			next(ctx, b, update)
+			return
+		}
+		log.Trace().Msg("Old message ignored")
+	}
+}
+
+// ignoreInaccessibleMessageCQMiddleware filters out callback queries with inaccessible messages.
+func (mb *MainBot) ignoreInaccessibleMessageCQMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
+	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
+		if update.CallbackQuery == nil || update.CallbackQuery.Message.Message != nil {
+			next(ctx, b, update)
+			return
 		}
 	}
 }
@@ -119,8 +127,6 @@ var callbackSF = singleflight.Group{}
 // Use it as global middleware.
 func (mb *MainBot) callbackQuerySingleFlightMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-		log.Trace().Msg("Middleware: callbackQuerySingleFlightMiddleware")
-
 		if update.CallbackQuery == nil {
 			next(ctx, b, update)
 			return
@@ -128,7 +134,6 @@ func (mb *MainBot) callbackQuerySingleFlightMiddleware(next bot.HandlerFunc) bot
 
 		key := fmt.Sprint(update.CallbackQuery.Message.Message.ID)
 		_, err, shared := callbackSF.Do(key, func() (any, error) {
-			log.Trace().Str("message_id", key).Msg("Handling a callback query")
 			next(ctx, b, update)
 			return nil, nil
 		})
@@ -230,8 +235,6 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 // Use it as middleware for config command and callback query handlers.
 func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-		log.Trace().Msg("Middleware: checkConfigAccessMiddleware")
-
 		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			mb.services.Reporter.Report().Log().Msg("Failed to get chat from context")
@@ -248,9 +251,7 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 		// User can use a config command only if chat access is ChatAccessAll, or the user is admin.
 		logEvent := log.Trace().Bool("admin", isAdmin).Int("access", int(chat.Access))
 		if chat.Access == models.ChatAccessAll || isAdmin {
-			logEvent.Msg("User is allowed to use config commands")
 			next(ctx, b, update)
-
 			return
 		} else {
 			logEvent.Msg("User is not allowed to use config commands")
@@ -269,8 +270,6 @@ func (mb *MainBot) checkConfigAccessMiddleware(next bot.HandlerFunc) bot.Handler
 // Use it as middleware for regular command handlers.
 func (mb *MainBot) checkRegularAccessMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-		log.Trace().Msg("Middleware: checkRegularAccessMiddleware")
-
 		chat, ok := ctx.Value(chatContextKey).(*models.Chat)
 		if !ok {
 			mb.services.Reporter.Report().Log().Msg("Failed to get chat from context")
@@ -287,7 +286,6 @@ func (mb *MainBot) checkRegularAccessMiddleware(next bot.HandlerFunc) bot.Handle
 		// User can use a regular command only if chat access is not ChatAccessAdminOnly, or the user is admin.
 		logEvent := log.Trace().Bool("admin", isAdmin).Int("access", int(chat.Access))
 		if chat.Access != models.ChatAccessAdminOnly || isAdmin {
-			logEvent.Msg("User is allowed to use regular commands")
 			next(ctx, b, update)
 		}
 		logEvent.Msg("User is not allowed to use regular commands")

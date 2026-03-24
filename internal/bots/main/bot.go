@@ -30,6 +30,7 @@ func New(
 	opts := []bot.Option{
 		bot.WithMiddlewares(
 			mb.ignoreOldMessagesMiddleware,
+			mb.ignoreInaccessibleMessageCQMiddleware,
 			mb.callbackQuerySingleFlightMiddleware,
 			mb.ensureChatMiddleware,
 			mb.logMiddleware,

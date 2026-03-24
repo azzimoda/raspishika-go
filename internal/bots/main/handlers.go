@@ -110,17 +110,16 @@ func (mb *MainBot) registerCommandHandler(pattern string, f bot.HandlerFunc, m .
 func commandMatchFunction(pattern string, username string) bot.MatchFunc {
 	re := regexp.MustCompile(fmt.Sprintf(`^/%s(@\w+)?(\s[\s\S]+)?$`, pattern))
 	return func(update *tgmodels.Update) bool {
-		return matchUpdatePatternUsername(update, pattern, username, re)
+		return matchUpdatePatternUsername(update, username, re)
 	}
 }
 
-func matchUpdatePatternUsername(update *tgmodels.Update, pattern string, username string, re *regexp.Regexp) bool {
+func matchUpdatePatternUsername(update *tgmodels.Update, username string, re *regexp.Regexp) bool {
 	if update.Message == nil || update.Message.Text == "" {
 		return false // Not a text message.
 	}
 
 	text := update.Message.Text
-	log.Trace().Str("pattern", pattern).Str("username", username).Str("text", text).Msg("Checking command match...")
 
 	if !re.MatchString(text) {
 		log.Trace().Str("text", text).Msg("Invalid command")
