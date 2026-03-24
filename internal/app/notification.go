@@ -7,14 +7,14 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/rs/zerolog/log"
 
-	"github.com/azzimoda/raspishika-go/internal/models"
+	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 const notificationWorkers = 8
 
 func (a *App) Notify(s string) {
-	chats, err := models.GetChats(a.services.Repository.DB)
+	chats, err := model.GetChats(a.services.Repository.DB)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to get chats")
 	}
@@ -57,7 +57,7 @@ func (a *App) Notify(s string) {
 	log.Info().Int("okCount", okCount).Int("errCount", len(chats)-okCount).Msg("Notification sent")
 }
 
-func sendNotification(b *bot.Bot, chat *models.Chat, text string) error {
+func sendNotification(b *bot.Bot, chat *model.Chat, text string) error {
 	_, err := b.SendMessage(context.Background(), &bot.SendMessageParams{ChatID: chat.TgChatID, Text: text})
 	return err
 }

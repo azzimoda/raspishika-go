@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/models"
+	"github.com/azzimoda/raspishika-go/internal/model"
 )
 
 func New(db *sqlx.DB) (*Repository, error) {
@@ -46,7 +46,7 @@ func (r *Repository) Close() error { return r.DB.Close() }
 
 func (r *Repository) applyMigrations() error {
 	log.Trace().Msg("Applying migrations...")
-	if err := models.EnsureMigrationsTable(r.DB); err != nil {
+	if err := model.EnsureMigrationsTable(r.DB); err != nil {
 		return fmt.Errorf("failed to ensure migrations table: %w", err)
 	}
 
@@ -58,10 +58,10 @@ func (r *Repository) applyMigrations() error {
 
 	count := 0
 	for _, file := range files {
-		name := models.MigrationName(file.name)
+		name := model.MigrationName(file.name)
 		sql := file.sql
-		if err := models.CheckMigration(r.DB, name); err != nil {
-			if err := models.ApplyMigration(r.DB, name, sql); err != nil {
+		if err := model.CheckMigration(r.DB, name); err != nil {
+			if err := model.ApplyMigration(r.DB, name, sql); err != nil {
 				log.Error().Err(err).Any("name", name).Msg("Failed to apply migration")
 				return fmt.Errorf("failed to apply migration %s: %w", name, err)
 			}

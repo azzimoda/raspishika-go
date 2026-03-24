@@ -11,12 +11,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	adminbot "github.com/azzimoda/raspishika-go/internal/bots/admin"
-	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
-	mainbot "github.com/azzimoda/raspishika-go/internal/bots/main"
-	"github.com/azzimoda/raspishika-go/internal/bots/main/sendings"
+	adminbot "github.com/azzimoda/raspishika-go/internal/bot/admin"
+	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
+	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
+	sending "github.com/azzimoda/raspishika-go/internal/bot/main/sending"
 	"github.com/azzimoda/raspishika-go/internal/config"
-	"github.com/azzimoda/raspishika-go/internal/services"
+	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/pkg/database"
 )
 
@@ -26,7 +26,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	s, err := services.New(db)
+	s, err := service.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
@@ -59,7 +59,7 @@ type App struct {
 	cancel   context.CancelFunc
 	mainBot  *mainbot.MainBot
 	adminBot *adminbot.AdminBot
-	services *services.Services
+	services *service.Services
 }
 
 func (a *App) Run() error {
@@ -98,7 +98,7 @@ func (a *App) Run() error {
 }
 
 func (a *App) startServices(ctx context.Context) {
-	sendingManager := sendings.NewSendingManager(a.mainBot, a.services)
+	sendingManager := sending.NewSendingManager(a.mainBot, a.services)
 
 	if viper.GetBool(config.KeyFeatureDailySending) {
 		if err := sendingManager.ScheduleDailySending(); err != nil {
