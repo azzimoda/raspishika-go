@@ -46,7 +46,7 @@ func (s *ScheduleChange) Diffs() []Diff {
 			oldPair := s.Old.Days[d].Pairs[p]
 			newPair := s.New.Days[d].Pairs[p]
 			if !reflect.DeepEqual(oldPair, newPair) {
-				absDiffs = append(absDiffs, Diff{NewDay: &newDay, OldPair: &oldPair, NewPair: &newPair})
+				absDiffs = append(absDiffs, Diff{NewDay: &newDay, OldPair: oldPair, NewPair: newPair})
 			}
 		}
 	}
@@ -80,6 +80,7 @@ func (s *ScheduleChange) HTML() string {
 		return date1.Before(date2)
 	})
 
+	// Build result string
 	var text strings.Builder
 	fmt.Fprintf(&text, "Изменения в расписании группы %s:", s.New.Config.Group.GroupName)
 
@@ -98,9 +99,9 @@ func (s *ScheduleChange) HTML() string {
 
 type Diff struct {
 	OldDay  *ScheduleDay `json:"old_day"`
-	OldPair *Pair        `json:"old_pair"`
+	OldPair Pair         `json:"old_pair"`
 	NewDay  *ScheduleDay `json:"new_day"`
-	NewPair *Pair        `json:"new_pair"`
+	NewPair Pair         `json:"new_pair"`
 }
 
 func (d *Diff) Day() *ScheduleDay {
@@ -113,12 +114,12 @@ func (d *Diff) Day() *ScheduleDay {
 	}
 }
 func (d *Diff) Number() int {
-	if d.NewPair != nil {
+	if !d.NewPair.IsEmpty() {
 		return d.NewPair.Number
-	} else if d.OldPair != nil {
+	} else if !d.OldPair.IsEmpty() {
 		return d.OldPair.Number
 	} else {
-		log.Panic().Msg("Diff must have at least one pair instanse")
+		log.Panic().Msg("Diff must have at least one not empty pair instanse")
 		panic("")
 	}
 }
@@ -131,91 +132,102 @@ func (d *Diff) HTML() (result string) {
 		// TODO: Implement this case later.
 
 		result = "?"
-	} else if d.OldPair != nil && d.NewPair != nil {
-		// Pair moved with same day
+	} else if !d.OldPair.IsEmpty() && !d.NewPair.IsEmpty() {
+		// Pair changed with same day
 		text := ""
 
-		isOrderChanged := d.OldPair.Number != d.NewPair.Number
-		isDiscChanged := d.OldPair.Discipline != d.NewPair.Discipline
-		isTeacherChanged := d.OldPair.Teacher != nil && d.NewPair.Teacher != nil &&
-			*d.OldPair.Teacher != *d.NewPair.Teacher
-		isClassroomChanged := d.OldPair.Classroom != d.NewPair.Classroom
-		log.Trace().Bool("isOrderChanged", isOrderChanged).Bool("isDiscChanged", isDiscChanged).
-			Bool("isClassroomChanged", isClassroomChanged).Send()
-
-		if d.OldPair.Kind != PairKindEmpty && d.NewPair.Kind == PairKindEmpty && d.NewPair.Replaced {
-			text = "<i>Снято:</i>"
-		} else if d.OldPair.Kind == PairKindEmpty && d.NewPair.Kind != PairKindEmpty && d.NewPair.Replaced {
-			text = "<i>Добавлено:</i>"
-		} else if isDiscChanged || isTeacherChanged {
+		if d.IsFullChange() {
 			text = "<i>Заменено:</i>"
-		} else if isOrderChanged && isClassroomChanged {
-			text = fmt.Sprintf("<i>Перенесено с %s:</i>", d.OldPair.TimeSlotCabinetString())
-		} else if isOrderChanged {
-			text = fmt.Sprintf("<i>Перенесено с %s:</i>", d.OldPair.TimeSlotString())
-		} else if isClassroomChanged {
+		} else if d.IsMovedInDay() {
+			text = "<i>Перенесено с " + d.OldPair.TimeSlotClassroomString() + "</i>"
+		} else if d.IsCancelled() {
+			text = "<i>Снято:</i>"
+		} else if d.IsAdded() {
+			text = "<i>Добавлено:</i>"
+		} else if d.IsClassroomChanged() {
 			text = fmt.Sprintf("<i>Перенесено из кабинета %s:</i>", d.OldPair.Classroom)
+		} else {
+			text = "<i>Замена:</i>"
 		}
 
-		result = text + "\n" + pairChangeHTML(d.OldPair, d.NewPair)
+		result = text + "\n" + pairChangeHTML(d)
 	} else {
 		// TODO: Ensure that this case is unreachable and remove it.
-		result = fmt.Sprintf("Заменено:\n%s", d.NewPair.HTML())
+		result = fmt.Sprintf("Замена:\n%s", d.NewPair.HTML())
 	}
 	log.Trace().Msgf("(Diff).String() => %v", result)
 	return result
 }
 
-// pairChangeHTML returns formatted pair change string.
-func pairChangeHTML(old, new *Pair) string {
-	isDiscChanged := old.Discipline != new.Discipline
-	isTeacherChanged := old.Teacher != nil && new.Teacher != nil && *old.Teacher != *new.Teacher
+func (d *Diff) IsFullChange() bool {
+	return d.IsClassroomChanged() && d.IsDisciplineChanged() && d.IsTeacherChanged()
+}
+func (d *Diff) IsClassroomChanged() bool  { return d.OldPair.Classroom != d.NewPair.Classroom }
+func (d *Diff) IsDisciplineChanged() bool { return d.OldPair.Discipline != d.NewPair.Discipline }
+func (d *Diff) IsTeacherChanged() bool {
+	return utils.DerefOrTypeDefault(d.OldPair.Teacher) != utils.DerefOrTypeDefault(d.NewPair.Teacher)
+}
+func (d *Diff) IsMovedInDay() bool { return d.OldPair.Number != d.NewPair.Number }
+func (d *Diff) IsCancelled() bool  { return d.NewPair.IsEmpty() }
+func (d *Diff) IsAdded() bool      { return d.OldPair.IsEmpty() }
 
+// pairChangeHTML returns formatted pair change string.
+func pairChangeHTML(d *Diff) string {
 	text := ""
-	switch new.Kind {
+	switch d.NewPair.Kind {
 	case PairKindEmpty:
-		text += fmt.Sprintf("<s>%s</s>", old.HTML())
+		// Cancelled
+		text += fmt.Sprintf("<s>%s</s>", d.OldPair.HTML())
 
 	case PairKindSubject:
-		if old.Kind == PairKindEmpty {
-			text += fmt.Sprintf("%s", new.HTML())
+		if d.IsAdded() {
+			text += fmt.Sprintf("%s", d.NewPair.HTML())
+		} else if d.IsFullChange() {
+			text += fmt.Sprintf("<s>%s</s> <b><i>%s</i></b>", d.OldPair.HTML(), d.NewPair.HTML())
 		} else {
-			text += new.TimeSlotCabinetString()
-			if isDiscChanged {
-				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-					old.Discipline, new.Discipline)
+			text += d.NewPair.TimeSlotString()
+
+			if d.IsClassroomChanged() {
+				text += fmt.Sprintf("\n    <s>%s</s> <b><i>%s</i></b>", d.OldPair.Classroom, d.NewPair.Classroom)
 			} else {
-				text += fmt.Sprintf("\n    %s", new.Discipline)
+				text += fmt.Sprintf("\n    %s", d.NewPair.Classroom)
 			}
 
-			if isTeacherChanged {
-				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-					utils.DerefOrTypeDefault(old.Teacher),
-					utils.DerefOrTypeDefault(new.Teacher),
+			if d.IsDisciplineChanged() {
+				text += fmt.Sprintf("\n    <s>%s</s> <b><i>%s</i></b>", d.OldPair.Discipline, d.NewPair.Discipline)
+			} else {
+				text += fmt.Sprintf("\n    %s", d.NewPair.Discipline)
+			}
+
+			if d.IsTeacherChanged() {
+				text += fmt.Sprintf("\n    <s>%s</s> <b><i>%s</i></b>",
+					utils.DerefOrTypeDefault(d.OldPair.Teacher),
+					utils.DerefOrTypeDefault(d.NewPair.Teacher),
 				)
 			} else {
-				text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
+				text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(d.NewPair.Teacher))
 			}
 		}
 
 	case PairKindExam, PairKindConsultation:
-		text += new.TimeSlotCabinetString()
-		text += fmt.Sprintf("\n    _%s_", new.Label)
-		if isDiscChanged {
-			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-				old.Discipline, new.Discipline)
+		text += d.NewPair.TimeSlotClassroomString()
+		text += fmt.Sprintf("\n    <b><i>%s</i></b>", d.NewPair.Label)
+
+		if d.IsDisciplineChanged() {
+			text += fmt.Sprintf("\n    <s>%s</s> <b><i>%s</i></b>", d.OldPair.Discipline, d.NewPair.Discipline)
 		} else {
-			text += fmt.Sprintf("\n    %s", new.Discipline)
+			text += fmt.Sprintf("\n    %s", d.NewPair.Discipline)
 		}
-		if isTeacherChanged {
-			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-				utils.DerefOrTypeDefault(old.Teacher), utils.DerefOrTypeDefault(new.Teacher))
+
+		if d.IsTeacherChanged() {
+			text += fmt.Sprintf("\n    <s>%s</s> <b><i>%s</i></b>",
+				utils.DerefOrTypeDefault(d.OldPair.Teacher), utils.DerefOrTypeDefault(d.NewPair.Teacher))
 		} else {
-			text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
+			text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(d.NewPair.Teacher))
 		}
 
 	default:
-		text += fmt.Sprintf("<s>%s</s>\n%s", old.HTML(), new.HTML())
+		text += fmt.Sprintf("<s>%s</s> <b><i>%s</i></b>", d.OldPair.HTML(), d.NewPair.HTML())
 	}
 
 	return text

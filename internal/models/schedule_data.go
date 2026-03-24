@@ -151,9 +151,7 @@ func (s *ScheduleDay) HTML() string {
 	}
 	return text
 }
-
 func (s *ScheduleDay) DateHTML() string { return fmt.Sprintf("📅 %s, %s", s.Weekday, s.Date) }
-
 func (s *ScheduleDay) DynamicFormatHTML(t time.Time) string {
 	text := s.DateHTML() + ": "
 
@@ -198,6 +196,14 @@ type Pair struct {
 	Replaced   bool     `json:"replaced"`
 }
 
+func (p *Pair) IsEmpty() bool {
+	switch p.Kind {
+	case PairKindEmpty, PairKindEvent, PairKindSession:
+		return true
+	default:
+		return false
+	}
+}
 func (p *Pair) IsEqual(other *Pair) bool { return reflect.DeepEqual(p, other) }
 func (p *Pair) IsBefore(t time.Time) bool {
 	endTime, err := time.Parse("15:04", p.EndTime)
@@ -213,10 +219,10 @@ func (p *Pair) HTML() string {
 
 	switch p.Kind {
 	case PairKindSubject:
-		return fmt.Sprintf("%s\n    <b>%s</b>\n    %s", p.TimeSlotCabinetString(), p.Discipline, teacher())
+		return fmt.Sprintf("%s\n    <b>%s</b>\n    %s", p.TimeSlotClassroomString(), p.Discipline, teacher())
 	case PairKindExam, PairKindConsultation:
 		return fmt.Sprintf("%s\n    <i>%s</i>\n    <b>%s</b>\n    %s",
-			p.TimeSlotCabinetString(), p.Label, p.Discipline, teacher())
+			p.TimeSlotClassroomString(), p.Label, p.Discipline, teacher())
 	default:
 		return fmt.Sprintf("%s — %s", p.TimeSlotString(), p.Label)
 	}
@@ -227,7 +233,7 @@ func (p *Pair) TimeSlotString() string {
 	return fmt.Sprintf("%d | %s - %s", p.Number, p.StartTime, p.EndTime)
 }
 
-// TimeSlotCabinetString returns formatted time slot string with classroom.
-func (p *Pair) TimeSlotCabinetString() string {
+// TimeSlotClassroomString returns formatted time slot string with classroom.
+func (p *Pair) TimeSlotClassroomString() string {
 	return fmt.Sprintf("%d | %s - %s | %s", p.Number, p.StartTime, p.EndTime, p.Classroom)
 }
