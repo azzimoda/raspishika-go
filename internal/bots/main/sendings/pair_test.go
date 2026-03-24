@@ -11,6 +11,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
+	"github.com/azzimoda/raspishika-go/pkg/database"
 )
 
 func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
@@ -19,7 +20,12 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	testDir := t.TempDir()
 	tests.InitConfig(t, testDir)
 
-	srvs, err := services.New()
+	db, err := database.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srvs, err := services.New(db)
 	if err != nil {
 		t.Fatal(err)
 	}

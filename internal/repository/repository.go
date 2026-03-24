@@ -14,7 +14,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/models"
 )
 
-func New() (*Repository, error) {
+func New(db *sqlx.DB) (*Repository, error) {
 	file := viper.GetString(config.KeyDatabaseFile)
 	if _, err := os.Stat(file); err != nil {
 		log.Warn().Str("file", file).Msg("Database file or its directore doesn't exist")
@@ -40,13 +40,9 @@ func New() (*Repository, error) {
 	return r, nil
 }
 
-type Repository struct {
-	DB *sqlx.DB
-}
+type Repository struct{ *sqlx.DB }
 
-func (r *Repository) Close() error {
-	return r.DB.Close()
-}
+func (r *Repository) Close() error { return r.DB.Close() }
 
 func (r *Repository) applyMigrations() error {
 	log.Trace().Msg("Applying migrations...")

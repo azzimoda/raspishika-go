@@ -14,7 +14,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 func (sm *SendingManager) processPairSending(t time.Time) {
@@ -22,7 +22,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	timeStr := pairTime.Format("15:04")
 	log.Trace().Msgf("Processing pair sending for time %s", timeStr)
 
-	chats, err := models.GetChatsWithPairSendingEnabled(sm.services.Repo.DB)
+	chats, err := models.GetChatsWithPairSendingEnabled(sm.services.Repository.DB)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats with pair sending enabled")
@@ -62,7 +62,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 
 	groupCount := len(groupedChats)
 	if chatCount > 0 {
-		if err := models.InsertSendingLog(sm.services.Repo.DB, models.SendingLog{
+		if err := models.InsertSendingLog(sm.services.Repository.DB, models.SendingLog{
 			Kind:    models.SendingLogPair,
 			Chats:   chatCount,
 			Groups:  groupCount,
@@ -121,7 +121,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		for _, chat := range chats {
 			chat.GroupName = nil
 			chat.DepartmentName = nil
-			if err := chat.Update(sm.services.Repo.DB); err != nil {
+			if err := chat.Update(sm.services.Repository.DB); err != nil {
 				log.Error().Err(err).Any("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
 				bothelpers.SendTempMessage(context.Background(), sm.bot.Bot, 5*time.Minute, &bot.SendMessageParams{
@@ -135,7 +135,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 	}
 
 	rawSchedule, err := sm.services.ScheduleMan.Get(
-		sm.services.Repo,
+		sm.services.Repository,
 		sm.services.Browser,
 		models.GroupScheduleConfig(group, false),
 	)
@@ -160,7 +160,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		return nil, false
 	default:
 		text = fmt.Sprintf("Следующая пара в кабинете %s:\n\t<b>%s</b>\n\t%s",
-			pair.Classroom, pair.Discipline, utils.DerefOrTypeDefault(pair.Teacher))
+			pair.Classroom, pair.Discipline, refutil.DerefOrTypeDefault(pair.Teacher))
 	}
 
 	messagesToDelete := make([]*tgmodels.Message, 0)

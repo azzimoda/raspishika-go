@@ -33,7 +33,7 @@ func (mb *MainBot) ensureChatMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 		chat, err := mb.ensureChat(b, update)
 		if errors.Is(err, ErrUnknownUpdateType) {
-			log.Warn().Msg("Unknown update type")
+			log.Warn().Msg("Unknown update type") // TODO: Do I really need this log?
 			next(ctx, b, update)
 			return
 		} else if err != nil {
@@ -59,7 +59,7 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*models.Chat
 		return nil, ErrUnknownUpdateType
 	}
 
-	chat, created, err := models.CreateOrUpdateChat(mb.services.Repo.DB, chatID, username)
+	chat, created, err := models.CreateOrUpdateChat(mb.services.Repository.DB, chatID, username)
 	if err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(models.Chat{TgChatID: chatID, UserName: &username}).
 			Msg("Failed to create or update chat")
@@ -84,7 +84,7 @@ func (mb *MainBot) sendNewChatReport(chat *models.Chat, err error, tgChatID mode
 	for range 5 {
 		time.Sleep(20 * time.Second)
 
-		if chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, tgChatID); err == nil && chat.GroupName != nil {
+		if chat, err := models.GetChatByTgChatID(mb.services.Repository.DB, tgChatID); err == nil && chat.GroupName != nil {
 			if sentErr == nil {
 				b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
 			}
@@ -219,7 +219,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 				Msg("Handler error")
 		}
 
-		models.InsertUpdateLog(mb.services.Repo.DB, &models.UpdateLog{
+		models.InsertUpdateLog(mb.services.Repository.DB, &models.UpdateLog{
 			ChatID:       chat.ID,
 			Kind:         updateKind,
 			MessageID:    messageID,

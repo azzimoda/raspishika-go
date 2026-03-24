@@ -17,10 +17,16 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/bots/main/sendings"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/services"
+	"github.com/azzimoda/raspishika-go/pkg/database"
 )
 
 func New() (*App, error) {
-	s, err := services.New()
+	db, err := database.New()
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := services.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}

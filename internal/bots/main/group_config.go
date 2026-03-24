@@ -47,7 +47,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	departments, err := scraper.FetchDepartments(mb.services.Repo)
+	departments, err := scraper.FetchDepartments(mb.services.Repository)
 	if err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
@@ -59,7 +59,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	}
 
 	chat.State = models.ChatStateSelectingDepartment
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -109,7 +109,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	groups, err := scraper.FetchDepartmentGroups(mb.services.Repo, mb.services.Browser,
+	groups, err := scraper.FetchDepartmentGroups(mb.services.Repository, mb.services.Browser,
 		models.DepartmentName(callbackCommand.Arg(0)))
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -134,7 +134,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.State = models.ChatStateSelectingGroup
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -213,7 +213,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat.State = models.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

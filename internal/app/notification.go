@@ -8,13 +8,13 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 const notificationWorkers = 8
 
 func (a *App) Notify(s string) {
-	chats, err := models.GetChats(a.services.Repo.DB)
+	chats, err := models.GetChats(a.services.Repository.DB)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to get chats")
 	}
@@ -31,7 +31,7 @@ func (a *App) Notify(s string) {
 				if err != nil {
 					log.Error().Err(err).
 						Any("tgChatID", chat.TgChatID).
-						Any("username", utils.DerefOrTypeDefault(chat.UserName)).
+						Any("username", refutil.DerefOrTypeDefault(chat.UserName)).
 						Msg("Failed to send notification")
 					results <- 0
 					return
@@ -39,7 +39,7 @@ func (a *App) Notify(s string) {
 
 				log.Debug().
 					Any("tgChatID", chat.TgChatID).
-					Any("username", utils.DerefOrTypeDefault(chat.UserName)).
+					Any("username", refutil.DerefOrTypeDefault(chat.UserName)).
 					Msg("Notification sent")
 				results <- 1
 			})

@@ -7,6 +7,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/database"
 )
 
 var debugConfigFile string
@@ -17,22 +18,27 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 	tests.InitConfig(t, testsDir)
 	defer tests.Cleanup(t, testsDir)
 
-	srvs, err := services.New()
+	db, err := database.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srvs, err := services.New(db)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Prepare test data.
-	if _, err := scraper.FetchGroups(srvs.Repo, srvs.Browser); err != nil {
+	if _, err := scraper.FetchGroups(srvs.Repository, srvs.Browser); err != nil {
 		t.Fatalf("Failed to fetch groups: %v", err)
 	}
 
-	departmentIDs, err := models.GetDepartmentIDs(srvs.Repo.DB)
+	departmentIDs, err := models.GetDepartmentIDs(srvs.Repository.DB)
 	if err != nil {
 		t.Fatalf("Failed to get department IDs: %v", err)
 	}
 
-	teachers, err := scraper.FetchTeachers(srvs.Repo, srvs.Browser)
+	teachers, err := scraper.FetchTeachers(srvs.Repository, srvs.Browser)
 	if err != nil {
 		t.Fatalf("Failed to fetch teachers: %v", err)
 	}

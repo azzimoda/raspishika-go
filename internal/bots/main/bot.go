@@ -98,20 +98,20 @@ func (mb *MainBot) Report() reporter.ReportConfig {
 // updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
 // When any other error occurs, it returns the error.
 func (mb *MainBot) FetchGroupByNameWithValidation(name models.GroupName) (*models.Group, error) {
-	groupName, err := models.ValidateGroupName(mb.services.Repo.DB, name)
+	groupName, err := models.ValidateGroupName(mb.services.Repository.DB, name)
 	if err != nil {
 		return nil, err
 	}
 
-	if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
+	if groupName, err = models.ValidateGroupNameCase(mb.services.Repository.DB, groupName); err != nil {
 		log.Warn().Err(err).Msg("Updating groups")
 		// Try to update groups.
-		if _, err := scraper.FetchGroups(mb.services.Repo, mb.services.Browser); err != nil {
+		if _, err := scraper.FetchGroups(mb.services.Repository, mb.services.Browser); err != nil {
 			return nil, fmt.Errorf("failed to fetch groups: %w", err)
 		}
 
 		// Try again.
-		if groupName, err = models.ValidateGroupNameCase(mb.services.Repo.DB, groupName); err != nil {
+		if groupName, err = models.ValidateGroupNameCase(mb.services.Repository.DB, groupName); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
 		}
 	} else {
@@ -120,7 +120,7 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name models.GroupName) (*model
 	}
 
 	// Group found.
-	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
+	group, err := models.GetGroupByName(mb.services.Repository.DB, groupName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/bots/admin/reporter"
@@ -12,10 +13,10 @@ import (
 	smanager "github.com/azzimoda/raspishika-go/internal/services/schedule/manager"
 )
 
-func New() (s *Services, err error) {
+func New(db *sqlx.DB) (s *Services, err error) {
 	s = new(Services)
 
-	s.Repo, err = repository.New()
+	s.Repository, err = repository.New(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create repository: %w", err)
 	} else {
@@ -33,10 +34,10 @@ func New() (s *Services, err error) {
 }
 
 type Services struct {
-	Repo     *repository.Repository
-	Browser  *browser.BrowserService
+	*repository.Repository
+	Browser     *browser.BrowserService
 	ScheduleMan smanager.ScheduleManager
-	Reporter reporter.Reporter
+	Reporter    reporter.Reporter
 }
 
-func (s *Services) Close() error { return errors.Join(s.Repo.Close(), s.Browser.Close()) }
+func (s *Services) Close() error { return errors.Join(s.Repository.Close(), s.Browser.Close()) }

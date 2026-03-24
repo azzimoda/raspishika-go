@@ -15,7 +15,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 func (ab *AdminBot) registerHandlers() {
@@ -33,7 +33,7 @@ func (ab *AdminBot) registerHandlers() {
 			return false
 		}
 
-		_, err := models.ValidateGroupName(ab.services.Repo.DB, models.GroupName(update.Message.Text))
+		_, err := models.ValidateGroupName(ab.services.Repository.DB, models.GroupName(update.Message.Text))
 		return err == nil
 	}, ab.groupHandler)
 	// TODO: Handle username and chat_id.
@@ -64,7 +64,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	var chat *models.Chat
 	if err != nil {
 		// Get last chat from database.
-		chats, err := models.GetChats(ab.services.Repo.DB)
+		chats, err := models.GetChats(ab.services.Repository.DB)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chats")
 			return
@@ -76,7 +76,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 		chat = &chats[len(chats)-1]
 	} else {
-		chat, err = models.GetChatByTgChatID(ab.services.Repo.DB, models.ChatID(tgChatID))
+		chat, err = models.GetChatByTgChatID(ab.services.Repository.DB, models.ChatID(tgChatID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chat by chat ID")
 			return
@@ -105,7 +105,7 @@ var chatReportTemplate, _ = template.New("report").Parse(chatReportTemplateStr)
 func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Context, update *tgmodels.Update) {
 	log.Trace().Msg("sendChatReport")
 
-	recentTeachers, err := models.GetTeacherByChatID(ab.services.Repo.DB, chat.ID)
+	recentTeachers, err := models.GetTeacherByChatID(ab.services.Repository.DB, chat.ID)
 	if err != nil {
 		recentTeachers = []models.Teacher{}
 		ab.services.Reporter.Report().Err(err).Msgf("Failed to get recent teachers for chat %d", chat.ID)
@@ -116,7 +116,7 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 	}
 	recentTeachersStr := strings.Join(recentTeacherNames, ", ")
 
-	recentUpdates, err := models.GetRecentChatUpdateLogs(ab.services.Repo.DB, chat.ID, 48*time.Hour)
+	recentUpdates, err := models.GetRecentChatUpdateLogs(ab.services.Repository.DB, chat.ID, 48*time.Hour)
 	if err != nil {
 		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
 		recentUpdates = []models.UpdateLog{}
@@ -126,7 +126,7 @@ func (ab *AdminBot) sendChatReport(chat *models.Chat, b *bot.Bot, ctx context.Co
 		fmt.Fprintf(&recentUpdatesStr, "- data: %v\n  time: %dms\n  error: %s\n",
 			recentUpdates[i].Data,
 			recentUpdates[i].HandlingTime,
-			utils.DerefOrTypeDefault(recentUpdates[i].Error),
+			refutil.DerefOrTypeDefault(recentUpdates[i].Error),
 		)
 	}
 
@@ -160,13 +160,13 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		group = models.GroupName(arg)
 	}
 
-	group, err := models.ValidateGroupName(ab.services.Repo.DB, models.GroupName(update.Message.Text))
+	group, err := models.ValidateGroupName(ab.services.Repository.DB, models.GroupName(update.Message.Text))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return
 	}
 
-	chats, err := models.GetChatsByGroup(ab.services.Repo.DB, group)
+	chats, err := models.GetChatsByGroup(ab.services.Repository.DB, group)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats by group")
 		return

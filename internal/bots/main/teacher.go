@@ -3,15 +3,16 @@ package mainbot
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"github.com/schollz/closestmatch"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/schedule/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -24,13 +25,13 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		return
 	}
 
-	teachers, err := models.GetTeacherByChatID(mb.services.Repo.DB, chat.ID)
+	teachers, err := models.GetTeacherByChatID(mb.services.Repository.DB, chat.ID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		teachers = []models.Teacher{}
 	}
 
-	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTeacher); err != nil {
+	if err := models.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, models.ChatStateSelectingTeacher); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
 		return
@@ -52,7 +53,7 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 	addContextHandlerError(ctx, err)
 
 	// Search for the teacher in the database.
-	teachers, err := scraper.FetchTeachers(mb.services.Repo, mb.services.Browser)
+	teachers, err := scraper.FetchTeachers(mb.services.Repository, mb.services.Browser)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -66,7 +67,7 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 	for i, t := range teachers {
 		names[i] = t.Name.String()
 	}
-	matchedNames := utils.MatchStrings(names, update.Message.Text, 5)
+	matchedNames := MatchStrings(names, update.Message.Text, 5)
 	matchedTeachers := make([]models.Teacher, len(matchedNames))
 	for i, name := range matchedNames {
 		for _, t := range teachers {
@@ -142,7 +143,7 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	teacher, err := models.GetTeacherByTeacherID(mb.services.Repo.DB, command.Arg(0))
+	teacher, err := models.GetTeacherByTeacherID(mb.services.Repository.DB, command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -163,12 +164,12 @@ func (mb *MainBot) sendTeacherSchedule(
 	localChat *models.Chat,
 	teacher *models.Teacher,
 ) {
-	err := models.AddChatRecentTeacher(mb.services.Repo.DB, localChat.ID, teacher.ID)
+	err := models.AddChatRecentTeacher(mb.services.Repository.DB, localChat.ID, teacher.ID)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to add recent teacher: %w", err))
 	}
 
-	if err := models.UpdateChatState(mb.services.Repo.DB, localChat.TgChatID, models.ChatStateDefault); err != nil {
+	if err := models.UpdateChatState(mb.services.Repository.DB, localChat.TgChatID, models.ChatStateDefault); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
 	}
@@ -192,4 +193,14 @@ func (mb *MainBot) sendTeacherSchedule(
 
 	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, localChat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
+}
+
+// MatchStrings returns the closest matches to the target string in the given list of strings.
+func MatchStrings(strs []string, target string, n int) []string {
+	for _, s := range strs {
+		if strings.EqualFold(s, target) {
+			return []string{s}
+		}
+	}
+	return closestmatch.New(strs, []int{2, 3, 4}).ClosestN(target, n)
 }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/pkg/bothelpers"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -68,7 +68,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.DailySendingTime = nil
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -99,7 +99,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.PairSending = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -130,7 +130,7 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	}
 
 	chat.ChangeAlert = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -160,7 +160,7 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.DarkMode = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -203,7 +203,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 		chat.Access = models.ChatAccessLevel(accessLevel)
 	}
 
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -266,7 +266,7 @@ func settingsMessageText(chat *models.Chat) string {
 Напоминания перед парами: <u>%s</u>
 Уведомления об изменениях: <u>%s</u>
 Тема: <u>%s</u>`,
-		utils.DerefOrTypeDefault(chat.GroupName),
+		refutil.DerefOrTypeDefault(chat.GroupName),
 		dailyTime,
 		pairNotification,
 		changesNotificatin,

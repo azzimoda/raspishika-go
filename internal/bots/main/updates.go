@@ -31,7 +31,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := models.GroupName(command.Arg(0))
 
-	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
+	group, err := models.GetGroupByName(mb.services.Repository.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -79,7 +79,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	teacherID := command.Arg(0)
 
-	teacher, err := models.GetTeacherByTeacherID(mb.services.Repo.DB, teacherID)
+	teacher, err := models.GetTeacherByTeacherID(mb.services.Repository.DB, teacherID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -117,7 +117,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := models.GroupName(command.Arg(0))
 
-	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
+	group, err := models.GetGroupByName(mb.services.Repository.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -129,7 +129,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	rawSchedule, err := mb.services.ScheduleMan.Get(
-		mb.services.Repo,
+		mb.services.Repository,
 		mb.services.Browser,
 		models.GroupScheduleConfig(group, false),
 	)
@@ -171,7 +171,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := models.GroupName(command.Arg(0))
 
-	group, err := models.GetGroupByName(mb.services.Repo.DB, groupName)
+	group, err := models.GetGroupByName(mb.services.Repository.DB, groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -187,7 +187,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
 		conf := models.GroupScheduleConfig(group, false)
-		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
+		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repository, mb.services.Browser, conf)
 		if err != nil {
 			addContextHandlerError(ctx, err)
 			_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{

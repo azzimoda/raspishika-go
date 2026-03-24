@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 	"github.com/rs/zerolog/log"
-
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 func NewScheduleChange(old, new ScheduleData) *ScheduleChange {
@@ -190,11 +189,11 @@ func pairChangeHTML(old, new *Pair) string {
 
 			if isTeacherChanged {
 				text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-					utils.DerefOrTypeDefault(old.Teacher),
-					utils.DerefOrTypeDefault(new.Teacher),
+					refutil.DerefOrTypeDefault(old.Teacher),
+					refutil.DerefOrTypeDefault(new.Teacher),
 				)
 			} else {
-				text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
+				text += fmt.Sprintf("\n    %s", refutil.DerefOrTypeDefault(new.Teacher))
 			}
 		}
 
@@ -209,9 +208,9 @@ func pairChangeHTML(old, new *Pair) string {
 		}
 		if isTeacherChanged {
 			text += fmt.Sprintf("\n    <s>%s</s> <i>%s</i>",
-				utils.DerefOrTypeDefault(old.Teacher), utils.DerefOrTypeDefault(new.Teacher))
+				refutil.DerefOrTypeDefault(old.Teacher), refutil.DerefOrTypeDefault(new.Teacher))
 		} else {
-			text += fmt.Sprintf("\n    %s", utils.DerefOrTypeDefault(new.Teacher))
+			text += fmt.Sprintf("\n    %s", refutil.DerefOrTypeDefault(new.Teacher))
 		}
 
 	default:

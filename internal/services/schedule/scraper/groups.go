@@ -14,7 +14,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 const DepartmentsURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1582&Itemid=247"
@@ -29,14 +28,14 @@ func FetchDepartments(repo *repository.Repository) ([]models.Department, error) 
 	// Check cache
 	departments, err := models.GetDepartments(repo.DB)
 	ttl := config.GroupTTLDur()
-	if err != nil && utils.Every(departments, func(d *models.Department) bool { return d.IsActual(ttl) }) {
+	if err != nil && Every(departments, func(d *models.Department) bool { return d.IsActual(ttl) }) {
 		log.Debug().Msg("Departments cache hit")
 		return departments, nil
 	}
 
 	// Update cache
 	log.Debug().Msg("Departments cache miss")
-	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
+	resp, err := HTTPGetRequestRetryingRandomHeaders(DepartmentsURL, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -207,4 +206,13 @@ func validateOptionValue(value any) bool {
 	} else {
 		return s != ""
 	}
+}
+
+func Every[T any](elems []T, predicate func(*T) bool) bool {
+	for _, elem := range elems {
+		if !predicate(&elem) {
+			return false
+		}
+	}
+	return true
 }

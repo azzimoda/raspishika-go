@@ -18,7 +18,7 @@ import (
 )
 
 func (mb *MainBot) PrepareScheduleImage(conf models.ScheduleConfig) (fileName string, data []byte, err error) {
-	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repo, mb.services.Browser, conf)
+	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repository, mb.services.Browser, conf)
 	if err != nil {
 		err = fmt.Errorf("failed loading schedule: %w", err)
 		return

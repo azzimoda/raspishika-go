@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 )
@@ -151,7 +151,7 @@ func CreateOrUpdateChat(db *sqlx.DB, tgChatID ChatID, username UserName) (*Chat,
 		return nil, false, fmt.Errorf("failed to get chat by Telegram chat ID (%d): %w", tgChatID, err)
 	}
 
-	if utils.DerefOrTypeDefault(chat.UserName) != username {
+	if refutil.DerefOrTypeDefault(chat.UserName) != username {
 		// Update username.
 		chat.UserName = &username
 		if err := chat.Update(db); err != nil {
@@ -231,7 +231,7 @@ func GetNewChatsGroupedByYear(db *sqlx.DB, dur time.Duration) (map[int]int, erro
 	}
 	groupedChats := make(map[int]int)
 	for _, chat := range chats {
-		groupName := utils.DerefOrTypeDefault(chat.GroupName)
+		groupName := refutil.DerefOrTypeDefault(chat.GroupName)
 		_, year, _, _, err := groupName.Parse()
 		if err != nil {
 			log.Error().Err(err).Msg("invalid group name")

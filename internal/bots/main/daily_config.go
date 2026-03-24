@@ -29,7 +29,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 		return
 	}
 
-	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
+	if err := models.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -62,7 +62,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily off handler")
 
-	chat, err := models.GetChatByTgChatID(mb.services.Repo.DB, models.ChatID(update.Message.Chat.ID))
+	chat, err := models.GetChatByTgChatID(mb.services.Repository.DB, models.ChatID(update.Message.Chat.ID))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -74,7 +74,7 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	chat.DailySendingTime = nil
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -122,7 +122,7 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmo
 
 	chat.State = models.ChatStateDefault
 	chat.DailySendingTime = &timeStr
-	if err := chat.Update(mb.services.Repo.DB); err != nil {
+	if err := chat.Update(mb.services.Repository.DB); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -159,7 +159,7 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		})
 		return
 	}
-	if err := models.UpdateChatState(mb.services.Repo.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
+	if err := models.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, models.ChatStateSelectingTime); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,

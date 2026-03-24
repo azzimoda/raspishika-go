@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/models"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 type reportKey string
@@ -65,7 +65,7 @@ func (r ReportConfig) Chat(chatOrID any) ReportConfig {
 	if tgChatID, ok := chatOrID.(int64); ok {
 		r = r.withValue(chatIDKey, tgChatID)
 	} else if chat, ok := chatOrID.(*models.Chat); ok {
-		r = r.withValue(chatIDKey, chat.TgChatID).withValue(usernameKey, utils.DerefOrTypeDefault(chat.UserName))
+		r = r.withValue(chatIDKey, chat.TgChatID).withValue(usernameKey, refutil.DerefOrTypeDefault(chat.UserName))
 	} else {
 		log.Error().Type("type", chatOrID).Any("arg", chatOrID).Msg("Wrong type of chat argument")
 	}

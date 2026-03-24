@@ -18,11 +18,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"golang.org/x/net/html"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/models"
 	"github.com/azzimoda/raspishika-go/internal/services/browser"
-	"github.com/azzimoda/raspishika-go/pkg/utils"
 )
 
 var (
@@ -32,7 +33,7 @@ var (
 func ScrapeSchedule(url models.URL, config models.ScheduleConfig) (*models.RawSchedule, error) {
 	log.Trace().Msg("Scraping schedule with HTTP")
 
-	resp, err := utils.HTTPGetRequestRetryingRandomHeaders(url.String(), 10)
+	resp, err := HTTPGetRequestRetryingRandomHeaders(url.String(), 10)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -45,7 +46,7 @@ func ScrapeSchedule(url models.URL, config models.ScheduleConfig) (*models.RawSc
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	fixedEncoding, err := utils.Windows1251ToUTF8(string(text))
+	fixedEncoding, err := Windows1251ToUTF8(string(text))
 	if err != nil {
 		return nil, fmt.Errorf("encoding conversion failed: %w", err)
 	}
@@ -96,7 +97,7 @@ func fetchSchedulePageWithBrowser(
 	var lastErr error
 	var html string
 	for range viper.GetInt(config.KeyBrowserMaxRetries) {
-		headers := utils.GenerateHeaders()
+		headers := GenerateHeaders()
 		lastErr = browser.WithPage(func(p playwright.Page) (err error) {
 			log.Trace().Msgf("Fetching schedule page...")
 
@@ -357,4 +358,15 @@ func ScheduleURL(config models.ScheduleConfig, departmentIDs []models.Department
 		// Error: invalid config
 		return ""
 	}
+}
+
+func Windows1251ToUTF8(s string) (string, error) {
+	decoder := charmap.Windows1251.NewDecoder()
+	reader := transform.NewReader(strings.NewReader(s), decoder)
+	result, err := io.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+
+	return string(result), nil
 }
