@@ -20,22 +20,22 @@ func TestScrapeScheduleWithBrowser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srvs, err := service.New(db)
+	srvs, err := service.New(db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Prepare test data.
-	if _, err := scraper.FetchGroups(srvs.Repository, srvs.Browser); err != nil {
+	if _, err := scraper.FetchGroups(srvs.Group, srvs.Browser); err != nil {
 		t.Fatalf("Failed to fetch groups: %v", err)
 	}
 
-	departmentIDs, err := model.GetDepartmentIDs(srvs.Repository.DB)
+	departmentIDs, err := srvs.Group.DepartmentIDs()
 	if err != nil {
 		t.Fatalf("Failed to get department IDs: %v", err)
 	}
 
-	teachers, err := scraper.FetchTeachers(srvs.Repository, srvs.Browser)
+	teachers, err := scraper.FetchTeachers(srvs.Group, srvs.Browser)
 	if err != nil {
 		t.Fatalf("Failed to fetch teachers: %v", err)
 	}

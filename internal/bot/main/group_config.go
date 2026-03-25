@@ -11,7 +11,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 const (
@@ -47,7 +47,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	departments, err := scraper.FetchDepartments(mb.services.Repository)
+	departments, err := scraper.FetchDepartments(mb.services.Group)
 	if err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
@@ -59,7 +59,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	}
 
 	chat.State = model.ChatStateSelectingDepartment
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -109,7 +109,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	groups, err := scraper.FetchDepartmentGroups(mb.services.Repository, mb.services.Browser,
+	groups, err := scraper.FetchDepartmentGroups(mb.services.Group, mb.services.Browser,
 		model.DepartmentName(callbackCommand.Arg(0)))
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -134,7 +134,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.State = model.ChatStateSelectingGroup
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -213,7 +213,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat.State = model.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

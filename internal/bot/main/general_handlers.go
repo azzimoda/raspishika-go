@@ -50,7 +50,7 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 
 	if update.Message != nil {
 		log.Trace().Str("message", update.Message.Text).Msg("Unhandled message")
-		if groupName, err := model.ValidateGroupName(mb.services.Repository.DB, model.GroupName(update.Message.Text)); err == nil {
+		if groupName, err := mb.services.Group.ValidateName(model.GroupName(update.Message.Text)); err == nil {
 			mb.sendQuickGroupSchedule(ctx, groupName, update, b)
 		} // Else just ignore message
 	}
@@ -68,15 +68,12 @@ func (mb *MainBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		switch update.MyChatMember.NewChatMember.Type {
 		case tgmodels.ChatMemberTypeBanned:
 			// Bot was kicked: remove the chat from DB
-			if chat, err := model.GetChatByTgChatID(
-				mb.services.Repository.DB,
-				model.ChatID(update.MyChatMember.Chat.ID),
-			); err != nil {
+			if chat, err := mb.services.Chat.GetByChatID(model.ChatID(update.MyChatMember.Chat.ID)); err != nil {
 				log.Error().Err(err).Msg("Failed to get chat from DB")
 			} else {
 				mb.services.Reporter.Report().Log().Chat(chat).Msg("Bot was kicked from chat :(")
 
-				if err := chat.Delete(mb.services.Repository.DB); err != nil {
+				if err := mb.services.Container.Chat.Delete(chat); err != nil {
 					mb.services.Reporter.Report().Log().Err(err).Chat(chat).Msg("Failed to delete chat from database")
 				}
 			}
@@ -96,13 +93,13 @@ func (mb *MainBot) sendQuickGroupSchedule(
 ) {
 	log.Trace().Any("groupName", groupName).Msg("Sending quick group week schedule")
 
-	chat, err := model.GetChatByTgChatID(mb.services.Repository.DB, model.ChatID(update.Message.Chat.ID))
+	chat, err := mb.services.Chat.GetByChatID(model.ChatID(update.Message.Chat.ID))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chat from DB")
 		return
 	}
 
-	group, err := model.GetGroupByName(mb.services.Repository.DB, groupName)
+	group, err := mb.services.Group.GetByName(groupName)
 	if err != nil {
 		log.Error().Any("groupName", groupName).Err(err).
 			Msg("Failed get group from DB for quick group week schedule")
@@ -148,7 +145,7 @@ func (mb *MainBot) startHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	addContextHandlerError(ctx, err)
 
 	if err == nil {
-		chat, err := model.GetChatByTgChatID(mb.services.Repository.DB, model.ChatID(update.Message.Chat.ID))
+		chat, err := mb.services.Chat.GetByChatID(model.ChatID(update.Message.Chat.ID))
 		if err != nil {
 			// Error: failed to get chat by chat ID: %!w(<nil>)
 			errFormatted := fmt.Errorf("failed to get chat by chat ID: %w", err)
@@ -184,7 +181,7 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 		return
 	}
 
-	if err := chat.Delete(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Delete(chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to delete chat: %w", err))
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -206,13 +203,22 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Delete handler")
 
+	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
+	if !ok {
+		addContextHandlerError(ctx, ErrNoChatContext)
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID:          update.Message.Chat.ID,
+			MessageThreadID: update.Message.MessageThreadID,
+			Text:            "Не удалось удалить данные чата, попробуйте позже",
+		})
+		return
+	}
+
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.CallbackQuery.Message.Message)
 	addContextHandlerError(ctx, err)
 
-	if repoErr := model.UpdateChatState(mb.services.Repository.DB,
-		model.ChatID(update.CallbackQuery.Message.Message.Chat.ID),
-		model.ChatStateDefault,
-	); repoErr != nil {
+	chat.State = model.ChatStateDefault
+	if repoErr := mb.services.Chat.Update(chat); repoErr != nil {
 		mb.services.Reporter.Report().Log().Err(repoErr).Chat(update.CallbackQuery.Message.Message.Chat.ID).
 			Msg("Error in deleteHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat state: %w", repoErr))
@@ -234,7 +240,7 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *tg
 	}
 
 	chat.State = model.ChatStateDefault
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(update.Message.Chat.ID).Msg("Error in textCancelHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		return

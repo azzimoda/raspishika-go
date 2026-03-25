@@ -14,7 +14,7 @@ import (
 
 const TeachersPageURL = "https://mnokol.tyuiu.ru/site/index.php?option=com_content&view=article&id=1247&Itemid=304"
 
-func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService) ([]model.Teacher, error) {
+func FetchTeachers(repo repository.GroupRepository, browser *browser.BrowserService) ([]model.Teacher, error) {
 	// Check existing cache
 	if teachers, err := checkTeachers(repo); err == nil && len(teachers) > 0 {
 		log.Debug().Msg("Using cached teachers")
@@ -29,14 +29,14 @@ func FetchTeachers(repo *repository.Repository, browser *browser.BrowserService)
 		return nil, err
 	}
 
-	if err := model.UpdateTeachers(repo.DB, teachers); err != nil {
+	if err := repo.UpdateTeachers(teachers); err != nil {
 		return nil, err
 	}
 	return teachers, nil
 }
 
-func checkTeachers(repo *repository.Repository) ([]model.Teacher, error) {
-	teachers, err := model.GetTeachers(repo.DB)
+func checkTeachers(repo repository.GroupRepository) ([]model.Teacher, error) {
+	teachers, err := repo.Teachers()
 	if err != nil {
 		return nil, err
 	}

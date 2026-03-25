@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -30,7 +31,12 @@ func New() (*sqlx.DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
+
+	if err := applyMigrations(db); err != nil {
+		return nil, err
+	}
+
 	return db, nil
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 func New(
@@ -98,20 +98,21 @@ func (mb *MainBot) Report() reporter.ReportConfig {
 // updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
 // When any other error occurs, it returns the error.
 func (mb *MainBot) FetchGroupByNameWithValidation(name model.GroupName) (*model.Group, error) {
-	groupName, err := model.ValidateGroupName(mb.services.Repository.DB, name)
+	groupName, err := mb.services.Group.ValidateName(name)
 	if err != nil {
 		return nil, err
 	}
 
-	if groupName, err = model.ValidateGroupNameCase(mb.services.Repository.DB, groupName); err != nil {
+	// TODO: Why do I validate group name two times? Remove unnecessary validations
+	if groupName, err = mb.services.Group.ValidateName(groupName); err != nil {
 		log.Warn().Err(err).Msg("Updating groups")
 		// Try to update groups.
-		if _, err := scraper.FetchGroups(mb.services.Repository, mb.services.Browser); err != nil {
+		if _, err := scraper.FetchGroups(mb.services.Group, mb.services.Browser); err != nil {
 			return nil, fmt.Errorf("failed to fetch groups: %w", err)
 		}
 
-		// Try again.
-		if groupName, err = model.ValidateGroupNameCase(mb.services.Repository.DB, groupName); err != nil {
+		// Try again
+		if groupName, err = mb.services.Group.ValidateName(groupName); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
 		}
 	} else {
@@ -119,8 +120,8 @@ func (mb *MainBot) FetchGroupByNameWithValidation(name model.GroupName) (*model.
 			Msg("Group name case is validated")
 	}
 
-	// Group found.
-	group, err := model.GetGroupByName(mb.services.Repository.DB, groupName)
+	// Group found
+	group, err := mb.services.Group.GetByName(groupName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
 	}

@@ -52,7 +52,7 @@ func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
 
 func (sm *SendingManager) sendChangeAlertForGroup(ctx context.Context, change *model.ScheduleChange) error {
 	log.Trace().Any("config", change.New.Config).Msg("Sending change alert for group...")
-	chats, err := model.GetChatsByMonitoredGroup(sm.services.Repository.DB, change.New.Config.Group.GroupName)
+	chats, err := sm.services.Chat.AllByWatchedGroup(change.New.Config.Group.GroupName)
 	if err != nil {
 		return err
 	}
@@ -117,14 +117,14 @@ func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes c
 		}
 
 		// Fetch groups
-		groups, err := model.GetMonitoredGroups(sm.services.Repository.DB)
+		groups, err := sm.services.Chat.WatchedGroups()
 		if err != nil {
 			sm.services.Reporter.Report().Log().Err(err).Msg("Failed to get monitored groups")
 			time.Sleep(interval / 2) // Sleep half the interval before retrying
 			continue
 		}
 
-		chatCount, err := model.GetChatCountWithChangeAlertOn(sm.services.Repository.DB)
+		chatCount, err := sm.services.Chat.CountChangeAlertOn()
 		if err != nil {
 			sm.services.Reporter.Report().Log().Err(err).Msg("Failed to get chats with update notification enabled")
 			chatCount = -1
@@ -148,7 +148,7 @@ func (sm *SendingManager) runSchedulepdateMonitor(ctx context.Context, changes c
 				Dur("elapsedPerGroup", elapsedPerGroup).
 				Msgf("Monitored groups schedules updated in %v (%v/group)", elapsed, elapsedPerGroup)
 
-			if err := model.InsertSendingLog(sm.services.Repository.DB, model.SendingLog{
+			if err := sm.services.Log.LogSending(model.SendingLog{
 				Kind:    model.SendingLogChange,
 				Chats:   chatsAffected,
 				Groups:  changesDetected,
@@ -194,10 +194,10 @@ func (sm *SendingManager) fetchScheduleUpdates(
 		for _, group := range groups {
 			conf := model.GroupScheduleConfig(&group, false)
 
-			oldRawSchedule, err := sm.services.ScheduleMan.GetCache(sm.services.Repository, conf)
+			oldRawSchedule, err := sm.services.ScheduleMan.GetCache(conf)
 			if errors.Is(err, schedulemanager.ErrNoCache) {
 				log.Warn().Err(err).Any("config", conf).Msg("No cache for the schedule config; just updating...")
-				_, err := sm.services.ScheduleMan.UpdateCache(sm.services.Repository, sm.services.Browser, conf)
+				_, err := sm.services.ScheduleMan.UpdateCache(sm.services.Browser, conf)
 				errs = append(errs, err)
 				continue
 			}
@@ -207,7 +207,7 @@ func (sm *SendingManager) fetchScheduleUpdates(
 				continue
 			}
 
-			newRawSchedule, err := sm.services.ScheduleMan.UpdateCache(sm.services.Repository, sm.services.Browser, conf)
+			newRawSchedule, err := sm.services.ScheduleMan.UpdateCache(sm.services.Browser, conf)
 			if err != nil {
 				log.Error().Err(err).Any("config", conf).Msg("Failed to update schedule cache")
 				errs = append(errs, err)
@@ -221,10 +221,7 @@ func (sm *SendingManager) fetchScheduleUpdates(
 				log.Debug().Any("config", conf).Msg("Schedule change detected")
 
 				changesDetected++
-				if chatsCount, err := model.GetChatCountByGroup(
-					sm.services.Repository.DB,
-					group.GroupName,
-				); err != nil {
+				if chatsCount, err := sm.services.Chat.CountByGroup(group.GroupName); err != nil {
 					chatsAffected++
 				} else {
 					chatsAffected += chatsCount

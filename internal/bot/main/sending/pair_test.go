@@ -25,7 +25,7 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	srvs, err := service.New(db)
+	srvs, err := service.New(db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

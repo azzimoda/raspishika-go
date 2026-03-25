@@ -15,30 +15,30 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
 )
 
-type ScheduleManager struct{ sf singleflight.Group }
+type ScheduleManager struct {
+	scheduleRepo repository.ScheduleRepository
+	groupRepo    repository.GroupRepository
+	sf           singleflight.Group
+}
 
 // Get returns the schedule for the given config and uses cache if available.
 func (sm *ScheduleManager) Get(
-	repo *repository.Repository,
 	browser *browser.BrowserService,
 	conf model.ScheduleConfig,
 ) (*model.RawSchedule, error) {
 	key := scheduleKey(conf)
-	if rawSchedule, ok := sm.CheckCache(repo, key); ok {
+	if rawSchedule, ok := sm.CheckCache(key); ok {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		return rawSchedule, nil
 	}
 	log.Debug().Str("cacheKey", key).Msg("Cache miss")
-	return sm.UpdateCache(repo, browser, conf)
+	return sm.UpdateCache(browser, conf)
 }
 
 var ErrNoCache = errors.New("no cache for the key")
 
-func (sm *ScheduleManager) GetCache(
-	repo *repository.Repository,
-	conf model.ScheduleConfig,
-) (*model.RawSchedule, error) {
-	scheduleCache, err := model.GetSchedule(repo.DB, scheduleKey(conf))
+func (sm *ScheduleManager) GetCache(conf model.ScheduleConfig) (*model.RawSchedule, error) {
+	scheduleCache, err := sm.scheduleRepo.GetByKey(scheduleKey(conf))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoCache
 	}
@@ -48,11 +48,8 @@ func (sm *ScheduleManager) GetCache(
 	return scheduleCache.Unmarshal()
 }
 
-func (sm *ScheduleManager) CheckCache(
-	repo *repository.Repository,
-	key string,
-) (rawSchedule *model.RawSchedule, ok bool) {
-	scheduleCache, err := model.GetSchedule(repo.DB, key)
+func (sm *ScheduleManager) CheckCache(key string) (rawSchedule *model.RawSchedule, ok bool) {
+	scheduleCache, err := sm.scheduleRepo.GetByKey(key)
 	if err == nil && scheduleCache.IsActual(config.ScheduleTTLDur()) {
 		rawSchedule, err := scheduleCache.Unmarshal()
 		return rawSchedule, err == nil
@@ -64,14 +61,13 @@ func (sm *ScheduleManager) CheckCache(
 }
 
 func (sm *ScheduleManager) UpdateCache(
-	repo *repository.Repository,
 	browser *browser.BrowserService,
-	scheduleCfg model.ScheduleConfig,
+	conf model.ScheduleConfig,
 ) (*model.RawSchedule, error) {
 	// Fetch schedule
-	key := scheduleKey(scheduleCfg)
+	key := scheduleKey(conf)
 	result, err, _ := sm.sf.Do(key, func() (any, error) {
-		return sm.scrapeSchedule(repo, scheduleCfg, browser)
+		return sm.scrapeSchedule(conf, browser)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to scrape schedule: %w", err)
@@ -79,28 +75,31 @@ func (sm *ScheduleManager) UpdateCache(
 	rawSchedule := result.(*model.RawSchedule)
 
 	// Save cache
-	scheduleCache := model.NewSchedule(key, *rawSchedule)
-	if err := scheduleCache.InsertOrUpdate(repo.DB); err != nil {
+	scheduleCache, err := model.NewSchedule(key, *rawSchedule)
+	if err != nil {
+		return rawSchedule, fmt.Errorf("cache not updated: %w", err)
+	}
+
+	if err := sm.scheduleRepo.InsertOrUpdate(scheduleCache); err != nil {
 		return rawSchedule, fmt.Errorf("cache not updated: %w", err)
 	}
 	return rawSchedule, nil
 }
 
-func (*ScheduleManager) scrapeSchedule(
-	repo *repository.Repository,
-	config model.ScheduleConfig,
+func (sm *ScheduleManager) scrapeSchedule(
+	conf model.ScheduleConfig,
 	browser *browser.BrowserService,
 ) (*model.RawSchedule, error) {
-	departmentIDs, err := scraper.FetchDepartmentIDs(repo, browser)
+	departmentIDs, err := scraper.FetchDepartmentIDs(sm.groupRepo, browser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get department IDs: %w", err)
 	}
 
-	url := scraper.ScheduleURL(config, departmentIDs)
-	if config.Group != nil {
-		return scraper.ScrapeSchedule(url, config)
-	} else if config.Teacher != nil {
-		return scraper.ScrapeScheduleWithBrowser(browser, url, config)
+	url := scraper.ScheduleURL(conf, departmentIDs)
+	if conf.Group != nil {
+		return scraper.ScrapeSchedule(url, conf)
+	} else if conf.Teacher != nil {
+		return scraper.ScrapeScheduleWithBrowser(browser, url, conf)
 	} else {
 		return nil, fmt.Errorf("invalid schedule config")
 	}

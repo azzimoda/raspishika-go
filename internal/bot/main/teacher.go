@@ -12,7 +12,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -25,13 +25,14 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		return
 	}
 
-	teachers, err := model.GetTeacherByChatID(mb.services.Repository.DB, chat.ID)
+	teachers, err := mb.services.Group.TeachersByChatID(chat.ID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		teachers = []model.Teacher{}
 	}
 
-	if err := model.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, model.ChatStateSelectingTeacher); err != nil {
+	chat.State = model.ChatStateSelectingTeacher
+	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
 		return
@@ -53,7 +54,7 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 	addContextHandlerError(ctx, err)
 
 	// Search for the teacher in the database.
-	teachers, err := scraper.FetchTeachers(mb.services.Repository, mb.services.Browser)
+	teachers, err := scraper.FetchTeachers(mb.services.Group, mb.services.Browser)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -143,13 +144,10 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		return
 	}
 
-	teacher, err := model.GetTeacherByTeacherID(mb.services.Repository.DB, command.Arg(0))
+	teacher, err := mb.services.Group.GetTeacherByID(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
-			ChatID: message.Chat.ID,
-			Text:   ErrMsgCouldNotLoadSchedule,
-		})
+		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotLoadSchedule})
 		return
 	}
 
@@ -164,12 +162,13 @@ func (mb *MainBot) sendTeacherSchedule(
 	localChat *model.Chat,
 	teacher *model.Teacher,
 ) {
-	err := model.AddChatRecentTeacher(mb.services.Repository.DB, localChat.ID, teacher.ID)
+	err := mb.services.Chat.AddRecentTeacher(localChat.ID, teacher.ID)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to add recent teacher: %w", err))
 	}
 
-	if err := model.UpdateChatState(mb.services.Repository.DB, localChat.TgChatID, model.ChatStateDefault); err != nil {
+	localChat.State = model.ChatStateDefault
+	if err := mb.services.Chat.Update(localChat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 // Commands
@@ -29,7 +29,8 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 		return
 	}
 
-	if err := model.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, model.ChatStateSelectingTime); err != nil {
+	chat.State = model.ChatStateSelectingTime
+	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -62,7 +63,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Daily off handler")
 
-	chat, err := model.GetChatByTgChatID(mb.services.Repository.DB, model.ChatID(update.Message.Chat.ID))
+	chat, err := mb.services.Chat.GetByChatID(model.ChatID(update.Message.Chat.ID))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -74,7 +75,7 @@ func (mb *MainBot) dailyOffHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	chat.DailySendingTime = nil
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -122,7 +123,7 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmo
 
 	chat.State = model.ChatStateDefault
 	chat.DailySendingTime = &timeStr
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -159,7 +160,8 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		})
 		return
 	}
-	if err := model.UpdateChatState(mb.services.Repository.DB, chat.TgChatID, model.ChatStateSelectingTime); err != nil {
+	chat.State = model.ChatStateSelectingTime
+	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,

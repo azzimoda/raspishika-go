@@ -33,7 +33,7 @@ func (b *AdminBot) Start() {
 		log.Error().Msg("Failed to assert adminbot_commands")
 	}
 
-	success, err := bothelpers.SetMyCommands(context.Background(), b.bot, myCommands)
+	success, err := bothelper.SetMyCommands(context.Background(), b.bot, myCommands)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set my commands")
 	}

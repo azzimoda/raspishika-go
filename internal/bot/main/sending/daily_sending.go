@@ -21,7 +21,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 	timeStr := t.Format("15:04")
 
 	// Get chats daily sending configured to current time
-	chats, err := model.GetChatsByDailySendingTime(sm.services.Repository.DB, timeStr)
+	chats, err := sm.services.Chat.AllByDailyTime(timeStr)
 	if err != nil {
 		log.Error().Err(err).Time("time", t).Msg("Failed to get chats by daily sending time")
 		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats by daily sending time")
@@ -61,7 +61,7 @@ func (sm *SendingManager) processDailySending(t time.Time) {
 		Dur("elapsedPerGroup", time.Duration(elapsedPerGroup)).Send()
 
 	if chatsCount > 0 {
-		if err := model.InsertSendingLog(sm.services.Repository.DB, model.SendingLog{
+		if err := sm.services.Log.LogSending(model.SendingLog{
 			Kind:    model.SendingLogDaily,
 			Chats:   chatsCount,
 			Groups:  groupsCount,
@@ -168,7 +168,7 @@ func (sm *SendingManager) sendWeekScheduleToGroup(groupName model.GroupName, cha
 	var errors []error
 
 	// Prepare schedule
-	group, err := model.GetGroupByName(sm.services.Repository.DB, groupName)
+	group, err := sm.services.Group.GetByName(groupName)
 	if err != nil {
 		errors = []error{fmt.Errorf("failed to get group by name %s", groupName)}
 		return errors, true

@@ -19,9 +19,10 @@ require gopkg.in/natefinch/lumberjack.v2 v2.2.1
 require golang.org/x/sync v0.20.0
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
-	github.com/chromedp/chromedp v0.14.2
-	github.com/go-telegram/bot v1.19.0
+	github.com/SyNdicateFoundation/legitagent v1.0.3
+	github.com/chromedp/cdproto v0.0.0-20260321001828-e3e3800016bc
+	github.com/chromedp/chromedp v0.15.1
+	github.com/go-telegram/bot v1.20.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -29,7 +30,6 @@ require (
 
 require (
 	github.com/SyNdicateFoundation/fastrand v1.0.0 // indirect
-	github.com/SyNdicateFoundation/legitagent v1.0.3 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -38,9 +38,9 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/refraction-networking/utls v1.8.0 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
+	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
+	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect

@@ -1,11 +1,6 @@
 package model
 
-import (
-	"time"
-
-	"github.com/jmoiron/sqlx"
-	"github.com/rs/zerolog/log"
-)
+import "time"
 
 // UpdateLog represents a log entry for a Telegram API update.
 type UpdateLog struct {
@@ -21,81 +16,4 @@ type UpdateLog struct {
 
 func (ul *UpdateLog) IsOk() bool {
 	return ul.Error == nil || *ul.Error == ""
-}
-
-func GetUpdateLogByChatID(db *sqlx.DB, ID int) ([]UpdateLog, error) {
-	var logs []UpdateLog
-	err := db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ?", ID)
-	return logs, err
-}
-
-func GetUpdateLogsByPeriod(db *sqlx.DB, start, end time.Time) ([]UpdateLog, error) {
-	var logs []UpdateLog
-	err := db.Select(&logs, "SELECT * FROM update_logs WHERE created_at >= ? AND created_at <= ?", start, end)
-	return logs, err
-}
-
-func GetRecentChatUpdateLogs(db *sqlx.DB, ID int, dur time.Duration) ([]UpdateLog, error) {
-	var logs []UpdateLog
-	err := db.Select(&logs, "SELECT * FROM update_logs WHERE chat_id = ? AND created_at > ?", ID, time.Now().Add(-dur))
-	return logs, err
-}
-
-func InsertUpdateLog(db *sqlx.DB, log *UpdateLog) error {
-	_, err := db.NamedExec(
-		`INSERT INTO update_logs (chat_id, kind, message_id, data, handling_time, error)
-		VALUES (:chat_id, :kind, :message_id, :data, :handling_time, :error)`,
-		log,
-	)
-	return err
-}
-
-type DistItem struct {
-	Name  string `db:"name"`
-	Value int    `db:"value"`
-}
-
-func GetDist(db *sqlx.DB, dataKind, periodKind string, dur time.Duration) ([]DistItem, error) {
-	nameQuery :=
-		`CASE strftime('%w', datetime(created_at, 'localtime'))
-			WHEN '0' THEN '7'
-			WHEN '1' THEN '1'
-			WHEN '2' THEN '2'
-			WHEN '3' THEN '3'
-			WHEN '4' THEN '4'
-			WHEN '5' THEN '5'
-			WHEN '6' THEN '6'
-		END`
-	switch periodKind {
-	case "h": //Hours for day
-		nameQuery = "strftime('%H:00', datetime(created_at, 'localtime'))"
-	case "d": // Days of month
-		nameQuery = "strftime('%y-%m-%d', datetime(created_at, 'localtime'))"
-	case "m": // Months of year
-		nameQuery = "strftime('%y-%m', datetime(created_at, 'localtime'))"
-		// Default: Week days
-	}
-
-	// TODO: Come up with variants for dataKind.
-	switch dataKind {
-	case "a":
-		var items []DistItem
-		if err := db.Select(
-			&items,
-			`SELECT `+nameQuery+` AS name,
-				COUNT(*) AS value
-			FROM update_logs
-			WHERE created_at > datetime('now', 'localtime', ?)
-			GROUP BY name
-			ORDER BY name ASC`,
-			sqlPeriod(dur),
-		); err != nil {
-			return nil, err
-		}
-
-		return items, nil
-	default:
-		log.Warn().Str("dataKind", dataKind).Msg("Unsupported dataKind")
-		return nil, nil
-	}
 }

@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
@@ -21,17 +22,19 @@ import (
 )
 
 func New() (*App, error) {
-	db, err := database.New()
+	app := new(App)
+	var err error
+
+	app.db, err = database.New()
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := service.New(db)
+	app.services, err = service.New(app.db, app)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
-	app := App{services: s}
-	app.services.Reporter = &app
+	app.services.Reporter = app
 
 	app.mainBot, err = mainbot.New(app.services)
 	if err != nil {
@@ -51,7 +54,7 @@ func New() (*App, error) {
 		log.Info().Msg("Admin bot is disabled")
 	}
 
-	return &app, nil
+	return app, nil
 }
 
 type App struct {
@@ -59,6 +62,7 @@ type App struct {
 	cancel   context.CancelFunc
 	mainBot  *mainbot.MainBot
 	adminBot *adminbot.AdminBot
+	db       *sqlx.DB
 	services *service.Services
 }
 

@@ -13,7 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
+	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
 var scheduleCommandRe = regexp.MustCompile(`^((/week|/tomorrow|/left)(@\w+)?|Неделя|Завтра|Сегодня)$`)
@@ -26,55 +27,55 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	}
 
 	// Chats data
-	totalChats, err := model.GetChatCount(ab.services.Repository.DB)
+	totalChats, err := ab.services.Chat.Count()
 	if err != nil {
 		ab.Report().Log().Err(err).Msg("Failed to get chat count")
 		return
 	}
-	privateChatCount, err := model.GetPrivateChatCount(ab.services.Repository.DB)
+	privateChatCount, err := ab.services.Chat.CountPrivate()
 	groupChatCount := totalChats - privateChatCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get private chat count")
 		privateChatCount = -1
 		groupChatCount = -1
 	}
-	inactiveCount, err := model.GetInactiveChatCount(ab.services.Repository.DB, duration)
+	inactiveCount, err := ab.services.Chat.CountInactive(duration)
 	activeCount := totalChats - inactiveCount
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get inactive chat count")
 		inactiveCount = -1
 		activeCount = -1
 	}
-	chatsNewCount, err := model.GetNewChatCount(ab.services.Repository.DB, duration)
+	chatsNewCount, err := ab.services.Chat.CountNew(duration)
 	if err != nil {
 		ab.Report().Log().Err(err).Msg("Failed to get new chats count")
 		return
 	}
 
-	chatsNewGrouped, err := model.GetNewChatsGroupedByYear(ab.services.Repository.DB, duration)
+	chatsNewGrouped, err := ab.GetNewChatsGroupedByYear(duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get new chats grouped")
 	}
 
 	// Groups data
-	groupCount, err := model.GetConfiguredGroupCount(ab.services.Repository.DB)
+	groupCount, err := ab.services.Chat.CountUniqueConfiguredGroups()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get configured group count")
 		groupCount = -1
 	}
-	chatsPerGroupAvg, err := model.GetAvgChatsPerGroup(ab.services.Repository.DB)
+	chatsPerGroupAvg, err := ab.services.Chat.GetAvgChatsPerGroup()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get average chats per group")
 		chatsPerGroupAvg = -1
 	}
-	chatsPerGroupMedian, err := model.GetMedianChatsPerGroup(ab.services.Repository.DB)
+	chatsPerGroupMedian, err := ab.services.Chat.GetMedianChatsPerGroup()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get median chats per group")
 		chatsPerGroupMedian = -1
 	}
 
 	// Updates data
-	updateLogs, err := model.GetUpdateLogsByPeriod(ab.services.Repository.DB, time.Now().Add(-duration), time.Now())
+	updateLogs, err := ab.services.Log.UpdateLogsByPeriod(time.Now().Add(-duration), time.Now())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update logs by period")
 		return
@@ -101,19 +102,19 @@ func (ab *AdminBot) statsHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	}
 
 	// Sendings data
-	totalSendings, sendingOkCount, sendingFailCount, err := model.GetSendingLogsCount(ab.services.Repository.DB, model.SendingLogAny, duration)
+	totalSendings, sendingOkCount, sendingFailCount, err := ab.services.Log.CountSendingLogs(model.SendingLogAny, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get total sending logs")
 	}
-	dailySendings, _, _, err := model.GetSendingLogsCount(ab.services.Repository.DB, model.SendingLogDaily, duration)
+	dailySendings, _, _, err := ab.services.Log.CountSendingLogs(model.SendingLogDaily, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get daily sending logs")
 	}
-	pairSendings, _, _, err := model.GetSendingLogsCount(ab.services.Repository.DB, model.SendingLogPair, duration)
+	pairSendings, _, _, err := ab.services.Log.CountSendingLogs(model.SendingLogPair, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pair sending logs")
 	}
-	updateSendings, _, _, err := model.GetSendingLogsCount(ab.services.Repository.DB, model.SendingLogChange, duration)
+	updateSendings, _, _, err := ab.services.Log.CountSendingLogs(model.SendingLogChange, duration)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get update sending logs")
 	}
@@ -228,31 +229,31 @@ Success/Fail: %d / %d`,
 }
 
 func (ab *AdminBot) configHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	dailyTimes, err := model.GetChatGroupedByDailySendingTime(ab.services.Repository.DB)
+	dailyTimes, err := ab.services.Chat.CountDailyTimeGrouped()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats grouped by daily sending time")
 		return
 	}
 
-	dailyEnabledCount, err := model.GetChatCountWithDailySendingEnabled(ab.services.Repository.DB)
+	dailyEnabledCount, err := ab.services.Chat.CountDailySendingOn()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with daily sending time enabled")
 		return
 	}
 
-	pairEnabledCount, err := model.GetChatCountWithPairSendingEnabled(ab.services.Repository.DB)
+	pairEnabledCount, err := ab.services.Chat.CountPairNotificationOn()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		return
 	}
 
-	updateEnabledCount, err := model.GetChatCountWithChangeAlertOn(ab.services.Repository.DB)
+	changeEnabledCount, err := ab.services.Chat.CountChangeAlertOn()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with update sending enabled")
 		return
 	}
 
-	darkModeEnabledCount, err := model.GetChatCountWithDarkModeOn(ab.services.Repository.DB)
+	darkModeEnabledCount, err := ab.services.Chat.CountDarkModeOn()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with dark mode enabled")
 		return
@@ -273,7 +274,7 @@ Daily enabled: %d
 Update enabled: %d
 Times:
 <pre>`,
-		darkModeEnabledCount, pairEnabledCount, dailyEnabledCount, updateEnabledCount)
+		darkModeEnabledCount, pairEnabledCount, dailyEnabledCount, changeEnabledCount)
 	for _, t := range timeKeys {
 		fmt.Fprintf(&text, "- %s: %3d\n", t, dailyTimes[t])
 	}
@@ -319,7 +320,7 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	log.Trace().Dur("dur", dur).Send()
 
 	log.Trace().Msg("Fetching distribution...")
-	distribution, err := model.GetDist(ab.services.Repository.DB, dataKind, distPeriod, dur)
+	distribution, err := ab.services.Log.UpdateDist(dataKind, distPeriod, dur)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get distribution")
 		return
@@ -341,4 +342,24 @@ func (ab *AdminBot) distHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	if err != nil {
 		log.Error().Err(err).Send()
 	}
+}
+
+// GetNewChatsGroupedByYear returns a map of new chats grouped by the year of admission.
+func (ab *AdminBot) GetNewChatsGroupedByYear(dur time.Duration) (map[int]int, error) {
+	chats, err := ab.services.Chat.AllNew(dur)
+	if err != nil {
+		return nil, err
+	}
+	groupedChats := make(map[int]int)
+	for _, chat := range chats {
+		groupName := refutil.DerefOrTypeDefault(chat.GroupName)
+		_, year, _, _, err := groupName.Parse()
+		if err != nil {
+			log.Error().Err(err).Msg("invalid group name")
+			continue
+		}
+
+		groupedChats[year]++
+	}
+	return groupedChats, nil
 }

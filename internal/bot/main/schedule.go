@@ -204,7 +204,6 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 
 	rawSchedule, err := mb.services.ScheduleMan.Get(
-		mb.services.Repository,
 		mb.services.Browser,
 		model.GroupScheduleConfig(group, chat.DarkMode),
 	)
@@ -271,7 +270,6 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 		}
 
 		rawSchedule, err := mb.services.ScheduleMan.Get(
-			mb.services.Repository,
 			mb.services.Browser,
 			model.GroupScheduleConfig(group, chat.DarkMode),
 		)
@@ -325,7 +323,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := chat.Update(mb.services.Repository.DB); err != nil {
+		if err := mb.services.Container.Chat.Update(chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,
@@ -345,7 +343,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := chat.Update(mb.services.Repository.DB); err != nil {
+		if err := mb.services.Container.Chat.Update(chat); err != nil {
 			sendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,

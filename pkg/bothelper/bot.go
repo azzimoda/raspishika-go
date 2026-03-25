@@ -1,4 +1,4 @@
-package bothelpers
+package bothelper
 
 import (
 	"context"

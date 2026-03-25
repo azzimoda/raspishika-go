@@ -13,7 +13,7 @@ import (
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
@@ -22,7 +22,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 	timeStr := pairTime.Format("15:04")
 	log.Trace().Msgf("Processing pair sending for time %s", timeStr)
 
-	chats, err := model.GetChatsWithPairSendingEnabled(sm.services.Repository.DB)
+	chats, err := sm.services.Chat.AllWithPairNotification()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats with pair sending enabled")
 		sm.services.Reporter.Report().Err(err).Msg("Failed to get chats with pair sending enabled")
@@ -62,7 +62,7 @@ func (sm *SendingManager) processPairSending(t time.Time) {
 
 	groupCount := len(groupedChats)
 	if chatCount > 0 {
-		if err := model.InsertSendingLog(sm.services.Repository.DB, model.SendingLog{
+		if err := sm.services.Log.LogSending(model.SendingLog{
 			Kind:    model.SendingLogPair,
 			Chats:   chatCount,
 			Groups:  groupCount,
@@ -121,7 +121,7 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 		for _, chat := range chats {
 			chat.GroupName = nil
 			chat.DepartmentName = nil
-			if err := chat.Update(sm.services.Repository.DB); err != nil {
+			if err := sm.services.Container.Chat.Update(chat); err != nil {
 				log.Error().Err(err).Any("tgChatID", chat.TgChatID).Msg("Failed to update chat")
 			} else {
 				bothelpers.SendTempMessage(context.Background(), sm.bot.Bot, 5*time.Minute, &bot.SendMessageParams{
@@ -135,7 +135,6 @@ func (sm *SendingManager) sendPairNotificationToGroup(
 	}
 
 	rawSchedule, err := sm.services.ScheduleMan.Get(
-		sm.services.Repository,
 		sm.services.Browser,
 		model.GroupScheduleConfig(group, false),
 	)

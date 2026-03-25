@@ -79,7 +79,7 @@ func handleTelegramAPIError(services *service.Services, chat *model.Chat, err er
 		log.Warn().Err(err).Msg("Telegram API error: Forbidden; deactivating sendings for chat...")
 		chat.DailySendingTime = nil
 		chat.PairSending = false
-		if err := chat.Update(services.Repository.DB); err != nil {
+		if err := services.Container.Chat.Update(chat); err != nil {
 			return fmt.Errorf("failed to deactivate forbidden sendings for chat: %w", err)
 		}
 		return nil
@@ -101,16 +101,17 @@ func handleTelegramAPIError(services *service.Services, chat *model.Chat, err er
 			Int("migrate_to_chat_id", migrateErr.MigrateToChatID).
 			Msg("Telegram API error: MigrateError")
 
-		if c, err := model.GetChatByTgChatID(services.Repository.DB, model.ChatID(migrateErr.MigrateToChatID)); err == nil {
+		if newChat, err := services.Chat.GetByChatID(model.ChatID(migrateErr.MigrateToChatID)); err == nil {
 			log.Warn().
 				Any("tgChatID", chat.TgChatID).
 				Int64("migrateToChatID", int64(migrateErr.MigrateToChatID)).
 				Msg("Chat already exists, deleting old chat...")
-			if err := c.Delete(services.Repository.DB); err != nil {
+			if err := services.Container.Chat.Delete(newChat); err != nil {
 				return fmt.Errorf("failed to delete old chat: %w", err)
 			}
 		} else {
-			if err := model.UpdateChatTgChatID(services.Repository.DB, chat.ID, int64(migrateErr.MigrateToChatID)); err != nil {
+			chat.TgChatID = model.ChatID(migrateErr.MigrateToChatID)
+			if err := services.Chat.Update(chat); err != nil {
 				log.Error().
 					Err(err).
 					Any("tgChatID", chat.TgChatID).

@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 func (mb *MainBot) reminderOnHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -38,7 +38,7 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tg
 	}
 
 	chat.PairSending = on
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

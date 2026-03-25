@@ -27,8 +27,8 @@ func New() (*BrowserService, error) {
 	isHeadless := viper.GetBool(config.KeyBrowserHeadless)
 
 	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		Headless: playwright.Bool(isHeadless),
-		Timeout:  playwright.Float(float64(viper.GetInt(config.KeyBrowserTimeout)) * 1000),
+		Headless: new(isHeadless),
+		Timeout:  new(float64(viper.GetInt(config.KeyBrowserTimeout)) * 1000),
 	})
 	if err != nil {
 		return nil, err

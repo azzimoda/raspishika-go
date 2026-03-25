@@ -19,7 +19,7 @@ func (mb *MainBot) alertOffHandler(ctx context.Context, b *bot.Bot, update *tgmo
 }
 
 func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmodels.Update, on bool) {
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
@@ -34,7 +34,7 @@ func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmod
 	}
 
 	chat.ChangeAlert = on
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -48,7 +48,7 @@ func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmod
 	if on {
 		text = "Уведомления об изменениях включены"
 	}
-	err = bothelpers.SendTempMessage(ctx, b, 5*time.Second, &bot.SendMessageParams{
+	err = bothelper.SendTempMessage(ctx, b, 5*time.Second, &bot.SendMessageParams{
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            text,

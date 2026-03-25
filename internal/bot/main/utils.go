@@ -18,7 +18,7 @@ import (
 )
 
 func (mb *MainBot) PrepareScheduleImage(conf model.ScheduleConfig) (fileName string, data []byte, err error) {
-	schedule, err := mb.services.ScheduleMan.Get(mb.services.Repository, mb.services.Browser, conf)
+	schedule, err := mb.services.ScheduleMan.Get(mb.services.Browser, conf)
 	if err != nil {
 		err = fmt.Errorf("failed loading schedule: %w", err)
 		return
@@ -72,7 +72,7 @@ func mainMenuReplyMarkup(isPrivate bool) tgmodels.ReplyMarkup {
 }
 
 func sendErrorMessage(ctx context.Context, b *bot.Bot, params *bot.SendMessageParams) error {
-	err := bothelpers.SendTempMessage(ctx, b, 7*time.Second, params)
+	err := bothelper.SendTempMessage(ctx, b, 7*time.Second, params)
 	if err != nil {
 		log.Error().Err(err).Any("params", params).Msg("Failed to send error message")
 	}

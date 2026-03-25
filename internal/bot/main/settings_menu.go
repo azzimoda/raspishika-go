@@ -28,7 +28,7 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		return
 	}
 
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	text, replyMarkup := settingsMessageParams(chat)
@@ -46,7 +46,7 @@ func (mb *MainBot) configGroupHandler(ctx context.Context, b *bot.Bot, update *t
 	log.Trace().Msg("Config group handler")
 
 	message := update.CallbackQuery.Message.Message
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	mb.sendGroupMenu(ctx, b, message.MessageThreadID)
@@ -68,7 +68,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.DailySendingTime = nil
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -84,7 +84,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config reminder handler")
 
-	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	command := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
@@ -99,7 +99,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.PairSending = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -115,7 +115,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config change handler")
 
-	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	command := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
@@ -130,7 +130,7 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	}
 
 	chat.ChangeAlert = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -145,7 +145,7 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config dark mode handler")
 
-	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	command := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
@@ -160,7 +160,7 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.DarkMode = command.Arg(0) == "true"
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -175,7 +175,7 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Config access handler")
 
-	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	command := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
@@ -203,7 +203,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 		chat.Access = model.ChatAccessLevel(accessLevel)
 	}
 
-	if err := chat.Update(mb.services.Repository.DB); err != nil {
+	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		sendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,

@@ -24,9 +24,9 @@ type Department struct {
 	URL  string `json:"url"`
 }
 
-func FetchDepartments(repo *repository.Repository) ([]model.Department, error) {
+func FetchDepartments(repo repository.GroupRepository) ([]model.Department, error) {
 	// Check cache
-	departments, err := model.GetDepartments(repo.DB)
+	departments, err := repo.Departments()
 	ttl := config.GroupTTLDur()
 	if err != nil && Every(departments, func(d *model.Department) bool { return d.IsActual(ttl) }) {
 		log.Debug().Msg("Departments cache hit")
@@ -55,24 +55,27 @@ func FetchDepartments(repo *repository.Repository) ([]model.Department, error) {
 
 		url := BaseDepartmentPageURL + strings.ReplaceAll(s.AttrOr("href", ""), "&amp;", "&")
 		department := model.Department{Name: model.DepartmentName(name), URL: model.URL(url)}
-		departments = append(departments, department)
-		if err := department.InsertOrUpdate(repo.DB); err != nil {
+		if err := repo.InsertOrUpdateDepartment(&department); err != nil {
 			log.Error().Err(err).Msg("Failed to update department cache in DB")
 		}
+		departments = append(departments, department)
 	})
 
 	return departments, nil
 }
 
-func FetchDepartmentIDs(repo *repository.Repository, browser *browser.BrowserService) ([]model.DepartmentID, error) {
+func FetchDepartmentIDs(
+	repo repository.GroupRepository,
+	browser *browser.BrowserService,
+) ([]model.DepartmentID, error) {
 	log.Trace().Msg("Fetching departments...")
 	if _, err := FetchGroups(repo, browser); err != nil {
 		return nil, err
 	}
-	return model.GetDepartmentIDs(repo.DB)
+	return repo.DepartmentIDs()
 }
 
-func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) ([]model.Group, error) {
+func FetchGroups(repo repository.GroupRepository, browser *browser.BrowserService) ([]model.Group, error) {
 	if groups, err := checkGroups(repo, config.GroupTTLDur()); err == nil && len(groups) > 0 {
 		log.Trace().Msg("Groups cache hit")
 		return groups, nil
@@ -94,7 +97,7 @@ func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) (
 	}
 	log.Trace().Int("groupsCount", len(groups)).Msg("Fetched groups")
 
-	if err := model.UpdateGroups(repo.DB, groups); err != nil {
+	if err := repo.UpdateGroups(groups); err != nil {
 		log.Error().Err(err).Msg("Failed to update groups")
 		return nil, fmt.Errorf("failed to update groups: %w", err)
 	}
@@ -103,7 +106,7 @@ func FetchGroups(repo *repository.Repository, browser *browser.BrowserService) (
 }
 
 func FetchDepartmentGroups(
-	repo *repository.Repository,
+	repo repository.GroupRepository,
 	browser *browser.BrowserService,
 	name model.DepartmentName,
 ) ([]model.Group, error) {
@@ -121,8 +124,8 @@ func FetchDepartmentGroups(
 	return departmentGroups, nil
 }
 
-func checkGroups(repo *repository.Repository, ttl time.Duration) ([]model.Group, error) {
-	groups, err := model.GetGroups(repo.DB)
+func checkGroups(repo repository.GroupRepository, ttl time.Duration) ([]model.Group, error) {
+	groups, err := repo.All()
 	if err != nil {
 		return nil, err
 	}

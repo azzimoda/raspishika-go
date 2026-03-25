@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelper "github.com/azzimoda/raspishika-go/pkg/bothelper"
 	"github.com/azzimoda/raspishika-go/pkg/refutil"
 )
 
@@ -33,7 +33,7 @@ func (ab *AdminBot) registerHandlers() {
 			return false
 		}
 
-		_, err := model.ValidateGroupName(ab.services.Repository.DB, model.GroupName(update.Message.Text))
+		_, err := ab.services.Group.ValidateName(model.GroupName(update.Message.Text))
 		return err == nil
 	}, ab.groupHandler)
 	// TODO: Handle username and chat_id.
@@ -45,7 +45,7 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	if update.Message != nil {
 		if strings.HasPrefix(update.Message.Text, "/") {
 			// Remove not handled command.
-			bothelpers.DeleteMessageSafely(ctx, b, update.Message)
+			bothelper.DeleteMessageSafely(ctx, b, update.Message)
 		}
 	}
 }
@@ -58,13 +58,13 @@ func (ab *AdminBot) startHandler(ctx context.Context, b *bot.Bot, update *tgmode
 }
 
 func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
-	_, args := bothelpers.ParseCommand(update.Message.Text)
+	_, args := bothelper.ParseCommand(update.Message.Text)
 
 	tgChatID, err := strconv.ParseInt(args, 10, 64)
 	var chat *model.Chat
 	if err != nil {
 		// Get last chat from database.
-		chats, err := model.GetChats(ab.services.Repository.DB)
+		chats, err := ab.services.Chat.All()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chats")
 			return
@@ -76,7 +76,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 		chat = &chats[len(chats)-1]
 	} else {
-		chat, err = model.GetChatByTgChatID(ab.services.Repository.DB, model.ChatID(tgChatID))
+		chat, err = ab.services.Chat.GetByChatID(model.ChatID(tgChatID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chat by chat ID")
 			return
@@ -105,7 +105,7 @@ var chatReportTemplate, _ = template.New("report").Parse(chatReportTemplateStr)
 func (ab *AdminBot) sendChatReport(chat *model.Chat, b *bot.Bot, ctx context.Context, update *tgmodels.Update) {
 	log.Trace().Msg("sendChatReport")
 
-	recentTeachers, err := model.GetTeacherByChatID(ab.services.Repository.DB, chat.ID)
+	recentTeachers, err := ab.services.Group.TeachersByChatID(chat.ID)
 	if err != nil {
 		recentTeachers = []model.Teacher{}
 		ab.services.Reporter.Report().Err(err).Msgf("Failed to get recent teachers for chat %d", chat.ID)
@@ -116,7 +116,7 @@ func (ab *AdminBot) sendChatReport(chat *model.Chat, b *bot.Bot, ctx context.Con
 	}
 	recentTeachersStr := strings.Join(recentTeacherNames, ", ")
 
-	recentUpdates, err := model.GetRecentChatUpdateLogs(ab.services.Repository.DB, chat.ID, 48*time.Hour)
+	recentUpdates, err := ab.services.Log.RecentChatUpdateLogs(chat.ID, 48*time.Hour)
 	if err != nil {
 		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
 		recentUpdates = []model.UpdateLog{}
@@ -156,17 +156,17 @@ func (ab *AdminBot) sendChatReport(chat *model.Chat, b *bot.Bot, ctx context.Con
 func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	group := model.GroupName(update.Message.Text) // For default handler
 	if strings.HasPrefix(update.Message.Text, "/") {
-		_, arg := bothelpers.ParseCommand(update.Message.Text) // For /group command
+		_, arg := bothelper.ParseCommand(update.Message.Text) // For /group command
 		group = model.GroupName(arg)
 	}
 
-	group, err := model.ValidateGroupName(ab.services.Repository.DB, model.GroupName(update.Message.Text))
+	group, err := ab.services.Group.ValidateName(model.GroupName(update.Message.Text))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return
 	}
 
-	chats, err := model.GetChatsByGroup(ab.services.Repository.DB, group)
+	chats, err := ab.services.Chat.AllByGroup(group)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats by group")
 		return

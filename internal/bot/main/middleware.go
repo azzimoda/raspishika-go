@@ -59,7 +59,7 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*model.Chat,
 		return nil, ErrUnknownUpdateType
 	}
 
-	chat, created, err := model.CreateOrUpdateChat(mb.services.Repository.DB, chatID, username)
+	chat, created, err := mb.services.Container.Chat.CreateOrUpdate(chatID, username)
 	if err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(model.Chat{TgChatID: chatID, UserName: &username}).
 			Msg("Failed to create or update chat")
@@ -84,7 +84,7 @@ func (mb *MainBot) sendNewChatReport(chat *model.Chat, err error, tgChatID model
 	for range 5 {
 		time.Sleep(20 * time.Second)
 
-		if chat, err := model.GetChatByTgChatID(mb.services.Repository.DB, tgChatID); err == nil && chat.GroupName != nil {
+		if chat, err := mb.services.Chat.GetByChatID(tgChatID); err == nil && chat.GroupName != nil {
 			if sentErr == nil {
 				b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
 			}
@@ -219,7 +219,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 				Msg("Handler error")
 		}
 
-		model.InsertUpdateLog(mb.services.Repository.DB, &model.UpdateLog{
+		mb.services.Log.LogUpdate(&model.UpdateLog{
 			ChatID:       chat.ID,
 			Kind:         updateKind,
 			MessageID:    messageID,

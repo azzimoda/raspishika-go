@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
+	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -31,7 +31,7 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := model.GroupName(command.Arg(0))
 
-	group, err := model.GetGroupByName(mb.services.Repository.DB, groupName)
+	group, err := mb.services.Group.GetByName(groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -79,7 +79,7 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	teacherID := command.Arg(0)
 
-	teacher, err := model.GetTeacherByTeacherID(mb.services.Repository.DB, teacherID)
+	teacher, err := mb.services.Group.GetTeacherByID(teacherID)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -117,7 +117,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := model.GroupName(command.Arg(0))
 
-	group, err := model.GetGroupByName(mb.services.Repository.DB, groupName)
+	group, err := mb.services.Group.GetByName(groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -128,11 +128,7 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		return
 	}
 
-	rawSchedule, err := mb.services.ScheduleMan.Get(
-		mb.services.Repository,
-		mb.services.Browser,
-		model.GroupScheduleConfig(group, false),
-	)
+	rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Browser, model.GroupScheduleConfig(group, false))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -171,7 +167,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
 	groupName := model.GroupName(command.Arg(0))
 
-	group, err := model.GetGroupByName(mb.services.Repository.DB, groupName)
+	group, err := mb.services.Group.GetByName(groupName)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
@@ -187,7 +183,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
 		conf := model.GroupScheduleConfig(group, false)
-		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Repository, mb.services.Browser, conf)
+		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Browser, conf)
 		if err != nil {
 			addContextHandlerError(ctx, err)
 			_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{

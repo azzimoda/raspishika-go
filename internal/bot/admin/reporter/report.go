@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/go-telegram/bot"
@@ -131,34 +132,34 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 	}
 
 	// Assemble the message text.
-	msgText := ""
+	var msgText strings.Builder
 
 	// Chat
 	if chatID != 0 {
-		msgText += fmt.Sprintf("<code>/chat %d</code> @%s\n", chatID, username)
+		msgText.WriteString(fmt.Sprintf("<code>/chat %d</code> @%s\n", chatID, username))
 	}
 
 	// Error
 	if reportErr != nil {
-		msgText += fmt.Sprintf("Error:\n<pre>%s</pre>\n", reportErr.Error())
+		msgText.WriteString(fmt.Sprintf("Error:\n<pre>%s</pre>\n", reportErr.Error()))
 	}
 
 	// Debug objects
 	if len(debugObjects) > 0 {
-		msgText += "\n<pre>"
+		msgText.WriteString("\n<pre>")
 		for name, value := range debugObjects {
-			msgText += fmt.Sprintf("%s = %+v\n", name, value)
+			msgText.WriteString(fmt.Sprintf("%s = %+v\n", name, value))
 		}
-		msgText += "</pre>\n"
+		msgText.WriteString("</pre>\n")
 	}
 
 	// Message text
-	msgText += text
+	msgText.WriteString(text)
 
 	// Send the message.
 	msg, err := rc.bot.SendMessage(context.Background(), &bot.SendMessageParams{
 		ChatID:    rc.recipientChatID,
-		Text:      msgText,
+		Text:      msgText.String(),
 		ParseMode: tgmodels.ParseModeHTML,
 	})
 	if err != nil {
@@ -167,7 +168,7 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 			Text:      fmt.Sprintf("Failed to send report:\n<pre>%s</pre>", err),
 			ParseMode: tgmodels.ParseModeHTML,
 		})
-		log.Error().Err(err).Str("text", msgText).Msg("Failed to send report message")
+		log.Error().Err(err).Str("text", msgText.String()).Msg("Failed to send report message")
 	}
 	if err == nil && isTemp {
 		log.Trace().Msgf("The report message will be deleted after a minute...")
