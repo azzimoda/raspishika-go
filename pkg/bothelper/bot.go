@@ -12,20 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func SetMyCommands(ctx context.Context, b *bot.Bot, commandsData []map[string]string) (bool, error) {
-	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
-	commands := []models.BotCommand{}
-	for _, cmd := range commandsData {
-		for name, desc := range cmd {
-			commands = append(commands, models.BotCommand{
-				Command:     name,
-				Description: desc,
-			})
-		}
-	}
-	return b.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: commands})
-}
-
 // SendTempMessage sends a temporary message that will be automatically deleted after the specified duration.
 func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params *bot.SendMessageParams) error {
 	msg, err := b.SendMessage(ctx, params)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-telegram/bot/models"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
@@ -292,4 +293,38 @@ func BrowserWindowSizeScaled() (int, int) {
 	height := float64(viper.GetInt(KeyBrowserHeight))
 	scale := viper.GetFloat64(KeyBrowserWindowSizeScale)
 	return int(width * scale), int(height * scale)
+}
+
+func MainBotCommands() []models.BotCommand {
+	a := viper.Get("mainbot_commands")
+	commandsData, ok := a.([]map[string]string)
+	if !ok {
+		log.Warn().Any("mainbot_commands", a).
+			Msg("mainbot_commands not found or not a slice of map[string]string")
+		return nil
+	}
+	return buildBotCommands(commandsData)
+}
+
+func AdminBotCommands() []models.BotCommand {
+	a := viper.Get("adminbot_commands")
+	commandsData, ok := a.([]map[string]string)
+	if !ok {
+		log.Warn().Any("adminbot_commands", a).
+			Msg("adminbot_commands not found or not a slice of map[string]string")
+		return nil
+	}
+	return buildBotCommands(commandsData)
+}
+
+// buildBotCommands builds a slice of BotCommand from the provided command data.
+func buildBotCommands(commandsData []map[string]string) []models.BotCommand {
+	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
+	var commands []models.BotCommand
+	for _, cmd := range commandsData {
+		for name, desc := range cmd {
+			commands = append(commands, models.BotCommand{Command: name, Description: desc})
+		}
+	}
+	return commands
 }

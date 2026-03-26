@@ -14,7 +14,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/service"
-	"github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 type AdminBot struct {
@@ -28,17 +27,11 @@ func (b *AdminBot) API() *bot.Bot {
 
 func (b *AdminBot) Start() {
 	log.Info().Msg("Starting admin bot...")
-	myCommands, ok := config.AssertMyCommands(viper.Get("adminbot_commands"))
-	if !ok {
-		log.Error().Msg("Failed to assert adminbot_commands")
-	}
+	ctx := context.Background()
 
-	success, err := bothelper.SetMyCommands(context.Background(), b.bot, myCommands)
-	if err != nil {
+	success, err := b.bot.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: config.AdminBotCommands()})
+	if err != nil || !success {
 		log.Error().Err(err).Msg("Failed to set my commands")
-	}
-	if !success {
-		log.Error().Msg("Failed to set my commands")
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

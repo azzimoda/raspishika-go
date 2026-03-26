@@ -17,15 +17,10 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
-func New(
-	services *service.Services,
-) (mb *MainBot, err error) {
-	mb = &MainBot{
-		services: services,
-	}
+func New(services *service.Services) (mb *MainBot, err error) {
+	mb = &MainBot{services: services}
 
 	opts := []bot.Option{
 		bot.WithMiddlewares(
@@ -59,25 +54,23 @@ func New(
 }
 
 type MainBot struct {
-	Bot      *bot.Bot
+	*bot.Bot
 	Me       *tgmodels.User
 	services *service.Services
 }
 
 func (mb *MainBot) Start() {
 	log.Trace().Any("mainbot_commands", viper.Get("mainbot_commands")).Send()
-	myCommands, ok := config.AssertMyCommands(viper.Get("mainbot_commands"))
-	if !ok {
-		log.Error().Msg("Failed to assert mainbot_commands")
-	}
+	ctx := context.Background()
 
-	success, err := bothelpers.SetMyCommands(context.Background(), mb.Bot, myCommands)
-	if err != nil {
+	success, err := mb.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands:     config.MainBotCommands(),
+		LanguageCode: "ru",
+	})
+	if err != nil || !success {
 		log.Error().Err(err).Msg("Error while trying to set my commands")
 	}
-	if !success {
-		log.Error().Msg("Failed to set my commands")
-	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
