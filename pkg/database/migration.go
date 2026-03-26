@@ -5,10 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
+
+	"github.com/azzimoda/raspishika-go/internal/config"
 )
 
 type migrationFile struct {

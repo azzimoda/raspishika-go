@@ -13,6 +13,10 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 )
 
+// TODO: Write about migrations here
+
+// New creates a new SQLite database connection using the file path from the config.
+// It creates the database file and directory if they don't exist.
 func New() (*sqlx.DB, error) {
 	file := viper.GetString(config.KeyDatabaseFile)
 	log.Debug().Str("file", file).Msg("SQLite database file")

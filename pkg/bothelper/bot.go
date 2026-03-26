@@ -26,6 +26,7 @@ func SetMyCommands(ctx context.Context, b *bot.Bot, commandsData []map[string]st
 	return b.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: commands})
 }
 
+// SendTempMessage sends a temporary message that will be automatically deleted after the specified duration.
 func SendTempMessage(ctx context.Context, b *bot.Bot, dur time.Duration, params *bot.SendMessageParams) error {
 	msg, err := b.SendMessage(ctx, params)
 	if err != nil {
@@ -72,6 +73,7 @@ func DeleteMessageSafely(ctx context.Context, b *bot.Bot, message *models.Messag
 	return false, nil
 }
 
+// ParseCommand parses a command string into a command and arguments.
 func ParseCommand(text string) (command string, args string) {
 	re := regexp.MustCompile(`^/(\w+)(@\w+)?(\s([\s\S]+))?$`)
 	submatches := re.FindStringSubmatch(text)
@@ -84,6 +86,9 @@ func ParseCommand(text string) (command string, args string) {
 	return command, args
 }
 
+// ParseCallbackData parses callback data into a CallbackCommand struct.
+//
+// The data is expected to be in the format of a command followed by newline-separated arguments.
 func ParseCallbackData(data string) CallbackCommand {
 	lines := strings.Split(data, "\n")
 	command := ""
@@ -97,14 +102,16 @@ func ParseCallbackData(data string) CallbackCommand {
 	return CallbackCommand{Command: command, Args: args}
 }
 
+// CallbackCommand represents a parsed callback command with a command and arguments.
 type CallbackCommand struct {
 	Command string
 	Args    []string
 }
 
-func (cc CallbackCommand) Arg(i int) string {
-	if i < len(cc.Args) {
-		return cc.Args[i]
+// Arg returns the argument at the specified index, or an empty string if out of bounds.
+func (c CallbackCommand) Arg(i int) string {
+	if i < len(c.Args) {
+		return c.Args[i]
 	}
 	return ""
 }

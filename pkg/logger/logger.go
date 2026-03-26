@@ -10,6 +10,10 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// SetupLogger configures the logger with the given log level and log directory.
+//
+// logLevelStr is the log level to use (e.g. "debug", "info", "warn", "error").
+// logDir is the directory to write log files to. If empty, logs are written to stderr only.
 func SetupLogger(logLevelStr, logDir string) {
 	log.Trace().Msg("Setting up logger")
 
