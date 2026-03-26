@@ -15,6 +15,14 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
 )
 
+func New(scheduleRepo repository.ScheduleRepository, groupRepo repository.GroupRepository) ScheduleManager {
+	return ScheduleManager{
+		scheduleRepo: scheduleRepo,
+		groupRepo:    groupRepo,
+		sf:           singleflight.Group{},
+	}
+}
+
 type ScheduleManager struct {
 	scheduleRepo repository.ScheduleRepository
 	groupRepo    repository.GroupRepository

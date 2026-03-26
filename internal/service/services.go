@@ -26,6 +26,8 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
+	s.ScheduleMan = smanager.New(s.Schedule, s.Group)
+
 	return s, nil
 }
 
