@@ -16,35 +16,6 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/service"
 )
 
-type AdminBot struct {
-	bot      *bot.Bot
-	services *service.Services
-}
-
-func (b *AdminBot) API() *bot.Bot {
-	return b.bot
-}
-
-func (b *AdminBot) Start() {
-	log.Info().Msg("Starting admin bot...")
-	ctx := context.Background()
-
-	success, err := b.bot.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: config.AdminBotCommands()})
-	if err != nil || !success {
-		log.Error().Err(err).Msg("Failed to set my commands")
-	}
-
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer cancel()
-
-	b.bot.Start(ctx)
-}
-
-func (b *AdminBot) Report() reporter.ReportConfig {
-	log.Trace().Msg("Reporting...")
-	return reporter.NewReportConfig(b.bot, viper.GetInt64(config.KeyTelegramAdminId))
-}
-
 func New(services *service.Services) (*AdminBot, error) {
 	ab := AdminBot{services: services}
 
@@ -54,7 +25,7 @@ func New(services *service.Services) (*AdminBot, error) {
 	}
 
 	var err error
-	ab.bot, err = bot.New(viper.GetString(config.KeyTelegramAdminToken), opts...)
+	ab.Bot, err = bot.New(viper.GetString(config.KeyTelegramAdminToken), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new bot: %w", err)
 	}
@@ -62,6 +33,31 @@ func New(services *service.Services) (*AdminBot, error) {
 	ab.registerHandlers()
 
 	return &ab, nil
+}
+
+type AdminBot struct {
+	*bot.Bot
+	services *service.Services
+}
+
+func (b *AdminBot) Start() {
+	log.Info().Msg("Starting admin bot...")
+	ctx := context.Background()
+
+	success, err := b.SetMyCommands(ctx, &bot.SetMyCommandsParams{Commands: config.AdminBotCommands()})
+	if err != nil || !success {
+		log.Error().Err(err).Msg("Failed to set my commands")
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	b.Bot.Start(ctx)
+}
+
+func (b *AdminBot) Report() reporter.ReportConfig {
+	log.Trace().Msg("Reporting...")
+	return reporter.NewReportConfig(b.Bot, viper.GetInt64(config.KeyTelegramAdminId))
 }
 
 func (ab *AdminBot) filterNotAdminMiddleware(next bot.HandlerFunc) bot.HandlerFunc {

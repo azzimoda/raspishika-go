@@ -19,16 +19,16 @@ import (
 )
 
 func (ab *AdminBot) registerHandlers() {
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, ab.startHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "start", bot.MatchTypeCommandStartOnly, ab.startHandler)
 
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "chat", bot.MatchTypeCommand, ab.chatHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "group", bot.MatchTypeCommand, ab.groupHandler)
 
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
-	ab.bot.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "stats", bot.MatchTypeCommand, ab.statsHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "config", bot.MatchTypeCommand, ab.configHandler)
+	ab.RegisterHandler(bot.HandlerTypeMessageText, "/dist_", bot.MatchTypePrefix, ab.distHandler)
 
-	ab.bot.RegisterHandlerMatchFunc(func(update *tgmodels.Update) bool {
+	ab.RegisterHandlerMatchFunc(func(update *tgmodels.Update) bool {
 		if update.Message == nil {
 			return false
 		}
@@ -44,7 +44,7 @@ func (ab *AdminBot) defaultHandler(ctx context.Context, b *bot.Bot, update *tgmo
 
 	if update.Message != nil {
 		if strings.HasPrefix(update.Message.Text, "/") {
-			// Remove not handled command.
+			// Remove not handled command
 			bothelper.DeleteMessageSafely(ctx, b, update.Message)
 		}
 	}
@@ -63,7 +63,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	tgChatID, err := strconv.ParseInt(args, 10, 64)
 	var chat *model.Chat
 	if err != nil {
-		// Get last chat from database.
+		// Get last chat from database
 		chats, err := ab.services.Chat.All()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chats")
