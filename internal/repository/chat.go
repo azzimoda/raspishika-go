@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/pkg/refutil"
@@ -54,34 +55,43 @@ type ChatRepository interface {
 
 type chatRepository struct{ db *sqlx.DB }
 
-func (r *chatRepository) CreateOrUpdate(tgID model.ChatID, username model.UserName) (chat *model.Chat, created bool, err error) {
-	chat, err = r.GetByChatID(tgID)
-	if err != sql.ErrNoRows {
-		// Create new chat
-		id, err := r.Create(tgID, username)
+func (r *chatRepository) CreateOrUpdate(tgChatID model.ChatID, username model.UserName) (chat *model.Chat, created bool, err error) {
+	chat = new(model.Chat)
+	err = r.db.Get(chat, `SELECT * FROM chats WHERE tg_chat_id = ?`, tgChatID)
+
+	if err == sql.ErrNoRows {
+		// Create new chat.
+		log.Debug().Any("tgChatID", tgChatID).Msg("Chat does not exist, creating new one...")
+		id, err := r.Create(tgChatID, username)
 		if err != nil {
-			return nil, true, fmt.Errorf("faield to create chat")
+			return nil, true, fmt.Errorf("failed to create chat (%d, %s): %w", tgChatID, username, err)
 		}
 
-		chat, err = r.Get(int(id))
+		chat, err := r.Get(int(id))
 		return chat, true, err
-	} else if err != nil {
-		return nil, false, fmt.Errorf("failed to create chat: %w", err)
+	}
+	if err != nil {
+		log.Error().Err(err).Any("tgChatID", tgChatID).Msg("Failed to get chat")
+		return nil, false, fmt.Errorf("failed to get chat by Telegram chat ID (%d): %w", tgChatID, err)
 	}
 
-	if username != refutil.DerefOrTypeDefault(chat.UserName) {
-		// Updpate username
+	if refutil.DerefOrTypeDefault(chat.UserName) != username {
+		// Update username.
 		chat.UserName = &username
-		if err != r.Update(chat) {
-			return nil, false, fmt.Errorf("failed to update chat's username: %w", err)
+		if err := r.Update(chat); err != nil {
+			err := fmt.Errorf("failed to update chat's username (%v -> %s): %w", chat.UserName, username, err)
+			return nil, false, err
 		}
 
-		chat, err = r.Get(chat.ID)
+		chat, err := r.Get(chat.ID)
 		return chat, false, err
 	}
 
+	// Return existing chat
+	log.Trace().Any("tgChatID", tgChatID).Msg("Chat already exists")
 	return chat, false, nil
 }
+
 func (r *chatRepository) Create(tgID model.ChatID, username model.UserName) (int64, error) {
 	res, err := r.db.Exec(`INSERT INTO chats (tg_chat_id, username) VALUES (?,?)`, tgID, username)
 	if err != nil {
