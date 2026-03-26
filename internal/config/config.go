@@ -318,10 +318,36 @@ func AdminBotCommands() []models.BotCommand {
 }
 
 // buildBotCommands builds a slice of BotCommand from the provided command data.
-func buildBotCommands(commandsData []map[string]string) []models.BotCommand {
+func buildBotCommands(commandsData any) []models.BotCommand {
+	arr, ok := commandsData.([]any)
+	if !ok {
+		log.Warn().Any("commands", commandsData).
+			Msg("commands not found or not a slice of map[string]string")
+		return nil
+	}
+
+	var arrCommands []map[string]string
+	for _, data := range arr {
+		cmd, ok := data.(map[string]any)
+		if !ok {
+			log.Warn().Any("command", data).
+				Msg("command not found or not a map[string]string")
+			continue
+		}
+		keys := make([]string, 0, len(cmd))
+		values := make([]string, 0, len(cmd))
+		for k, v := range cmd {
+			keys = append(keys, k)
+			values = append(values, fmt.Sprintf("%v", v))
+		}
+		for i := range keys {
+			arrCommands = append(arrCommands, map[string]string{keys[i]: values[i]})
+		}
+	}
+
 	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
 	var commands []models.BotCommand
-	for _, cmd := range commandsData {
+	for _, cmd := range arrCommands {
 		for name, desc := range cmd {
 			commands = append(commands, models.BotCommand{Command: name, Description: desc})
 		}
