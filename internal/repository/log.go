@@ -63,7 +63,7 @@ func (r *logRepository) CountSendingLogs(kind model.SendingLogKind, dur time.Dur
 	`
 	switch kind {
 	case model.SendingLogDaily, model.SendingLogPair, model.SendingLogChange:
-		query += fmt.Sprintf(` AND kidn = '%s'`, kind)
+		query += fmt.Sprintf(` AND kind = '%s'`, kind)
 	}
 
 	var dest struct {
