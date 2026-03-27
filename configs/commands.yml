@@ -1,30 +1,31 @@
 ---
-mainbot_commands:
-  - week: Расписание на неделю
-  - today: Расписание на сегодня
-  - tomorrow: Расписание на завтра
-  - teacher: Расписание преподавателя
+commands:
+  main:
+    week: Расписание на неделю
+    today: Расписание на сегодня
+    tomorrow: Расписание на завтра
+    teacher: Расписание преподавателя
 
-  - settings: Меню настроек
-  - group: Изменить группу
-  - time: Задать время рассылки
-  - daily_off: Выкл. рассылку
-  - reminder_on: Вкл. напоминания перед парами
-  - reminder_off: Выкл. напоминания перед парами
-  - alert_on: Вкл. уведомление об изменениях
-  - alert_off: Выкл. уведомление об изменениях
-  - access: Настройки доступа в группах
+    settings: Меню настроек
+    group: Изменить группу
+    time: Задать время рассылки
+    daily_off: Выкл. рассылку
+    reminder_on: Вкл. напоминания перед парами
+    reminder_off: Выкл. напоминания перед парами
+    alert_on: Вкл. уведомление об изменениях
+    alert_off: Выкл. уведомление об изменениях
+    access: Настройки доступа в группах
 
-  - help: Список команд
-  - stop: Остановить бота
-  - start: Запустить бота
-adminbot_commands:
-  - stats: "Send bot stats for period (default: 24h)"
-  - config: Send config stats
-  - dist_aw: Send distribution stats of activity for week days
-  - dist_ah: Send distribution stats of activity for hours
+    help: Список команд
+    stop: Остановить бота
+    start: Запустить бота
+  admin:
+    stats: "Send bot stats for period (default: 24h)"
+    config: Send config stats
+    dist_aw: Send distribution stats of activity for week days
+    dist_ah: Send distribution stats of activity for hours
 
-  - chat: Send chat data view
-  - group: Send group data view
+    chat: Send chat data view
+    group: Send group data view
 
-  - start: Greet the admin
+    start: Greet the admin

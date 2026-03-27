@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.yaml.in/yaml/v3"
 )
 
 const (
@@ -60,6 +61,9 @@ const (
 
 	KeyStartTime     = "start"
 	KeyNotifyMessage = "notify"
+
+	KeyCommandsMain  = "commands.main"
+	KeyCommandsAdmin = "commands.admin"
 )
 
 var defaults = map[string]any{
@@ -189,12 +193,36 @@ func LoadFiles() {
 		log.Error().Err(err).Msg("Failed to load main config file! Default values are used.")
 	}
 
-	filename = viper.GetString(KeyCommandsFile)
-	log.Debug().Str("filename", filename).Msg("Loading commands config...")
-	viper.SetConfigFile(filename)
-	if err := viper.MergeInConfig(); err != nil {
-		log.Error().Err(err).Msg("Failed to load commands config file! Bot's command will be empty!")
+	if err := LoadBotCommands(); err != nil {
+		log.Error().Err(err).Msg("Failed to load bot commands")
 	}
+}
+
+func LoadBotCommands() error {
+	filename := viper.GetString(KeyCommandsFile)
+	log.Debug().Str("filename", filename).Msg("Loading commands config...")
+
+	bytes, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read commands config file: %w", err)
+	}
+
+	var commands struct {
+		Commands struct {
+			MainbotCommands  yaml.Node `yaml:"main"`
+			AdminbotCommands yaml.Node `yaml:"admin"`
+		} `yaml:"commands"`
+	}
+	if err := yaml.Unmarshal(bytes, &commands); err != nil {
+		return fmt.Errorf("failed to unmarshal commands config file: %w", err)
+	}
+
+	mainBotCommands := parseBotCommands(commands.Commands.MainbotCommands)
+	adminBotCommands := parseBotCommands(commands.Commands.AdminbotCommands)
+
+	viper.Set(KeyCommandsMain, mainBotCommands)
+	viper.Set(KeyCommandsAdmin, adminBotCommands)
+	return nil
 }
 
 func mkDirs() error {
@@ -296,61 +324,19 @@ func BrowserWindowSizeScaled() (int, int) {
 }
 
 func MainBotCommands() []models.BotCommand {
-	a := viper.Get("mainbot_commands")
-	commandsData, ok := a.([]map[string]string)
-	if !ok {
-		log.Warn().Any("mainbot_commands", a).
-			Msg("mainbot_commands not found or not a slice of map[string]string")
-		return nil
-	}
-	return buildBotCommands(commandsData)
+	return viper.Get(KeyCommandsMain).([]models.BotCommand)
 }
 
 func AdminBotCommands() []models.BotCommand {
-	a := viper.Get("adminbot_commands")
-	commandsData, ok := a.([]map[string]string)
-	if !ok {
-		log.Warn().Any("adminbot_commands", a).
-			Msg("adminbot_commands not found or not a slice of map[string]string")
-		return nil
-	}
-	return buildBotCommands(commandsData)
+	return viper.Get(KeyCommandsAdmin).([]models.BotCommand)
 }
 
-// buildBotCommands builds a slice of BotCommand from the provided command data.
-func buildBotCommands(commandsData any) []models.BotCommand {
-	arr, ok := commandsData.([]any)
-	if !ok {
-		log.Warn().Any("commands", commandsData).
-			Msg("commands not found or not a slice of map[string]string")
-		return nil
-	}
-
-	var arrCommands []map[string]string
-	for _, data := range arr {
-		cmd, ok := data.(map[string]any)
-		if !ok {
-			log.Warn().Any("command", data).
-				Msg("command not found or not a map[string]string")
-			continue
-		}
-		keys := make([]string, 0, len(cmd))
-		values := make([]string, 0, len(cmd))
-		for k, v := range cmd {
-			keys = append(keys, k)
-			values = append(values, fmt.Sprintf("%v", v))
-		}
-		for i := range keys {
-			arrCommands = append(arrCommands, map[string]string{keys[i]: values[i]})
-		}
-	}
-
-	log.Trace().Any("commands", commandsData).Msg("Setting my commands")
+func parseBotCommands(node yaml.Node) []models.BotCommand {
 	var commands []models.BotCommand
-	for _, cmd := range arrCommands {
-		for name, desc := range cmd {
-			commands = append(commands, models.BotCommand{Command: name, Description: desc})
-		}
+	for i := 0; i < len(node.Content); i += 2 {
+		key := node.Content[i].Value
+		value := node.Content[i+1].Value
+		commands = append(commands, models.BotCommand{Command: key, Description: value})
 	}
 	return commands
 }
