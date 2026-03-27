@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
-	"github.com/azzimoda/raspishika-go/internal/bot/main/bottest"
+	"github.com/azzimoda/raspishika-go/internal/testutil"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	models "github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service"
@@ -18,7 +18,7 @@ func TestSendingManager_sendPairNotificationToGroup(t *testing.T) {
 	var Times = []string{"7:45", "9:30", "11:15", "13:30", "15:15", "17:00", "18:45"}
 
 	testDir := t.TempDir()
-	bottest.InitConfig(t, testDir)
+	testutil.InitConfig(t, testDir)
 
 	db, err := database.New()
 	if err != nil {

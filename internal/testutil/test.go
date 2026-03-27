@@ -1,4 +1,4 @@
-package bottest
+package testutil
 
 import (
 	"os"
@@ -12,6 +12,8 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/pkg/logger"
 )
+
+// TODO: Make this package public
 
 func init() {
 	_, filename, _, _ := runtime.Caller(0)
@@ -31,11 +33,12 @@ func init() {
 		configFile = viper.GetString(config.KeyConfigFile)
 	}
 
-	viper.Set(config.KeyDotEnv, filepath.Join(rootDir, ".env"))
-	viper.Set(config.KeyConfigFile, filepath.Join(rootDir, "configs/config.yml"))
-	viper.Set(config.KeyCommandsFile, filepath.Join(rootDir, "configs/commands.yml"))
-	viper.Set(config.KeyScheduleTemplateFile, filepath.Join(rootDir, "storage/schedule_template.html"))
-	viper.Set(config.KeyDatabaseMigrations, filepath.Join(rootDir, "migrations"))
+	viper.Set(config.KeyDotEnv, filepath.Join(rootDir, viper.GetString(config.KeyDotEnv)))
+	viper.Set(config.KeyConfigFile, filepath.Join(rootDir, configFile))
+	viper.Set(config.KeyCommandsFile, filepath.Join(rootDir, viper.GetString(config.KeyCommandsFile)))
+	viper.Set(config.KeyScheduleTemplateFile, filepath.Join(rootDir, viper.GetString(config.KeyScheduleTemplateFile)))
+	viper.Set(config.KeyScheduleTemplateDarkFile, filepath.Join(rootDir, viper.GetString(config.KeyScheduleTemplateDarkFile)))
+	viper.Set(config.KeyDatabaseMigrations, filepath.Join(rootDir, viper.GetString(config.KeyDatabaseMigrations)))
 	log.Trace().Msg("Configured paths")
 }
 

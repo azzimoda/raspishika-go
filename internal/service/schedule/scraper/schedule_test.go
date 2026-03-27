@@ -3,17 +3,17 @@ package scraper_test
 import (
 	"testing"
 
-	"github.com/azzimoda/raspishika-go/internal/bot/main/bottest"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
+	"github.com/azzimoda/raspishika-go/internal/testutil"
 	"github.com/azzimoda/raspishika-go/pkg/database"
 )
 
 func TestScrapeScheduleWithBrowser(t *testing.T) {
 	testsDir := t.TempDir()
-	bottest.InitConfig(t, testsDir)
-	defer bottest.Cleanup(t, testsDir)
+	testutil.InitConfig(t, testsDir)
+	defer testutil.Cleanup(t, testsDir)
 
 	db, err := database.New()
 	if err != nil {
