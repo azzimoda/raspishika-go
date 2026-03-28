@@ -9,7 +9,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service/browser"
-	smanager "github.com/azzimoda/raspishika-go/internal/service/schedule/manager"
+	"github.com/azzimoda/raspishika-go/internal/service/schedule"
 )
 
 func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
@@ -26,7 +26,7 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
-	s.ScheduleMan = smanager.New(s.Schedule, s.Group)
+	s.ScheduleMan = schedule.New(s.Schedule, s.Group)
 
 	return s, nil
 }
@@ -34,7 +34,7 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 type Services struct {
 	*repository.Container
 	Browser     *browser.BrowserService
-	ScheduleMan smanager.ScheduleManager
+	ScheduleMan schedule.ScheduleManager
 	Reporter    reporter.Reporter
 }
 

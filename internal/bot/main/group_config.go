@@ -10,8 +10,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
+	"github.com/azzimoda/raspishika-go/internal/service/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Group handler")
 
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	mb.sendGroupMenu(ctx, b, update.Message.MessageThreadID)
@@ -103,10 +103,10 @@ func departmentSelectionMarkup(departments []model.Department) tgmodels.InlineKe
 func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Select department handler")
 
-	callbackCommand := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	callbackCommand := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 	message := update.CallbackQuery.Message.Message
 
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	groups, err := scraper.FetchDepartmentGroups(mb.services.Group, mb.services.Browser,

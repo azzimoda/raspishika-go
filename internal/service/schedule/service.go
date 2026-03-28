@@ -1,4 +1,4 @@
-package schedulemanager
+package schedule
 
 import (
 	"database/sql"
@@ -12,7 +12,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service/browser"
-	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
+	"github.com/azzimoda/raspishika-go/internal/service/scraper"
 )
 
 func New(scheduleRepo repository.ScheduleRepository, groupRepo repository.GroupRepository) ScheduleManager {

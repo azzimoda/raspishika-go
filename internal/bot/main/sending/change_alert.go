@@ -14,7 +14,7 @@ import (
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/model"
-	schedulemanager "github.com/azzimoda/raspishika-go/internal/service/schedule/manager"
+	"github.com/azzimoda/raspishika-go/internal/service/schedule"
 )
 
 func (sm *SendingManager) RunChangeAlertNotifier(ctx context.Context) {
@@ -195,7 +195,7 @@ func (sm *SendingManager) fetchScheduleUpdates(
 			conf := model.GroupScheduleConfig(&group, false)
 
 			oldRawSchedule, err := sm.services.ScheduleMan.GetCache(conf)
-			if errors.Is(err, schedulemanager.ErrNoCache) {
+			if errors.Is(err, schedule.ErrNoCache) {
 				log.Warn().Err(err).Any("config", conf).Msg("No cache for the schedule config; just updating...")
 				_, err := sm.services.ScheduleMan.UpdateCache(sm.services.Browser, conf)
 				errs = append(errs, err)

@@ -16,7 +16,7 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service"
-	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
+	"github.com/azzimoda/raspishika-go/internal/service/scraper"
 )
 
 func New(services *service.Services) (mb *MainBot, err error) {

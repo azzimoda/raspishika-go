@@ -11,8 +11,8 @@ import (
 	"github.com/schollz/closestmatch"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
-	"github.com/azzimoda/raspishika-go/internal/service/schedule/scraper"
-	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
+	"github.com/azzimoda/raspishika-go/internal/service/scraper"
+	"github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
 
 func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -50,7 +50,7 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text teacher name handler")
 
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.Message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, update.Message)
 	addContextHandlerError(ctx, err)
 
 	// Search for the teacher in the database.
@@ -129,9 +129,9 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	log.Trace().Msg("Select teacher handler")
 	message := update.CallbackQuery.Message.Message
 
-	command := bothelpers.ParseCallbackData(update.CallbackQuery.Data)
+	command := bothelper.ParseCallbackData(update.CallbackQuery.Data)
 
-	_, err := bothelpers.DeleteMessageSafely(ctx, b, message)
+	_, err := bothelper.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
