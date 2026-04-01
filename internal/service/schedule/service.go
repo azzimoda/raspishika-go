@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -15,32 +18,35 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/service/scraper"
 )
 
-func New(scheduleRepo repository.ScheduleRepository, groupRepo repository.GroupRepository) ScheduleManager {
+func New(
+	browser *browser.BrowserService,
+	scheduleRepo repository.ScheduleRepository,
+	groupRepo repository.GroupRepository,
+) ScheduleManager {
 	return ScheduleManager{
-		scheduleRepo: scheduleRepo,
-		groupRepo:    groupRepo,
-		sf:           singleflight.Group{},
+		BrowserService: browser,
+		scheduleRepo:   scheduleRepo,
+		groupRepo:      groupRepo,
+		sf:             singleflight.Group{},
 	}
 }
 
 type ScheduleManager struct {
+	*browser.BrowserService
 	scheduleRepo repository.ScheduleRepository
 	groupRepo    repository.GroupRepository
 	sf           singleflight.Group
 }
 
 // Get returns the schedule for the given config and uses cache if available.
-func (sm *ScheduleManager) Get(
-	browser *browser.BrowserService,
-	conf model.ScheduleConfig,
-) (*model.RawSchedule, error) {
+func (sm *ScheduleManager) Get(conf model.ScheduleConfig) (*model.RawSchedule, error) {
 	key := scheduleKey(conf)
 	if rawSchedule, ok := sm.CheckCache(key); ok {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		return rawSchedule, nil
 	}
 	log.Debug().Str("cacheKey", key).Msg("Cache miss")
-	return sm.UpdateCache(browser, conf)
+	return sm.UpdateCache(sm.BrowserService, conf)
 }
 
 var ErrNoCache = errors.New("no cache for the key")
@@ -94,6 +100,33 @@ func (sm *ScheduleManager) UpdateCache(
 	return rawSchedule, nil
 }
 
+func (sm *ScheduleManager) PrepareScheduleImage(conf model.ScheduleConfig) (fileName string, data []byte, err error) {
+	schedule, err := sm.Get(conf)
+	if err != nil {
+		err = fmt.Errorf("failed loading schedule: %w", err)
+		return
+	}
+
+	fileName, data, err = sm.htmlToImage(conf, schedule.HTML(config.FetchScheduleTemplate(conf.IsDark)))
+	if err != nil {
+		return "", nil, err
+	}
+	return fileName, data, nil
+}
+
+func (sm *ScheduleManager) htmlToImage(conf model.ScheduleConfig, html string) (string, []byte, error) {
+	imageFileName := path.Join(viper.GetString(config.KeyBrowserScreenshotDir), scheduleScreenshotFileName(conf))
+	if err := sm.BrowserService.TakeScreenshotHTML(html, imageFileName); err != nil {
+		return "", nil, err
+	}
+
+	imageData, err := os.ReadFile(imageFileName)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read screenshot: %w", err)
+	}
+	return imageFileName, imageData, nil
+}
+
 func (sm *ScheduleManager) scrapeSchedule(
 	conf model.ScheduleConfig,
 	browser *browser.BrowserService,
@@ -121,5 +154,21 @@ func scheduleKey(config model.ScheduleConfig) string {
 	} else {
 		log.Error().Any("config", config).Msg("Unreachable code")
 		return "schedule"
+	}
+}
+
+func scheduleScreenshotFileName(conf model.ScheduleConfig) string {
+	darkSuffix := ""
+	if conf.IsDark {
+		darkSuffix = "_dark"
+	}
+
+	if conf.Group != nil {
+		return fmt.Sprintf("schedule_%s%s.png", conf.Group.GroupName, darkSuffix)
+	} else if conf.Teacher != nil {
+		return fmt.Sprintf("schedule_teacher_%s%s.png", conf.Teacher.Name, darkSuffix)
+	} else {
+		log.Error().Any("config", conf).Msg("Schedule config is invalid")
+		return "schedule.png"
 	}
 }

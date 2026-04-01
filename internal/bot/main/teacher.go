@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/schollz/closestmatch"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelper"
@@ -21,7 +22,7 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgTryLater})
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: botutil.ErrMsgTryLater})
 		return
 	}
 
@@ -34,7 +35,10 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 	chat.State = model.ChatStateSelectingTeacher
 	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: update.Message.Chat.ID, Text: ErrMsgCouldNotUpdateData})
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   botutil.ErrMsgCouldNotUpdateData,
+		})
 		return
 	}
 
@@ -57,9 +61,9 @@ func (mb *MainBot) textTeacherNameHandler(ctx context.Context, b *bot.Bot, updat
 	teachers, err := scraper.FetchTeachers(mb.services.Group, mb.services.Browser)
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   ErrMsgCouldNotLoadSchedule,
+			Text:   botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		return
 	}
@@ -137,9 +141,9 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   ErrMsgTryLater,
+			Text:   botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -147,7 +151,10 @@ func (mb *MainBot) selectTeacherHandler(ctx context.Context, b *bot.Bot, update 
 	teacher, err := mb.services.Group.GetTeacherByID(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: message.Chat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: message.Chat.ID,
+			Text:   botutil.ErrMsgCouldNotLoadSchedule,
+		})
 		return
 	}
 
@@ -170,7 +177,10 @@ func (mb *MainBot) sendTeacherSchedule(
 	localChat.State = model.ChatStateDefault
 	if err := mb.services.Chat.Update(localChat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotUpdateData})
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: tgChat.ID,
+			Text:   botutil.ErrMsgCouldNotUpdateData,
+		})
 	}
 
 	_, err = b.SendChatAction(ctx, &bot.SendChatActionParams{
@@ -183,10 +193,13 @@ func (mb *MainBot) sendTeacherSchedule(
 	}
 
 	conf := model.TeacherScheduleConfig(teacher, localChat.DarkMode)
-	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
+	imageFilename, imageData, err := mb.services.ScheduleMan.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{ChatID: tgChat.ID, Text: ErrMsgCouldNotLoadSchedule})
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
+			ChatID: tgChat.ID,
+			Text:   botutil.ErrMsgCouldNotLoadSchedule,
+		})
 		return
 	}
 

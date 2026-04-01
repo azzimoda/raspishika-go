@@ -58,11 +58,11 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*model.Chat,
 	} else {
 		return nil, ErrUnknownUpdateType
 	}
+	
+	log.Warn().Any("mb", mb)
 
-	chat, created, err := mb.services.Container.Chat.CreateOrUpdate(chatID, username)
+	chat, created, err := mb.services.Chat.CreateOrUpdate(chatID, username)
 	if err != nil {
-		mb.services.Reporter.Report().Log().Err(err).Chat(model.Chat{TgChatID: chatID, UserName: &username}).
-			Msg("Failed to create or update chat")
 		return nil, fmt.Errorf("failed to create or update chat: %w", err)
 	}
 	if created {

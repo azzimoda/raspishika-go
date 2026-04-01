@@ -8,6 +8,7 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/repository"
+	"github.com/azzimoda/raspishika-go/internal/service/broadcast"
 	"github.com/azzimoda/raspishika-go/internal/service/browser"
 	"github.com/azzimoda/raspishika-go/internal/service/schedule"
 )
@@ -16,9 +17,9 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 	s := new(Services)
 	s.Reporter = reporter
 
-	var err error
 	s.Container = repository.NewContainer(db)
 
+	var err error
 	s.Browser, err = browser.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create browser service: %w", err)
@@ -26,7 +27,9 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
-	s.ScheduleMan = schedule.New(s.Schedule, s.Group)
+	s.ScheduleMan = schedule.New(s.Browser, s.Schedule, s.Group)
+
+	s.Broadcast = *broadcast.NewNotificationService(&s.ScheduleMan, *s.Container, s.Reporter)
 
 	return s, nil
 }
@@ -35,6 +38,7 @@ type Services struct {
 	*repository.Container
 	Browser     *browser.BrowserService
 	ScheduleMan schedule.ScheduleManager
+	Broadcast   broadcast.BroadcastService
 	Reporter    reporter.Reporter
 }
 

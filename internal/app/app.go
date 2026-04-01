@@ -15,7 +15,8 @@ import (
 	adminbot "github.com/azzimoda/raspishika-go/internal/bot/admin"
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
-	sending "github.com/azzimoda/raspishika-go/internal/bot/main/sending"
+
+	// sending "github.com/azzimoda/raspishika-go/internal/bot/main/sending"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/pkg/database"
@@ -29,12 +30,10 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	app.services, err = service.New(app.db, app)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
-	app.services.Reporter = app
 
 	app.mainBot, err = mainbot.New(app.services)
 	if err != nil {
@@ -42,6 +41,7 @@ func New() (*App, error) {
 	} else {
 		log.Info().Msg("Initialized main bot")
 	}
+	app.services.Broadcast.Bot = app.mainBot.Bot
 
 	if viper.GetBool(config.KeyFeatureAdminBot) {
 		app.adminBot, err = adminbot.New(app.services)
@@ -102,10 +102,8 @@ func (a *App) Run() error {
 }
 
 func (a *App) startServices(ctx context.Context) {
-	sendingManager := sending.NewSendingManager(a.mainBot, a.services)
-
 	if viper.GetBool(config.KeyFeatureDailySending) {
-		if err := sendingManager.ScheduleDailySending(); err != nil {
+		if err := a.services.Broadcast.ScheduleDaily(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule daily sending, skipping")
 		} else {
 			log.Info().Msg("Daily sending scheduled")
@@ -115,7 +113,7 @@ func (a *App) startServices(ctx context.Context) {
 	}
 
 	if viper.GetBool(config.KeyFeaturePairNotification) {
-		if err := sendingManager.SchedulePairSending(); err != nil {
+		if err := a.services.Broadcast.SchedulePairNotification(); err != nil {
 			log.Error().Err(err).Msg("Failed to schedule pair sending, skipping")
 		} else {
 			log.Info().Msg("Pair sending scheduled")
@@ -125,13 +123,13 @@ func (a *App) startServices(ctx context.Context) {
 	}
 
 	if viper.GetBool(config.KeyFeatureChangeAlert) {
-		go sendingManager.RunChangeAlertNotifier(ctx)
+		go a.services.Broadcast.RunChangeAlertNotifier(ctx)
 		log.Info().Msg("Change alert notifier started")
 	} else {
 		log.Info().Msg("Change alert disabled")
 	}
 
-	sendingManager.Start()
+	a.services.Broadcast.Start()
 }
 
 func (a *App) Shutdown() {

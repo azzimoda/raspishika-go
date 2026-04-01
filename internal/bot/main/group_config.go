@@ -9,17 +9,10 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/internal/service/scraper"
 	"github.com/azzimoda/raspishika-go/pkg/bothelper"
-)
-
-const (
-	ErrMsgTryLater             = "Произошла ошибка, попробуйте позже"
-	ErrMsgCouldNotLoadSchedule = "Не удалось загрузить расписание, попробуйте позже"
-	ErrMsgCouldNotUpdateData   = "Не удалось обновить данные, попробуйте позже"
-	ErrMsgCouldNotSendSchedule = "Не удалось отправить расписание, попробуте позже"
-	ErrMsgSelectGroupAgain     = "Не удалось найти группу, выберите группу ещё раз"
 )
 
 func (mb *MainBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
@@ -37,10 +30,10 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(chatID).
 			Msg("Error in groupHandler")
@@ -49,10 +42,10 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 
 	departments, err := scraper.FetchDepartments(mb.services.Group)
 	if err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -60,10 +53,10 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 
 	chat.State = model.ChatStateSelectingDepartment
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -113,20 +106,20 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 		model.DepartmentName(callbackCommand.Arg(0)))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 	}
 
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(message.Chat.ID).
 			Msg("Error in selectDepartmentHandler")
@@ -136,9 +129,9 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	chat.State = model.ChatStateSelectingGroup
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 			MessageThreadID: message.MessageThreadID,
 		})
 		return
@@ -173,16 +166,20 @@ func groupsReplyMarkup(groups []model.Group) tgmodels.ReplyKeyboardMarkup {
 func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgmodels.Update) {
 	log.Trace().Msg("Text group handler")
 
-	group, err := mb.FetchGroupByNameWithValidation(model.GroupName(update.Message.Text))
-	if errors.Is(err, ErrWrongGroupNameFormat) {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+	group, err := scraper.FetchGroupByNameWithValidation(
+		mb.services.Group,
+		mb.services.Browser,
+		model.GroupName(update.Message.Text),
+	)
+	if errors.Is(err, scraper.ErrWrongGroupNameFormat) {
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Неправильный формат группы, попробуйте ещё раз",
 		})
 		return
-	} else if errors.Is(err, ErrGroupNotFound) {
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+	} else if errors.Is(err, scraper.ErrGroupNotFound) {
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Группа не найдена, попробуйте ещё раз",
@@ -190,10 +187,10 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 		return
 	} else if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to try get group: %w", err))
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -201,10 +198,10 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		mb.services.Reporter.Report().Log().Err(ErrNoChatContext).Chat(update.Message.Chat.ID).
 			Msg("Error in textGroupHandler")
@@ -215,10 +212,10 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat.DepartmentName = &group.DepartmentName
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}
@@ -227,12 +224,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            fmt.Sprintf("Теперь вы в группе %s", group.GroupName),
-		ReplyMarkup:     mainMenuReplyMarkup(chat.IsPrivate()),
+		ReplyMarkup:     botutil.MainMenuReplyMarkup(chat.IsPrivate()),
 	})
 	addContextHandlerError(ctx, err)
 }
-
-var (
-	ErrWrongGroupNameFormat = errors.New("wrong group name format")
-	ErrGroupNotFound        = errors.New("group not found")
-)

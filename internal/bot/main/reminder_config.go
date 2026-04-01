@@ -8,6 +8,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
@@ -29,10 +30,10 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tg
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -40,10 +41,10 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tg
 	chat.PairSending = on
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}

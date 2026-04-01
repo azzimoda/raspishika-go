@@ -8,6 +8,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
@@ -116,7 +117,7 @@ func (mb *MainBot) sendQuickGroupSchedule(
 	}
 
 	conf := model.GroupScheduleConfig(group, chat.DarkMode)
-	imageFilename, imageData, err := mb.PrepareScheduleImage(conf)
+	imageFilename, imageData, err := mb.services.ScheduleMan.PrepareScheduleImage(conf)
 	if err != nil {
 		log.Error().Any("group", group).Err(err).
 			Msg("Failed to prepare week schedule data for quick group schedule")
@@ -173,7 +174,7 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Не удалось удалить данные чата, попробуйте позже",
@@ -183,7 +184,7 @@ func (mb *MainBot) stopHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 
 	if err := mb.services.Container.Chat.Delete(chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to delete chat: %w", err))
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Не удалось удалить данные чата, попробуйте позже",
@@ -206,7 +207,7 @@ func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Не удалось удалить данные чата, попробуйте позже",
@@ -250,7 +251,7 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *tg
 		ChatID:          update.Message.Chat.ID,
 		MessageThreadID: update.Message.MessageThreadID,
 		Text:            "Действие отменено",
-		ReplyMarkup:     mainMenuReplyMarkup(update.Message.Chat.ID > 0),
+		ReplyMarkup:     botutil.MainMenuReplyMarkup(update.Message.Chat.ID > 0),
 	})
 	addContextHandlerError(ctx, err)
 }

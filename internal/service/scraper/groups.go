@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -219,3 +220,44 @@ func Every[T any](elems []T, predicate func(*T) bool) bool {
 	}
 	return true
 }
+
+// FetchGroupByNameWithValidation tries to validate given group name and fetch group from the database.
+//
+// When given group name is not found in database, it fetches group from the website and
+// updated the database, then tries again. If group is not found after successful update, it returns ErrGroupNotFound.
+// When any other error occurs, it returns the error.
+func FetchGroupByNameWithValidation(repo repository.GroupRepository, browser *browser.BrowserService, name model.GroupName) (*model.Group, error) {
+	groupName, err := repo.ValidateName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Why do I validate group name two times? Remove unnecessary validations
+	if groupName, err = repo.ValidateName(groupName); err != nil {
+		log.Warn().Err(err).Msg("Updating groups")
+		// Try to update groups.
+		if _, err := FetchGroups(repo, browser); err != nil {
+			return nil, fmt.Errorf("failed to fetch groups: %w", err)
+		}
+
+		// Try again
+		if groupName, err = repo.ValidateName(groupName); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrGroupNotFound, err)
+		}
+	} else {
+		log.Trace().Any("given", name).Any("groupName", groupName).Bool("give == validated", name == groupName).
+			Msg("Group name case is validated")
+	}
+
+	// Group found
+	group, err := repo.GetByName(groupName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get group by validated name (%s): %w", groupName, err)
+	}
+	return group, nil
+}
+
+var (
+	ErrWrongGroupNameFormat = errors.New("wrong group name format")
+	ErrGroupNotFound        = errors.New("group not found")
+)

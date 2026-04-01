@@ -9,6 +9,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/pkg/bothelper"
 	"github.com/azzimoda/raspishika-go/pkg/refutil"
@@ -20,10 +21,10 @@ func (mb *MainBot) settingsHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -59,10 +60,10 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -70,10 +71,10 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	chat.DailySendingTime = nil
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}
@@ -90,10 +91,10 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -101,10 +102,10 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	chat.PairSending = command.Arg(0) == "true"
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}
@@ -121,10 +122,10 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -132,10 +133,10 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	chat.ChangeAlert = command.Arg(0) == "true"
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 	}
 
@@ -151,10 +152,10 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -162,10 +163,10 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 	chat.DarkMode = command.Arg(0) == "true"
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 	}
 
@@ -181,10 +182,10 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -192,7 +193,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 	accessLevel, err := strconv.Atoi(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
 			Text:            "Произошла ошибка, установлено значение по умолчанию — 0",
@@ -205,10 +206,10 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 
 	if err := mb.services.Container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
 			MessageThreadID: message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}

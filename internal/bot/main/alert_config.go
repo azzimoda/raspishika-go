@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/pkg/bothelper"
 	"github.com/go-telegram/bot"
@@ -25,10 +26,10 @@ func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmod
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -36,10 +37,10 @@ func (mb *MainBot) setChangeAlert(ctx context.Context, b *bot.Bot, update *tgmod
 	chat.ChangeAlert = on
 	if err := mb.services.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}

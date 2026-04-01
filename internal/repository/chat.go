@@ -28,6 +28,7 @@ type ChatRepository interface {
 	AllByWatchedGroup(model.GroupName) ([]model.Chat, error)
 	AllByDailyTime(time string) ([]model.Chat, error)
 	AllWithPairNotification() ([]model.Chat, error)
+	AllWithChangeAlert() ([]model.Chat, error)
 
 	WatchedGroups() ([]model.Group, error)
 
@@ -150,6 +151,11 @@ func (r *chatRepository) AllByDailyTime(time string) ([]model.Chat, error) {
 func (r *chatRepository) AllWithPairNotification() ([]model.Chat, error) {
 	var chats []model.Chat
 	err := r.db.Select(&chats, `SELECT * FROM chats WHERE "group" IS NOT NULL AND pair_sending = 1`)
+	return chats, err
+}
+func (r *chatRepository) AllWithChangeAlert() ([]model.Chat, error) {
+	var chats []model.Chat
+	err := r.db.Select(&chats, `SELECT * FROM chats WHERE update_notification = 1`)
 	return chats, err
 }
 

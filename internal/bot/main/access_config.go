@@ -10,6 +10,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
@@ -23,9 +24,9 @@ func (mb *MainBot) accessHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 			MessageThreadID: update.Message.MessageThreadID,
 		})
 		return
@@ -60,10 +61,10 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat, ok := ctx.Value(chatContextKey).(*model.Chat)
 	if !ok {
 		addContextHandlerError(ctx, ErrNoChatContext)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgTryLater,
+			Text:            botutil.ErrMsgTryLater,
 		})
 		return
 	}
@@ -72,7 +73,7 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgm
 	accessLevel, err := strconv.Atoi(command.Arg(0))
 	if err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
 			Text:            "Произошла ошибка, установлено значение по умолчанию — 0",
@@ -85,10 +86,10 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgm
 
 	if err := mb.services.Container.Chat.Delete(chat); err != nil {
 		addContextHandlerError(ctx, err)
-		sendErrorMessage(ctx, b, &bot.SendMessageParams{
+		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
 			MessageThreadID: update.Message.MessageThreadID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		return
 	}

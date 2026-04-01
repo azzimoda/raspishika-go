@@ -11,6 +11,7 @@ import (
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
 
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/model"
 	bothelpers "github.com/azzimoda/raspishika-go/pkg/bothelper"
 )
@@ -36,19 +37,19 @@ func (mb *MainBot) updateGroupHandler(ctx context.Context, b *bot.Bot, update *t
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
 	}
 
 	conf := model.GroupScheduleConfig(group, darkMode)
-	_, imageData, err := mb.PrepareScheduleImage(conf)
+	_, imageData, err := mb.services.ScheduleMan.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -84,19 +85,19 @@ func (mb *MainBot) updateTeacherHandler(ctx context.Context, b *bot.Bot, update 
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
 	}
 
 	conf := model.TeacherScheduleConfig(teacher, darkMode)
-	_, imageData, err := mb.PrepareScheduleImage(conf)
+	_, imageData, err := mb.services.ScheduleMan.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotUpdateData,
+			Text:            botutil.ErrMsgCouldNotUpdateData,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -122,18 +123,18 @@ func (mb *MainBot) updateTomorrowHandler(ctx context.Context, b *bot.Bot, update
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
 	}
 
-	rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Browser, model.GroupScheduleConfig(group, false))
+	rawSchedule, err := mb.services.ScheduleMan.Get(model.GroupScheduleConfig(group, false))
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -172,7 +173,7 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		addContextHandlerError(ctx, err)
 		_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            ErrMsgCouldNotLoadSchedule,
+			Text:            botutil.ErrMsgCouldNotLoadSchedule,
 		})
 		addContextHandlerError(ctx, err)
 		return
@@ -183,12 +184,12 @@ func (mb *MainBot) updateLeftHandler(ctx context.Context, b *bot.Bot, update *tg
 		text = `Сегодня воскресенье, отдыхайте\!`
 	} else {
 		conf := model.GroupScheduleConfig(group, false)
-		rawSchedule, err := mb.services.ScheduleMan.Get(mb.services.Browser, conf)
+		rawSchedule, err := mb.services.ScheduleMan.Get(conf)
 		if err != nil {
 			addContextHandlerError(ctx, err)
 			_, err = b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            ErrMsgCouldNotLoadSchedule,
+				Text:            botutil.ErrMsgCouldNotLoadSchedule,
 			})
 			addContextHandlerError(ctx, err)
 			return
