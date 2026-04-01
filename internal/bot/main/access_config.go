@@ -84,7 +84,7 @@ func (mb *MainBot) setAccessHandler(ctx context.Context, b *bot.Bot, update *tgm
 		chat.Access = model.ChatAccessLevel(accessLevel)
 	}
 
-	if err := mb.services.Container.Chat.Delete(chat); err != nil {
+	if err := mb.container.Chat.Delete(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

@@ -20,12 +20,14 @@ import (
 )
 
 func NewNotificationService(
-	scheduleService *schedule.ScheduleManager,
+	scheduleService *schedule.ScheduleService,
+	browser *browser.BrowserService,
 	container repository.Container,
 	reporter reporter.Reporter,
 ) *BroadcastService {
 	return &BroadcastService{
 		scheduleService: scheduleService,
+		browser:         browser,
 		Container:       container,
 		Reporter:        reporter,
 		cron:            cron.New(),
@@ -33,8 +35,8 @@ func NewNotificationService(
 }
 
 type BroadcastService struct {
-	scheduleService *schedule.ScheduleManager
-	*browser.BrowserService
+	scheduleService *schedule.ScheduleService
+	browser *browser.BrowserService
 	repository.Container
 	reporter.Reporter
 	*bot.Bot

@@ -66,7 +66,7 @@ func (s *BroadcastService) fetchChanges(groups []*model.Group) (map[model.GroupN
 		oldRawSchedule, err := s.scheduleService.GetCache(conf)
 		if errors.Is(err, schedule.ErrNoCache) {
 			log.Warn().Err(err).Any("config", conf).Msg("No cache for the schedule config; just updating cache...")
-			if _, err := s.scheduleService.UpdateCache(s.BrowserService, conf); err != nil {
+			if _, err := s.scheduleService.UpdateCache(s.browser, conf); err != nil {
 				errs = append(errs, err)
 			}
 			continue
@@ -76,7 +76,7 @@ func (s *BroadcastService) fetchChanges(groups []*model.Group) (map[model.GroupN
 			continue
 		}
 
-		newRawSchedule, err := s.scheduleService.UpdateCache(s.BrowserService, conf)
+		newRawSchedule, err := s.scheduleService.UpdateCache(s.browser, conf)
 		if err != nil {
 			log.Error().Err(err).Any("config", conf).Msg("Failed to update schedule cache")
 			errs = append(errs, err)

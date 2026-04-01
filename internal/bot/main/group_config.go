@@ -40,7 +40,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	departments, err := scraper.FetchDepartments(mb.services.Group)
+	departments, err := scraper.FetchDepartments(mb.container.Group)
 	if err != nil {
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
@@ -52,7 +52,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 	}
 
 	chat.State = model.ChatStateSelectingDepartment
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -102,7 +102,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	_, err := bothelper.DeleteMessageSafely(ctx, b, message)
 	addContextHandlerError(ctx, err)
 
-	groups, err := scraper.FetchDepartmentGroups(mb.services.Group, mb.services.Browser,
+	groups, err := scraper.FetchDepartmentGroups(mb.container.Group, mb.services.Browser,
 		model.DepartmentName(callbackCommand.Arg(0)))
 	if err != nil {
 		addContextHandlerError(ctx, err)
@@ -127,7 +127,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.State = model.ChatStateSelectingGroup
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -167,7 +167,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	log.Trace().Msg("Text group handler")
 
 	group, err := scraper.FetchGroupByNameWithValidation(
-		mb.services.Group,
+		mb.container.Group,
 		mb.services.Browser,
 		model.GroupName(update.Message.Text),
 	)
@@ -210,7 +210,7 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 	chat.State = model.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

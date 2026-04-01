@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/rs/zerolog/log"
 
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
@@ -13,11 +12,9 @@ import (
 	"github.com/azzimoda/raspishika-go/internal/service/schedule"
 )
 
-func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
+func New(container repository.Container, reporter reporter.Reporter) (*Services, error) {
 	s := new(Services)
 	s.Reporter = reporter
-
-	s.Container = repository.NewContainer(db)
 
 	var err error
 	s.Browser, err = browser.New()
@@ -27,18 +24,17 @@ func New(db *sqlx.DB, reporter reporter.Reporter) (*Services, error) {
 		log.Debug().Msg("Created browser service")
 	}
 
-	s.ScheduleMan = schedule.New(s.Browser, s.Schedule, s.Group)
+	s.Schedule = schedule.New(s.Browser, container.Schedule, container.Group)
 
-	s.Broadcast = *broadcast.NewNotificationService(&s.ScheduleMan, *s.Container, s.Reporter)
+	s.Broadcast = broadcast.NewNotificationService(&s.Schedule, s.Browser, container, s.Reporter)
 
 	return s, nil
 }
 
 type Services struct {
-	*repository.Container
 	Browser     *browser.BrowserService
-	ScheduleMan schedule.ScheduleManager
-	Broadcast   broadcast.BroadcastService
+	Schedule schedule.ScheduleService
+	Broadcast   *broadcast.BroadcastService
 	Reporter    reporter.Reporter
 }
 

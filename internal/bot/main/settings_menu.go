@@ -69,7 +69,7 @@ func (mb *MainBot) dailyOffCallbackHandler(ctx context.Context, b *bot.Bot, upda
 	}
 
 	chat.DailySendingTime = nil
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -100,7 +100,7 @@ func (mb *MainBot) configReminderHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.PairSending = command.Arg(0) == "true"
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -131,7 +131,7 @@ func (mb *MainBot) configChangeHandler(ctx context.Context, b *bot.Bot, update *
 	}
 
 	chat.ChangeAlert = command.Arg(0) == "true"
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -161,7 +161,7 @@ func (mb *MainBot) configDarkModeHandler(ctx context.Context, b *bot.Bot, update
 	}
 
 	chat.DarkMode = command.Arg(0) == "true"
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -204,7 +204,7 @@ func (mb *MainBot) configAccessHandler(ctx context.Context, b *bot.Bot, update *
 		chat.Access = model.ChatAccessLevel(accessLevel)
 	}
 
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,

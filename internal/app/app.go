@@ -15,6 +15,7 @@ import (
 	adminbot "github.com/azzimoda/raspishika-go/internal/bot/admin"
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
+	"github.com/azzimoda/raspishika-go/internal/repository"
 
 	// sending "github.com/azzimoda/raspishika-go/internal/bot/main/sending"
 	"github.com/azzimoda/raspishika-go/internal/config"
@@ -30,12 +31,14 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app.services, err = service.New(app.db, app)
+	app.container = repository.NewContainer(app.db)
+
+	app.services, err = service.New(app.container, app)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
 
-	app.mainBot, err = mainbot.New(app.services)
+	app.mainBot, err = mainbot.New(app.container, app.services)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize main bot: %w", err)
 	} else {
@@ -44,7 +47,7 @@ func New() (*App, error) {
 	app.services.Broadcast.Bot = app.mainBot.Bot
 
 	if viper.GetBool(config.KeyFeatureAdminBot) {
-		app.adminBot, err = adminbot.New(app.services)
+		app.adminBot, err = adminbot.New(app.container, app.services)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to initialize admin bot")
 		} else {
@@ -58,12 +61,13 @@ func New() (*App, error) {
 }
 
 type App struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
-	mainBot  *mainbot.MainBot
-	adminBot *adminbot.AdminBot
-	db       *sqlx.DB
-	services *service.Services
+	ctx       context.Context
+	cancel    context.CancelFunc
+	mainBot   *mainbot.MainBot
+	adminBot  *adminbot.AdminBot
+	db        *sqlx.DB
+	container repository.Container
+	services  *service.Services
 }
 
 func (a *App) Run() error {

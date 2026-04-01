@@ -61,7 +61,7 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*model.Chat,
 	
 	log.Warn().Any("mb", mb)
 
-	chat, created, err := mb.services.Chat.CreateOrUpdate(chatID, username)
+	chat, created, err := mb.container.Chat.CreateOrUpdate(chatID, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create or update chat: %w", err)
 	}
@@ -84,7 +84,7 @@ func (mb *MainBot) sendNewChatReport(chat *model.Chat, err error, tgChatID model
 	for range 5 {
 		time.Sleep(20 * time.Second)
 
-		if chat, err := mb.services.Chat.GetByChatID(tgChatID); err == nil && chat.GroupName != nil {
+		if chat, err := mb.container.Chat.GetByChatID(tgChatID); err == nil && chat.GroupName != nil {
 			if sentErr == nil {
 				b.DeleteMessage(context.Background(), &bot.DeleteMessageParams{ChatID: msg.Chat.ID, MessageID: msg.ID})
 			}
@@ -219,7 +219,7 @@ func (mb *MainBot) logMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 				Msg("Handler error")
 		}
 
-		mb.services.Log.LogUpdate(&model.UpdateLog{
+		mb.container.Log.LogUpdate(&model.UpdateLog{
 			ChatID:       chat.ID,
 			Kind:         updateKind,
 			MessageID:    messageID,

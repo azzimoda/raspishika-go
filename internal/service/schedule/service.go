@@ -22,36 +22,36 @@ func New(
 	browser *browser.BrowserService,
 	scheduleRepo repository.ScheduleRepository,
 	groupRepo repository.GroupRepository,
-) ScheduleManager {
-	return ScheduleManager{
-		BrowserService: browser,
-		scheduleRepo:   scheduleRepo,
-		groupRepo:      groupRepo,
-		sf:             singleflight.Group{},
+) ScheduleService {
+	return ScheduleService{
+		browser:      browser,
+		scheduleRepo: scheduleRepo,
+		groupRepo:    groupRepo,
+		sf:           singleflight.Group{},
 	}
 }
 
-type ScheduleManager struct {
-	*browser.BrowserService
+type ScheduleService struct {
+	browser      *browser.BrowserService
 	scheduleRepo repository.ScheduleRepository
 	groupRepo    repository.GroupRepository
 	sf           singleflight.Group
 }
 
 // Get returns the schedule for the given config and uses cache if available.
-func (sm *ScheduleManager) Get(conf model.ScheduleConfig) (*model.RawSchedule, error) {
+func (sm *ScheduleService) Get(conf model.ScheduleConfig) (*model.RawSchedule, error) {
 	key := scheduleKey(conf)
 	if rawSchedule, ok := sm.CheckCache(key); ok {
 		log.Debug().Str("cacheKey", key).Msg("Cache hit")
 		return rawSchedule, nil
 	}
 	log.Debug().Str("cacheKey", key).Msg("Cache miss")
-	return sm.UpdateCache(sm.BrowserService, conf)
+	return sm.UpdateCache(sm.browser, conf)
 }
 
 var ErrNoCache = errors.New("no cache for the key")
 
-func (sm *ScheduleManager) GetCache(conf model.ScheduleConfig) (*model.RawSchedule, error) {
+func (sm *ScheduleService) GetCache(conf model.ScheduleConfig) (*model.RawSchedule, error) {
 	scheduleCache, err := sm.scheduleRepo.GetByKey(scheduleKey(conf))
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNoCache
@@ -62,7 +62,7 @@ func (sm *ScheduleManager) GetCache(conf model.ScheduleConfig) (*model.RawSchedu
 	return scheduleCache.Unmarshal()
 }
 
-func (sm *ScheduleManager) CheckCache(key string) (rawSchedule *model.RawSchedule, ok bool) {
+func (sm *ScheduleService) CheckCache(key string) (rawSchedule *model.RawSchedule, ok bool) {
 	scheduleCache, err := sm.scheduleRepo.GetByKey(key)
 	if err == nil && scheduleCache.IsActual(config.ScheduleTTLDur()) {
 		rawSchedule, err := scheduleCache.Unmarshal()
@@ -74,7 +74,7 @@ func (sm *ScheduleManager) CheckCache(key string) (rawSchedule *model.RawSchedul
 	return nil, false
 }
 
-func (sm *ScheduleManager) UpdateCache(
+func (sm *ScheduleService) UpdateCache(
 	browser *browser.BrowserService,
 	conf model.ScheduleConfig,
 ) (*model.RawSchedule, error) {
@@ -100,7 +100,7 @@ func (sm *ScheduleManager) UpdateCache(
 	return rawSchedule, nil
 }
 
-func (sm *ScheduleManager) PrepareScheduleImage(conf model.ScheduleConfig) (fileName string, data []byte, err error) {
+func (sm *ScheduleService) PrepareScheduleImage(conf model.ScheduleConfig) (fileName string, data []byte, err error) {
 	schedule, err := sm.Get(conf)
 	if err != nil {
 		err = fmt.Errorf("failed loading schedule: %w", err)
@@ -114,9 +114,9 @@ func (sm *ScheduleManager) PrepareScheduleImage(conf model.ScheduleConfig) (file
 	return fileName, data, nil
 }
 
-func (sm *ScheduleManager) htmlToImage(conf model.ScheduleConfig, html string) (string, []byte, error) {
+func (sm *ScheduleService) htmlToImage(conf model.ScheduleConfig, html string) (string, []byte, error) {
 	imageFileName := path.Join(viper.GetString(config.KeyBrowserScreenshotDir), scheduleScreenshotFileName(conf))
-	if err := sm.BrowserService.TakeScreenshotHTML(html, imageFileName); err != nil {
+	if err := sm.browser.TakeScreenshotHTML(html, imageFileName); err != nil {
 		return "", nil, err
 	}
 
@@ -127,7 +127,7 @@ func (sm *ScheduleManager) htmlToImage(conf model.ScheduleConfig, html string) (
 	return imageFileName, imageData, nil
 }
 
-func (sm *ScheduleManager) scrapeSchedule(
+func (sm *ScheduleService) scrapeSchedule(
 	conf model.ScheduleConfig,
 	browser *browser.BrowserService,
 ) (*model.RawSchedule, error) {

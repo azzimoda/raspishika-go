@@ -39,7 +39,7 @@ func (mb *MainBot) setReminderHelper(ctx context.Context, b *bot.Bot, update *tg
 	}
 
 	chat.PairSending = on
-	if err := mb.services.Container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

@@ -33,7 +33,7 @@ func (ab *AdminBot) registerHandlers() {
 			return false
 		}
 
-		_, err := ab.services.Group.ValidateName(model.GroupName(update.Message.Text))
+		_, err := ab.container.Group.ValidateName(model.GroupName(update.Message.Text))
 		return err == nil
 	}, ab.groupHandler)
 	// TODO: Handle username and chat_id.
@@ -64,7 +64,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 	var chat *model.Chat
 	if err != nil {
 		// Get last chat from database
-		chats, err := ab.services.Chat.All()
+		chats, err := ab.container.Chat.All()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chats")
 			return
@@ -76,7 +76,7 @@ func (ab *AdminBot) chatHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 
 		chat = &chats[len(chats)-1]
 	} else {
-		chat, err = ab.services.Chat.GetByChatID(model.ChatID(tgChatID))
+		chat, err = ab.container.Chat.GetByChatID(model.ChatID(tgChatID))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get chat by chat ID")
 			return
@@ -105,7 +105,7 @@ var chatReportTemplate, _ = template.New("report").Parse(chatReportTemplateStr)
 func (ab *AdminBot) sendChatReport(chat *model.Chat, b *bot.Bot, ctx context.Context, update *tgmodels.Update) {
 	log.Trace().Msg("sendChatReport")
 
-	recentTeachers, err := ab.services.Group.TeachersByChatID(chat.ID)
+	recentTeachers, err := ab.container.Group.TeachersByChatID(chat.ID)
 	if err != nil {
 		recentTeachers = []model.Teacher{}
 		ab.services.Reporter.Report().Err(err).Msgf("Failed to get recent teachers for chat %d", chat.ID)
@@ -116,7 +116,7 @@ func (ab *AdminBot) sendChatReport(chat *model.Chat, b *bot.Bot, ctx context.Con
 	}
 	recentTeachersStr := strings.Join(recentTeacherNames, ", ")
 
-	recentUpdates, err := ab.services.Log.RecentChatUpdateLogs(chat.ID, 48*time.Hour)
+	recentUpdates, err := ab.container.Log.RecentChatUpdateLogs(chat.ID, 48*time.Hour)
 	if err != nil {
 		log.Error().Err(err).Int("chat.ID", chat.ID).Msg("Failed to get recent updates for chat")
 		recentUpdates = []model.UpdateLog{}
@@ -160,13 +160,13 @@ func (ab *AdminBot) groupHandler(ctx context.Context, b *bot.Bot, update *tgmode
 		group = model.GroupName(arg)
 	}
 
-	group, err := ab.services.Group.ValidateName(model.GroupName(update.Message.Text))
+	group, err := ab.container.Group.ValidateName(model.GroupName(update.Message.Text))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to validate group name format")
 		return
 	}
 
-	chats, err := ab.services.Chat.AllByGroup(group)
+	chats, err := ab.container.Chat.AllByGroup(group)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get chats by group")
 		return

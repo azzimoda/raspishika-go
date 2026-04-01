@@ -54,7 +54,7 @@ func (mb *MainBot) weekHandler(ctx context.Context, b *bot.Bot, update *tgmodels
 	}
 
 	conf := model.GroupScheduleConfig(group, chat.DarkMode)
-	imageFilename, imageData, err := mb.services.ScheduleMan.PrepareScheduleImage(conf)
+	imageFilename, imageData, err := mb.services.Schedule.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
@@ -136,7 +136,7 @@ func (mb *MainBot) tomorrowHandler(ctx context.Context, b *bot.Bot, update *tgmo
 		return
 	}
 
-	rawSchedule, err := mb.services.ScheduleMan.Get(
+	rawSchedule, err := mb.services.Schedule.Get(
 		model.GroupScheduleConfig(group, chat.DarkMode),
 	)
 	if err != nil {
@@ -201,7 +201,7 @@ func (mb *MainBot) todayHandler(ctx context.Context, b *bot.Bot, update *tgmodel
 			return
 		}
 
-		rawSchedule, err := mb.services.ScheduleMan.Get(
+		rawSchedule, err := mb.services.Schedule.Get(
 			model.GroupScheduleConfig(group, chat.DarkMode),
 		)
 		if err != nil {
@@ -241,7 +241,7 @@ func (mb *MainBot) tryGetGroup(
 	update *tgmodels.Update,
 	chat *model.Chat,
 ) (*model.Group, bool, error) {
-	group, err := scraper.FetchGroupByNameWithValidation(mb.services.Group, mb.services.Browser, *chat.GroupName)
+	group, err := scraper.FetchGroupByNameWithValidation(mb.container.Group, mb.services.Browser, *chat.GroupName)
 	if err == nil {
 		return group, false, nil
 	}
@@ -254,7 +254,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := mb.services.Container.Chat.Update(chat); err != nil {
+		if err := mb.container.Chat.Update(chat); err != nil {
 			botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,
@@ -274,7 +274,7 @@ func (mb *MainBot) tryGetGroup(
 
 		chat.DepartmentName = nil
 		chat.GroupName = nil
-		if err := mb.services.Container.Chat.Update(chat); err != nil {
+		if err := mb.container.Chat.Update(chat); err != nil {
 			botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 				ChatID:          update.Message.Chat.ID,
 				MessageThreadID: update.Message.MessageThreadID,

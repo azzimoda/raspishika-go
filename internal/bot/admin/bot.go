@@ -13,11 +13,12 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service"
 )
 
-func New(services *service.Services) (*AdminBot, error) {
-	ab := AdminBot{services: services}
+func New(container repository.Container, services *service.Services) (*AdminBot, error) {
+	ab := AdminBot{container: container, services: services}
 
 	opts := []bot.Option{
 		bot.WithMiddlewares(ab.filterNotAdminMiddleware),
@@ -37,7 +38,8 @@ func New(services *service.Services) (*AdminBot, error) {
 
 type AdminBot struct {
 	*bot.Bot
-	services *service.Services
+	container repository.Container
+	services  *service.Services
 }
 
 func (b *AdminBot) Start() {

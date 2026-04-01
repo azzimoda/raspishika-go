@@ -14,11 +14,12 @@ import (
 
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service"
 )
 
-func New(services *service.Services) (mb *MainBot, err error) {
-	mb = &MainBot{services: services}
+func New(container repository.Container, services *service.Services) (mb *MainBot, err error) {
+	mb = &MainBot{container: container, services: services}
 
 	opts := []bot.Option{
 		bot.WithMiddlewares(
@@ -53,8 +54,9 @@ func New(services *service.Services) (mb *MainBot, err error) {
 
 type MainBot struct {
 	*bot.Bot
-	Me       *tgmodels.User
-	services *service.Services
+	Me        *tgmodels.User
+	container repository.Container
+	services  *service.Services
 }
 
 func (mb *MainBot) Start() {

@@ -14,7 +14,7 @@ import (
 const notificationWorkers = 8
 
 func (a *App) Notify(s string) {
-	chats, err := a.services.Chat.All()
+	chats, err := a.container.Chat.All()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to get chats")
 	}

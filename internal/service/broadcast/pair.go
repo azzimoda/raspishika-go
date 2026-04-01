@@ -71,7 +71,7 @@ func (s *BroadcastService) sendPairNotificationToGroup(
 	pairTime time.Time,
 	chats []*model.Chat,
 ) ([]error, bool) {
-	group, err := scraper.FetchGroupByNameWithValidation(s.Group, s.BrowserService, groupName)
+	group, err := scraper.FetchGroupByNameWithValidation(s.Group, s.browser, groupName)
 	if errors.Is(err, scraper.ErrGroupNotFound) || errors.Is(err, scraper.ErrWrongGroupNameFormat) {
 		log.Error().Err(err).Any("group", groupName).Msg("Failed to get group by name")
 
