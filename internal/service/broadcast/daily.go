@@ -48,7 +48,7 @@ func (s *BroadcastService) processDaily(t time.Time) {
 	elapsed := measureTime(func() { errs, errCount = s.sendDaily(grouped) })
 
 	// Log stats
-	s.log(t, elapsed, chatCount, groupCount, errCount, errs)
+	s.log(t, elapsed, chatCount, groupCount, errCount, errs, model.SendingLogDaily)
 }
 
 type sendResult struct {

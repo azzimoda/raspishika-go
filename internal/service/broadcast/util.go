@@ -33,6 +33,7 @@ func (s *BroadcastService) log(
 	groupCount int,
 	errCount int,
 	errs []error,
+	kind model.SendingLogKind,
 ) {
 	elapsedPerChat := elapsed / time.Duration(chatCount)
 	elapsedPerGroup := elapsed / time.Duration(groupCount)
@@ -45,10 +46,11 @@ func (s *BroadcastService) log(
 			Elapsed: int(elapsed.Milliseconds()),
 			Fails:   errCount,
 		}); err != nil {
-			log.Error().Err(err).Msg("Failed to log daily broadcast stats")
+			log.Error().Err(err).Msg("Failed to log broadcast stats")
 		}
 
 		log.Info().
+			Any("kind", kind).
 			Time("time", t).
 			Dur("elapsed", elapsed).
 			Dur("elapsedPerChat", elapsedPerChat).
@@ -56,20 +58,22 @@ func (s *BroadcastService) log(
 			Int("chats", chatCount).
 			Int("groups", groupCount).
 			Int("fails", errCount).
-			Msgf("Daily broadcast finished")
+			Msgf("Broadcast finished")
 	}
 
 	if err := errors.Join(errs...); err != nil {
 		s.Report().Log().Err(err).
 			Err(err).
+			Debug("kind", string(kind)).
 			Debug("time", t).
 			Debug("chats", chatCount).
 			Debug("groups", groupCount).
-			Msg("Errors while daily sending")
+			Msg("Errors while broadcasting")
 	}
 
 	if chatCount > 0 && (elapsedPerGroup > 10*time.Second) {
 		s.Report().Log().
+			Debug("kind", string(kind)).
 			Debug("time", t).
 			Debug("elapsed", elapsed).
 			Debug("elapsedPerChat", elapsedPerChat).
@@ -77,6 +81,6 @@ func (s *BroadcastService) log(
 			Debug("chats", chatCount).
 			Debug("groups", groupCount).
 			Debug("workers", viper.GetInt(config.KeySendingWorkers)).
-			Msg("Daily sending took too long")
+			Msg("Broadcast took too long")
 	}
 }

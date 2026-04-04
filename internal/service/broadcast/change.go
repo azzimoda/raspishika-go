@@ -53,7 +53,7 @@ func (s *BroadcastService) processChangeAlert(ctx context.Context) {
 	}
 
 	errs := append(errsFetch, errsSend...)
-	s.log(timeStart, time.Since(timeStart), chatCount, groupCount, len(errsSend), errs)
+	s.log(timeStart, time.Since(timeStart), chatCount, groupCount, len(errsSend), errs, model.SendingLogChange)
 }
 
 func (s *BroadcastService) fetchChanges(groups []*model.Group) (map[model.GroupName]*model.ScheduleChange, []error) {

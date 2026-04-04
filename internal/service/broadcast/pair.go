@@ -48,7 +48,7 @@ func (s *BroadcastService) processPairNotification(t time.Time) {
 	var errCount int
 	elapsed := measureTime(func() { errs, errCount = s.sendPairNotification(grouped, pairTime) })
 
-	s.log(t, elapsed, chatCount, groupCount, errCount, errs)
+	s.log(t, elapsed, chatCount, groupCount, errCount, errs, model.SendingLogPair)
 }
 
 func (s *BroadcastService) sendPairNotification(grouped GroupedChats, pairTime time.Time) ([]error, int) {
