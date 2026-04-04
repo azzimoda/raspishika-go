@@ -212,8 +212,6 @@ func (p *Pair) IsBefore(t time.Time) bool {
 
 // HTML returns formatted pair string.
 func (p *Pair) HTML() string {
-	log.Trace().Any("pair", p).Msg("Formating pair...")
-
 	teacher := func() string { return refutil.DerefOrTypeDefault(p.Teacher) }
 
 	switch p.Kind {
