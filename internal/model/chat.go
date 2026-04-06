@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"time"
+
+	"github.com/azzimoda/raspishika-go/internal/config"
 )
 
 type ChatID int64
@@ -40,8 +42,8 @@ const (
 type Chat struct {
 	ID               int             `db:"id"`
 	TgChatID         ChatID          `db:"tg_chat_id"`
-	UserName         *UserName       `db:"username"` // TODO: Make this field NOT NULL — use just empty string·
-	State            ChatState       `db:"state"`
+	UserName         *UserName       `db:"username"` // TODO: Make this field NOT NULL — use just empty string
+	state            ChatState       `db:"state"`
 	DepartmentName   *DepartmentName `db:"department"`
 	GroupName        *GroupName      `db:"group"`
 	DailySendingTime *string         `db:"daily_sending_time"`
@@ -54,6 +56,24 @@ type Chat struct {
 }
 
 func (c *Chat) IsPrivate() bool { return c.TgChatID.IsPrivate() }
+
+// State returns actual state of the chat.
+//
+// If chat's state is not Defeult and chat state TTL is expired, returns (ChatStateDefault, true).
+// Otherwise returns actual state and false.
+func (c *Chat) State() (state ChatState, expired bool) {
+	if c.state != ChatStateDefault && c.UpdatedAt.Add(config.ChatStateTTL()).After(time.Now()) {
+		c.state = ChatStateDefault
+		return ChatStateDefault, false
+	}
+	return c.state, true
+}
+
+// WithState updates chat's state and returns reference to this chat.
+func (c *Chat) WithState(state ChatState) *Chat {
+	c.state = state
+	return c
+}
 
 func sqlPeriod(dur time.Duration) string {
 	sqlPeriod := fmt.Sprintf("-%d seconds", int(dur.Seconds()))

@@ -32,10 +32,10 @@ func New(container repository.Container, reporter reporter.Reporter) (*Services,
 }
 
 type Services struct {
-	Browser     *browser.BrowserService
-	Schedule schedule.ScheduleService
-	Broadcast   *broadcast.BroadcastService
-	Reporter    reporter.Reporter
+	Browser   *browser.BrowserService
+	Schedule  schedule.ScheduleService
+	Broadcast *broadcast.BroadcastService
+	Reporter  reporter.Reporter
 }
 
 func (s *Services) Close() error { return s.Browser.Close() }

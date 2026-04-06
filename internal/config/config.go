@@ -27,6 +27,7 @@ const (
 
 	KeyDatabaseFile       = "database.file"
 	KeyDatabaseMigrations = "database.migrations"
+	KeyChatStateTTL       = "database.chat_state_ttl"
 
 	KeyBrowserHeadless        = "browser.headless"
 	KeyBrowserTimeout         = "browser.timeout"
@@ -100,6 +101,7 @@ var defaults = map[string]any{
 	KeySendingWorkers:            20,
 	KeyPairNotificationTTL:       90, // minutes
 	KeyChangeAlertUpdateInterval: 30, // minutes
+	KeyChatStateTTL:              10, // minutes
 
 	KeyAdminNewChatReport: true,
 
@@ -252,11 +254,10 @@ func PrintUsage() bool {
 	return false
 }
 
-func DefaultTTLDur() time.Duration { return viper.GetDuration(KeyCacheDefaultTTL) * time.Minute }
-
+func DefaultTTLDur() time.Duration  { return viper.GetDuration(KeyCacheDefaultTTL) * time.Minute }
 func ScheduleTTLDur() time.Duration { return viper.GetDuration(KeyCacheScheduleTTL) * time.Minute }
-
-func GroupTTLDur() time.Duration { return viper.GetDuration(KeyCacheGroupTTL) * 24 * time.Hour }
+func GroupTTLDur() time.Duration    { return viper.GetDuration(KeyCacheGroupTTL) * 24 * time.Hour }
+func ChatStateTTL() time.Duration   { return viper.GetDuration(KeyChatStateTTL) * time.Minute }
 
 func ScheduleUpdateMonitorInterval() time.Duration {
 	return time.Duration(viper.GetInt(KeyChangeAlertUpdateInterval)) * time.Minute

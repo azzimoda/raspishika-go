@@ -218,8 +218,7 @@ func (mb *MainBot) deleteHandler(ctx context.Context, b *bot.Bot, update *tgmode
 	_, err := bothelpers.DeleteMessageSafely(ctx, b, update.CallbackQuery.Message.Message)
 	addContextHandlerError(ctx, err)
 
-	chat.State = model.ChatStateDefault
-	if repoErr := mb.container.Chat.Update(chat); repoErr != nil {
+	if repoErr := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); repoErr != nil {
 		mb.services.Reporter.Report().Log().Err(repoErr).Chat(update.CallbackQuery.Message.Message.Chat.ID).
 			Msg("Error in deleteHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat state: %w", repoErr))
@@ -240,8 +239,7 @@ func (mb *MainBot) textCancelHandler(ctx context.Context, b *bot.Bot, update *tg
 		return
 	}
 
-	chat.State = model.ChatStateDefault
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); err != nil {
 		mb.services.Reporter.Report().Log().Err(err).Chat(update.Message.Chat.ID).Msg("Error in textCancelHandler")
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		return

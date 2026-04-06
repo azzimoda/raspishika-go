@@ -32,8 +32,7 @@ func (mb *MainBot) teacherHandler(ctx context.Context, b *bot.Bot, update *tgmod
 		teachers = []model.Teacher{}
 	}
 
-	chat.State = model.ChatStateSelectingTeacher
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateSelectingTeacher)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -166,16 +165,15 @@ func (mb *MainBot) sendTeacherSchedule(
 	b *bot.Bot,
 	messageThreadID int,
 	tgChat *tgmodels.Chat,
-	localChat *model.Chat,
+	chat *model.Chat,
 	teacher *model.Teacher,
 ) {
-	err := mb.container.Chat.AddRecentTeacher(localChat.ID, teacher.ID)
+	err := mb.container.Chat.AddRecentTeacher(chat.ID, teacher.ID)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to add recent teacher: %w", err))
 	}
 
-	localChat.State = model.ChatStateDefault
-	if err := mb.container.Chat.Update(localChat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID: tgChat.ID,
@@ -192,7 +190,7 @@ func (mb *MainBot) sendTeacherSchedule(
 		log.Error().Err(err).Msg("Failed to send chat action")
 	}
 
-	conf := model.TeacherScheduleConfig(teacher, localChat.DarkMode)
+	conf := model.TeacherScheduleConfig(teacher, chat.DarkMode)
 	imageFilename, imageData, err := mb.services.Schedule.PrepareScheduleImage(conf)
 	if err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed preparing schedule data: %w", err))
@@ -203,7 +201,7 @@ func (mb *MainBot) sendTeacherSchedule(
 		return
 	}
 
-	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, localChat, conf, imageFilename, imageData)
+	err = mb.SendWeekScheduleMessages(ctx, b, messageThreadID, chat, conf, imageFilename, imageData)
 	addContextHandlerError(ctx, err)
 }
 

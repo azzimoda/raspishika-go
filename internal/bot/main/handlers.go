@@ -176,7 +176,14 @@ func (mb *MainBot) registerChatStateHandler(
 			log.Error().Err(err).Int64("chat_id", update.Message.Chat.ID).Msg("Failed to ensure chat to match its state")
 			return false
 		}
-		return chat.State == chatState && update.Message.Text != "отмена"
+		actualState, expired := chat.State()
+		if expired {
+			if err := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); err != nil {
+				log.Error().Err(err).Msg("Failed to reset expired state to default")
+			}
+		}
+
+		return actualState == chatState && update.Message.Text != "отмена"
 	}
 	return mb.Bot.RegisterHandlerMatchFunc(matchFunc, f, m...)
 }

@@ -51,8 +51,7 @@ func (mb *MainBot) sendGroupMenu(ctx context.Context, b *bot.Bot, messageThreadI
 		return
 	}
 
-	chat.State = model.ChatStateSelectingDepartment
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateSelectingDepartment)); err != nil {
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          chatID,
 			MessageThreadID: messageThreadID,
@@ -126,8 +125,7 @@ func (mb *MainBot) selectDepartmentHandler(ctx context.Context, b *bot.Bot, upda
 		return
 	}
 
-	chat.State = model.ChatStateSelectingGroup
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateSelectingGroup)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
@@ -207,10 +205,9 @@ func (mb *MainBot) textGroupHandler(ctx context.Context, b *bot.Bot, update *tgm
 			Msg("Error in textGroupHandler")
 		return
 	}
-	chat.State = model.ChatStateDefault
 	chat.GroupName = &group.GroupName
 	chat.DepartmentName = &group.DepartmentName
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); err != nil {
 		addContextHandlerError(ctx, fmt.Errorf("failed to update chat: %w", err))
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,

@@ -30,8 +30,7 @@ func (mb *MainBot) dailyTimeHandler(ctx context.Context, b *bot.Bot, update *tgm
 		return
 	}
 
-	chat.State = model.ChatStateSelectingTime
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateSelectingTime)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -122,9 +121,8 @@ func (mb *MainBot) textTimeHandler(ctx context.Context, b *bot.Bot, update *tgmo
 	}
 	timeStr := t.Format("15:04")
 
-	chat.State = model.ChatStateDefault
 	chat.DailySendingTime = &timeStr
-	if err := mb.container.Chat.Update(chat); err != nil {
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateDefault)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          update.Message.Chat.ID,
@@ -161,8 +159,8 @@ func (mb *MainBot) configDailyTimeHandler(ctx context.Context, b *bot.Bot, updat
 		})
 		return
 	}
-	chat.State = model.ChatStateSelectingTime
-	if err := mb.container.Chat.Update(chat); err != nil {
+
+	if err := mb.container.Chat.Update(chat.WithState(model.ChatStateSelectingTime)); err != nil {
 		addContextHandlerError(ctx, err)
 		botutil.SendErrorMessage(ctx, b, &bot.SendMessageParams{
 			ChatID:          message.Chat.ID,
