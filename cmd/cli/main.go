@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	// Reset logget with loaded config.
+	// Reset logger with loaded config.
 	logger.SetupLogger(viper.GetString(config.KeyLoggerLevel), viper.GetString(config.KeyLoggerDir))
 
 	log.Debug().Str("baseConfigFile", viper.GetString(config.KeyConfigFile)).Msg("Loaded configuration")
@@ -32,6 +32,13 @@ func main() {
 		viper.Debug()
 	}
 
+	// Run tests if requested
+	if viper.GetBool(config.KeyTest) {
+		runTests()
+		return
+	}
+
+	// Create application
 	app, err := app.New()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create application")

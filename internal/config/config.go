@@ -63,6 +63,8 @@ const (
 	KeyStartTime     = "start"
 	KeyNotifyMessage = "notify"
 
+	KeyTest = "test"
+
 	KeyCommandsMain  = "commands.main"
 	KeyCommandsAdmin = "commands.admin"
 )
@@ -168,6 +170,8 @@ func ConfigFlags() {
 		"Start bot at specified time; format: 2006-01-02T15:04")
 	pflag.String("notify", "", "Send specified notification to all chats")
 
+	pflag.Bool("test", false, "Run tests")
+
 	pflag.Bool("headless", true, "Enable browser headless mode")
 	pflag.String("log", "", "Specify log level")
 	pflag.String("log-dir", "", "Specify log directory")
@@ -181,6 +185,8 @@ func ConfigFlags() {
 
 	viper.BindPFlag(KeyStartTime, pflag.CommandLine.Lookup("start"))
 	viper.BindPFlag(KeyNotifyMessage, pflag.CommandLine.Lookup("notify"))
+
+	viper.BindPFlag(KeyTest, pflag.CommandLine.Lookup("test"))
 
 	viper.BindPFlag(KeyBrowserHeadless, pflag.CommandLine.Lookup("headless"))
 	viper.BindPFlag(KeyLoggerLevel, pflag.CommandLine.Lookup("log"))
