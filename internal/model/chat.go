@@ -43,7 +43,7 @@ type Chat struct {
 	ID               int             `db:"id"`
 	TgChatID         ChatID          `db:"tg_chat_id"`
 	UserName         *UserName       `db:"username"` // TODO: Make this field NOT NULL — use just empty string
-	state            ChatState       `db:"state"`
+	State            ChatState       `db:"state"`
 	DepartmentName   *DepartmentName `db:"department"`
 	GroupName        *GroupName      `db:"group"`
 	DailySendingTime *string         `db:"daily_sending_time"`
@@ -57,21 +57,21 @@ type Chat struct {
 
 func (c *Chat) IsPrivate() bool { return c.TgChatID.IsPrivate() }
 
-// State returns actual state of the chat.
+// GetState returns actual state of the chat.
 //
 // If chat's state is not Defeult and chat state TTL is expired, returns (ChatStateDefault, true).
 // Otherwise returns actual state and false.
-func (c *Chat) State() (state ChatState, expired bool) {
-	if c.state != ChatStateDefault && c.UpdatedAt.Add(config.ChatStateTTL()).After(time.Now()) {
-		c.state = ChatStateDefault
+func (c *Chat) GetState() (state ChatState, expired bool) {
+	if c.State != ChatStateDefault && c.UpdatedAt.Add(config.ChatStateTTL()).After(time.Now()) {
+		c.State = ChatStateDefault
 		return ChatStateDefault, false
 	}
-	return c.state, true
+	return c.State, true
 }
 
 // WithState updates chat's state and returns reference to this chat.
 func (c *Chat) WithState(state ChatState) *Chat {
-	c.state = state
+	c.State = state
 	return c
 }
 

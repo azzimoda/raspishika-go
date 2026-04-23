@@ -11,6 +11,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -v -o raspishika ./cmd/cli/main.go
+RUN go build -v -o raspishika ./cmd/cli
 
 ENTRYPOINT ["/app/raspishika"]
