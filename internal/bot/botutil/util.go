@@ -3,13 +3,20 @@ package botutil
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-telegram/bot"
 	tgmodels "github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/net/proxy"
 
 	"github.com/azzimoda/raspishika-go/internal/model"
 	"github.com/azzimoda/raspishika-go/pkg/bothelper"
@@ -133,4 +140,113 @@ func UpdateInlineButton(kind, value string) tgmodels.InlineKeyboardButton {
 			time.Now().Format("20060102150405000"), // NOTE: Time is added to prevent editing message error when the content is the same.
 		),
 	}
+}
+
+var ErrNoAvailableProxy = errors.New("no available proxy")
+var ErrEmptyProxy = errors.New("empty proxy")
+var ErrProxyUnavailable = errors.New("proxy unavailable")
+
+func FindAvailableProxy() (string, error) {
+	proxies, err := loadProxies()
+	if err != nil {
+		return "", fmt.Errorf("failed to load proxies: %w", err)
+	}
+
+	result, ok := findFirstAsync(proxies, func(p string) bool { return check(p) == nil })
+	if ok {
+		log.Debug().Str("proxy", result).Msg("Found available proxy")
+		return result, nil
+	}
+	log.Debug().Msg("No available proxy found")
+	return "", ErrNoAvailableProxy
+}
+
+func check(proxy string) error {
+	if proxy == "" {
+		return ErrEmptyProxy
+	}
+
+	// Check the proxy by trying to launch Telegram bot polling with fake token.
+	httpClient, err := NewHTTPProxyClient(proxy)
+	if err != nil {
+		// Proxy is not available
+		return fmt.Errorf("%w: %w", ErrProxyUnavailable, err)
+	}
+	opts := []bot.Option{bot.WithHTTPClient(30*time.Second, httpClient)}
+	_, err = bot.New("faketoken", opts...)
+	if strings.Contains(err.Error(), "not found") {
+		// Telegram servers are abailable, the proxy is available
+		return nil
+	}
+	// Telegram servers are unavailable, the proxy is unavailable
+	return ErrProxyUnavailable
+}
+
+func NewHTTPProxyClient(p string) (*http.Client, error) {
+	dialer, err := proxy.SOCKS5("tcp", p, nil, proxy.Direct)
+	if err != nil {
+		return nil, err
+	}
+	httpTransport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
+		},
+	}
+	httpClient := &http.Client{Transport: httpTransport}
+	return httpClient, nil
+}
+
+const proxyListFile = "./storage/proxies.json"
+
+func loadProxies() ([]string, error) {
+	bytes, err := os.ReadFile(proxyListFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load proxy list file: %w", err)
+	}
+
+	var proxies []struct {
+		Protocol    string `json:"protocol"`
+		IP          string `json:"ip"`
+		Port        int    `json:"port"`
+		Geolocation struct {
+			Country string `json:"country"`
+		} `json:"geolocation"`
+	}
+	json.Unmarshal(bytes, &proxies)
+
+	// Filter SOCKS and not Russian proxies
+	var filteredProxies []string
+	for _, proxy := range proxies {
+		if proxy.Protocol == "socks5" && proxy.Geolocation.Country != "RU" {
+			filteredProxies = append(filteredProxies, fmt.Sprintf("%s:%d", proxy.IP, proxy.Port))
+		}
+	}
+	return filteredProxies, nil
+}
+
+func findFirstAsync[T any](items []T, predicate func(T) bool) (T, bool) {
+	resultChan := make(chan T, 1)
+	var wg sync.WaitGroup
+
+	for _, item := range items {
+		wg.Add(1)
+		go func(item T) {
+			defer wg.Done()
+			if predicate(item) {
+				select {
+				case resultChan <- item:
+				default:
+				}
+			}
+		}(item)
+	}
+
+	// Wait for all goroutines to finish in a separate goroutine
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	result, ok := <-resultChan
+	return result, ok // ok=false means no match found
 }

@@ -7,13 +7,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/playwright-community/playwright-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
-	"github.com/playwright-community/playwright-go"
+	"github.com/azzimoda/raspishika-go/internal/config"
 )
 
 // TODO: Implement regular restart.

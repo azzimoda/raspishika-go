@@ -136,19 +136,19 @@ func (rc ReportConfig) Msg(text string) (*Report, error) {
 
 	// Chat
 	if chatID != 0 {
-		msgText.WriteString(fmt.Sprintf("<code>/chat %d</code> @%s\n", chatID, username))
+		fmt.Fprintf(&msgText, "<code>/chat %d</code> @%s\n", chatID, username)
 	}
 
 	// Error
 	if reportErr != nil {
-		msgText.WriteString(fmt.Sprintf("Error:\n<pre>%s</pre>\n", reportErr.Error()))
+		fmt.Fprintf(&msgText, "Error:\n<pre>%s</pre>\n", reportErr.Error())
 	}
 
 	// Debug objects
 	if len(debugObjects) > 0 {
 		msgText.WriteString("\n<pre>")
 		for name, value := range debugObjects {
-			msgText.WriteString(fmt.Sprintf("%s = %+v\n", name, value))
+			fmt.Fprintf(&msgText, "%s = %+v\n", name, value)
 		}
 		msgText.WriteString("</pre>\n")
 	}

@@ -15,10 +15,8 @@ import (
 	adminbot "github.com/azzimoda/raspishika-go/internal/bot/admin"
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
 	mainbot "github.com/azzimoda/raspishika-go/internal/bot/main"
-	"github.com/azzimoda/raspishika-go/internal/repository"
-
-	// sending "github.com/azzimoda/raspishika-go/internal/bot/main/sending"
 	"github.com/azzimoda/raspishika-go/internal/config"
+	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service"
 	"github.com/azzimoda/raspishika-go/pkg/database"
 )

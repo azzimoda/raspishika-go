@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/azzimoda/raspishika-go/internal/bot/admin/reporter"
+	"github.com/azzimoda/raspishika-go/internal/bot/botutil"
 	"github.com/azzimoda/raspishika-go/internal/config"
 	"github.com/azzimoda/raspishika-go/internal/repository"
 	"github.com/azzimoda/raspishika-go/internal/service"
@@ -21,7 +22,18 @@ import (
 func New(container repository.Container, services *service.Services) (mb *MainBot, err error) {
 	mb = &MainBot{container: container, services: services}
 
+	proxy, err := botutil.FindAvailableProxy()
+	if err != nil {
+		return nil, fmt.Errorf("failed to find available proxy: %w", err)
+	}
+
+	httpClient, err := botutil.NewHTTPProxyClient(proxy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create http client: %w", err)
+	}
+
 	opts := []bot.Option{
+		bot.WithHTTPClient(30*time.Second, httpClient),
 		bot.WithMiddlewares(
 			mb.ignoreOldMessagesMiddleware,
 			mb.ignoreInaccessibleMessageCQMiddleware,

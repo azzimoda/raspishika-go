@@ -58,7 +58,7 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*model.Chat,
 	} else {
 		return nil, ErrUnknownUpdateType
 	}
-	
+
 	log.Warn().Any("mb", mb)
 
 	chat, created, err := mb.container.Chat.CreateOrUpdate(chatID, username)
@@ -76,8 +76,9 @@ func (mb *MainBot) ensureChat(b *bot.Bot, update *tgmodels.Update) (*model.Chat,
 // It also sends a message to the admin chat if the user chat has a group configured.
 func (mb *MainBot) sendNewChatReport(chat *model.Chat, err error, tgChatID model.ChatID, b *bot.Bot) {
 	report, sentErr := mb.services.Reporter.Report().Chat(chat).Msg("New chat registered")
-	if err != nil {
+	if err != nil || report == nil {
 		log.Error().Err(err).Msg("Failed to send report")
+		return
 	}
 
 	msg := report.Message
