@@ -62,11 +62,11 @@ func (c *Chat) IsPrivate() bool { return c.TgChatID.IsPrivate() }
 // If chat's state is not Defeult and chat state TTL is expired, returns (ChatStateDefault, true).
 // Otherwise returns actual state and false.
 func (c *Chat) GetState() (state ChatState, expired bool) {
-	if c.State != ChatStateDefault && c.UpdatedAt.Add(config.ChatStateTTL()).After(time.Now()) {
+	if c.State != ChatStateDefault && time.Since(c.UpdatedAt) >= config.ChatStateTTL() {
 		c.State = ChatStateDefault
-		return ChatStateDefault, false
+		return ChatStateDefault, true
 	}
-	return c.State, true
+	return c.State, false
 }
 
 // WithState updates chat's state and returns reference to this chat.
