@@ -155,7 +155,9 @@ func (r *chatRepository) AllWithPairNotification() ([]model.Chat, error) {
 }
 func (r *chatRepository) AllWithChangeAlert() ([]model.Chat, error) {
 	var chats []model.Chat
-	err := r.db.Select(&chats, `SELECT * FROM chats WHERE update_notification = 1`)
+	err := r.db.Select(&chats, `
+		SELECT * FROM chats WHERE "group" IS NOT NULL AND "group" != '' AND update_notification = 1
+	`)
 	return chats, err
 }
 
